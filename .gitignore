@@ -1,0 +1,15 @@
+# WorkBuddy internal project data (not source)
+.workbuddy/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Logs
+*.log
+npm-debug.log*

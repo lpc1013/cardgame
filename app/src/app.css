@@ -1,0 +1,328 @@
+:root {
+  --bg: #171512;
+  --panel: #211e1a;
+  --ink: #d8d0c0;
+  --ink-dim: #8a8274;
+  --accent: #b3452c;
+  --accent-soft: #6e3524;
+  --gold: #c9a86a;
+  --line: #3a352d;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Noto Serif SC", "Source Han Serif SC", "STSong", "SimSun", serif;
+}
+
+button { font-family: inherit; }
+
+.muted { color: var(--ink-dim); }
+
+/* ---------- 标题页 ---------- */
+.title-screen {
+  height: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+}
+.title-screen h1 {
+  font-size: 56px; letter-spacing: 18px; margin: 0 0 0 18px;
+  color: var(--gold); font-weight: 600;
+}
+.title-screen .sub { color: var(--ink-dim); letter-spacing: 4px; }
+.scenario-list { display: flex; gap: 20px; margin-top: 32px; flex-wrap: wrap; justify-content: center; }
+.scenario-card {
+  width: 300px; padding: 26px 22px;
+  background: var(--panel); border: 1px solid var(--line);
+  border-top: 3px solid var(--accent-soft);
+  color: var(--ink); cursor: pointer; text-align: left;
+  transition: border-color .2s, transform .2s;
+}
+.scenario-card:hover { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
+.sc-title { font-size: 22px; color: var(--gold); margin-bottom: 8px; }
+.sc-sub { font-size: 13px; color: var(--ink-dim); }
+.foot-tip { margin-top: 40px; font-size: 12px; color: var(--ink-dim); }
+.resume-box { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 10px; }
+.link-btn { background: none; border: none; color: var(--ink-dim); font-size: 12px; cursor: pointer; text-decoration: underline; }
+.sc-ends { margin-top: 10px; font-size: 12px; color: var(--gold); line-height: 1.6; }
+.scenario-wrap { display: flex; flex-direction: column; gap: 8px; }
+.tree-btn {
+  background: none; border: 1px dashed var(--line); color: var(--ink-dim);
+  font-size: 12px; padding: 6px; cursor: pointer;
+}
+.tree-btn:hover { color: var(--gold); border-color: var(--gold); }
+
+/* ---------- 剧情树 ---------- */
+.tree-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.8);
+  display: flex; align-items: center; justify-content: center; z-index: 60;
+}
+.tree-panel {
+  background: var(--panel); border: 1px solid var(--line);
+  width: 94%; max-width: 1000px; max-height: 90vh;
+  display: flex; flex-direction: column; padding: 18px;
+}
+.tree-header { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
+.tree-header h3 { margin: 0; color: var(--gold); letter-spacing: 2px; flex: 1; }
+.tree-scroll { overflow: auto; border: 1px dashed var(--line); padding: 8px; }
+.tree-legend { margin: 10px 0 0; text-align: center; font-size: 12px; }
+
+/* ---------- 阅读页 ---------- */
+.story-root { height: 100%; display: flex; flex-direction: column; }
+.top-bar {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 18px; border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+.tb-title { color: var(--gold); letter-spacing: 2px; }
+.stat-chip {
+  font-size: 12px; border: 1px solid var(--line);
+  padding: 2px 10px; border-radius: 10px; color: var(--ink-dim);
+}
+.clue-btn {
+  margin-left: auto; background: none; color: var(--gold);
+  border: 1px solid var(--accent-soft); padding: 4px 14px; cursor: pointer;
+}
+.story-panel {
+  flex: 1; overflow-y: auto;
+  max-width: 720px; width: 100%;
+  margin: 0 auto; padding: 48px 28px 96px;
+  cursor: pointer;
+}
+.scene-title {
+  color: var(--accent); letter-spacing: 6px;
+  border-left: 3px solid var(--accent-soft);
+  padding-left: 12px; margin-bottom: 26px; font-size: 15px;
+}
+.story-line {
+  font-size: 17px; line-height: 2; margin: 0 0 18px;
+  opacity: .72; transition: opacity .4s;
+}
+.story-line.show { opacity: 1; }
+.continue-tip { color: var(--ink-dim); text-align: center; font-size: 12px; margin-top: 30px; }
+
+.choices { margin-top: 34px; display: flex; flex-direction: column; gap: 12px; cursor: default; }
+.choice {
+  text-align: left; padding: 14px 18px;
+  background: var(--panel); color: var(--ink);
+  border: 1px solid var(--line); border-left: 3px solid var(--accent-soft);
+  cursor: pointer; font-size: 15px; line-height: 1.7;
+  transition: border-color .15s, background .15s;
+}
+.choice:hover { border-color: var(--gold); background: #2a2620; }
+.hint { display: block; font-size: 12px; color: var(--ink-dim); margin-top: 4px; }
+
+/* ---------- 结局 ---------- */
+.story-panel.ending { text-align: center; cursor: default; }
+.ending-rank { color: var(--ink-dim); letter-spacing: 4px; margin-bottom: 6px; }
+.ending-name { color: var(--gold); font-size: 34px; letter-spacing: 8px; margin: 0 0 34px; font-weight: 600; }
+.ending .story-line { text-align: left; }
+.stat-report { display: flex; gap: 20px; justify-content: center; color: var(--ink-dim); margin: 24px 0; }
+.btn-main {
+  background: var(--accent-soft); color: var(--ink);
+  border: 1px solid var(--accent); padding: 10px 34px;
+  font-size: 15px; letter-spacing: 3px; cursor: pointer;
+}
+.btn-main:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ---------- 线索 ---------- */
+.clue-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin: 20px 0; cursor: default; }
+.clue-card {
+  background: var(--panel); border: 1px solid var(--line);
+  padding: 14px; cursor: pointer; transition: border-color .15s;
+}
+.clue-card:hover { border-color: var(--gold); }
+.clue-card.on { border-color: var(--accent); background: #2c211a; }
+.clue-name { color: var(--gold); margin-bottom: 6px; }
+.clue-desc { font-size: 12px; color: var(--ink-dim); line-height: 1.7; }
+.clue-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.7);
+  display: flex; align-items: center; justify-content: center; z-index: 50;
+}
+.clue-overlay-panel {
+  background: var(--panel); border: 1px solid var(--line);
+  max-width: 640px; width: 92%; max-height: 80vh; overflow-y: auto;
+  padding: 28px;
+}
+.clue-row { border-bottom: 1px dashed var(--line); padding: 12px 0; }
+.kind { font-size: 11px; margin-left: 8px; padding: 1px 8px; border-radius: 8px; }
+.k-true { color: #7fae7a; border: 1px solid #43613f; }
+.k-false { color: #a08080; border: 1px solid #5f4646; }
+.k-core { color: var(--gold); border: 1px solid var(--accent); }
+
+/* ---------- 对局 ---------- */
+.duel-root {
+  height: 100%; display: flex; flex-direction: column;
+  max-width: 860px; margin: 0 auto; padding: 20px;
+}
+.duel-header { text-align: center; margin-bottom: 14px; }
+.duel-title { color: var(--gold); font-size: 24px; letter-spacing: 6px; }
+.duel-status {
+  display: flex; justify-content: center; gap: 26px;
+  color: var(--gold); padding: 8px 0; border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.duel-stage { flex: 1; padding: 18px 6px; overflow-y: auto; }
+.opp-line { color: var(--ink); font-size: 16px; line-height: 1.9; }
+.duel-log { font-size: 14px; line-height: 1.8; margin-top: 10px; }
+.duel-log.match, .duel-log.win { color: #7fae7a; }
+.duel-log.press { color: var(--gold); }
+.duel-log.miss, .duel-log.lose { color: #b06a5a; }
+.hand { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.play-card {
+  background: var(--panel); border: 1px solid var(--line);
+  padding: 12px; min-height: 130px; cursor: pointer;
+  color: var(--ink); text-align: left;
+  transition: border-color .15s, transform .1s;
+}
+.play-card:hover:not(:disabled) { border-color: var(--gold); box-shadow: 0 0 0 1px var(--accent-soft); }
+.play-card:disabled { opacity: .45; cursor: not-allowed; }
+.pc-suit { font-size: 20px; margin-bottom: 6px; }
+.s-威 { color: #b06a5a; } .s-理 { color: #7f9bb0; }
+.s-利 { color: #c9a86a; } .s-情 { color: #9d7fb0; }
+.pc-name { color: var(--gold); margin-bottom: 6px; }
+.pc-text { font-size: 12px; color: var(--ink-dim); line-height: 1.7; }
+.pc-power { margin-top: 8px; font-size: 12px; color: var(--gold); }
+.duel-rule { margin-top: 14px; font-size: 12px; text-align: center; }
+.snd-btn { margin-left: 0; padding: 4px 10px; }
+.chip-silver { color: var(--gold); border-color: var(--gold); }
+
+/* ---------- toast ---------- */
+.toast {
+  position: fixed; left: 50%; bottom: 36px; transform: translateX(-50%);
+  background: #2c211a; border: 1px solid var(--accent); color: var(--gold);
+  padding: 10px 22px; font-size: 14px; z-index: 90; letter-spacing: 1px;
+  box-shadow: 0 4px 18px rgba(0,0,0,.5);
+}
+
+/* ---------- 稀有度 ---------- */
+.rarity-凡 { border-top: 2px solid #6b6558; }
+.rarity-良 { border-top: 2px solid var(--gold); }
+.rarity-孤品 { border-top: 2px solid var(--accent); background: #2a1d18; }
+.rarity-tag { font-size: 10px; color: var(--ink-dim); margin-left: auto; }
+.rarity-孤品 .rarity-tag { color: var(--accent); }
+.rarity-良 .rarity-tag { color: var(--gold); }
+.cost-tag { font-size: 10px; color: var(--gold); margin-left: 6px; }
+.pc-top { display: flex; align-items: center; margin-bottom: 6px; }
+.char-card { opacity: .82; border-style: dashed; }
+
+/* ---------- 三选一翻牌 ---------- */
+.pick-root {
+  height: 100%; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px; padding: 20px;
+}
+.pick-title { color: var(--gold); letter-spacing: 6px; font-size: 24px; margin: 0; }
+.pick-row { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; }
+.pick-card {
+  width: 210px; min-height: 220px; padding: 16px;
+  background: var(--panel); border: 1px solid var(--line);
+  color: var(--ink); cursor: pointer; text-align: left;
+  display: flex; flex-direction: column; gap: 8px;
+  transition: border-color .15s;
+}
+.pick-card:hover { border-color: var(--gold); }
+.pick-card .pc-layer { font-size: 11px; color: var(--ink-dim); }
+.overlay-mini { background: var(--panel); border: 1px solid var(--line); padding: 14px; width: auto; }
+
+/* ---------- 市集 ---------- */
+.shop-root { height: 100%; overflow-y: auto; padding: 20px; max-width: 980px; margin: 0 auto; }
+.shop-header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; }
+.shop-header h2 { margin: 0; color: var(--gold); letter-spacing: 4px; }
+.shop-tabs { display: flex; gap: 8px; margin-left: auto; }
+.shop-tab { background: none; border: 1px solid var(--line); color: var(--ink-dim); padding: 6px 16px; cursor: pointer; }
+.shop-tab.on { color: var(--gold); border-color: var(--gold); }
+.shop-desc { margin: 4px 0 14px; }
+.shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; margin-top: 10px; }
+.shop-card { background: var(--panel); border: 1px solid var(--line); padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+.shop-actions { display: flex; align-items: center; gap: 10px; margin-top: auto; }
+
+/* ---------- 背包 ---------- */
+.bag-panel {
+  background: var(--panel); border: 1px solid var(--line);
+  max-width: 900px; width: 94%; max-height: 85vh; overflow-y: auto; padding: 24px;
+}
+.bag-group { margin: 14px 0; }
+.bag-group-title { color: var(--gold); font-size: 13px; letter-spacing: 2px; margin-bottom: 8px; }
+.bag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+.bag-card {
+  background: #1c1915; border: 1px solid var(--line); padding: 10px;
+  color: var(--ink); cursor: pointer; text-align: left; display: flex; flex-direction: column; gap: 6px;
+}
+.bag-card.in-deck { border-color: var(--accent); }
+.bag-card-head { display: flex; align-items: center; gap: 8px; }
+.bag-card-name { color: var(--gold); font-size: 14px; flex: 1; }
+.deck-tag { font-size: 10px; color: var(--accent); border: 1px solid var(--accent); padding: 1px 6px; }
+.bag-lore { font-size: 11px; color: var(--ink-dim); line-height: 1.6; font-style: italic; }
+.end-turn-btn { margin-top: 10px; font-size: 13px; padding: 6px 18px; }
+
+/* ---------- 移动端适配 ---------- */
+@media (max-width: 640px), (pointer: coarse) {
+  html, body, #root { font-size: 15px; }
+  .title-screen h1 { font-size: 40px; letter-spacing: 10px; margin-left: 10px; }
+  .scenario-list { flex-direction: column; gap: 12px; width: 100%; max-width: 380px; }
+  .scenario-card { width: 100%; padding: 18px 16px; }
+  .top-bar { flex-wrap: wrap; gap: 8px; padding: 8px 12px; padding-top: calc(8px + env(safe-area-inset-top)); }
+  .tb-title { width: 100%; }
+  .stat-chip { font-size: 11px; }
+  .story-panel { padding: 24px 18px 80px; -webkit-overflow-scrolling: touch; }
+  .story-line { font-size: 16px; line-height: 2.1; }
+  .scene-title { font-size: 14px; margin-bottom: 18px; }
+  .choice { padding: 14px 16px; font-size: 15px; min-height: 48px; }
+  .hand { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+  .play-card { flex: 0 0 46%; max-width: 180px; min-height: 150px; scroll-snap-align: center; }
+  .duel-root { padding: 12px; padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+  .duel-stage { flex: 0 0 auto; max-height: 40vh; overflow-y: auto; }
+  .clue-grid { grid-template-columns: 1fr; }
+  .clue-overlay-panel { padding: 18px; max-height: 85vh; }
+  .ending .story-line { font-size: 15px; }
+  .ending-name { font-size: 26px; letter-spacing: 5px; }
+}
+
+/* ---------- 卡牌图鉴 ---------- */
+.wrap-btns { display: flex; gap: 8px; }
+.wrap-btns .tree-btn { flex: 1; }
+.card-unknown { opacity: .55; border-style: dashed; }
+
+/* ---------- 本局战报 / 玩法速览 ---------- */
+.run-report { border-top: 1px dashed var(--line); border-bottom: 1px dashed var(--line); padding: 14px 0; margin: 18px 0; }
+.run-report-title { color: var(--gold); letter-spacing: 6px; font-size: 13px; margin-bottom: 10px; }
+.guide-entry { margin-top: 22px; }
+.guide-sec { margin: 12px 0; line-height: 1.9; font-size: 14px; }
+.guide-sec b { color: var(--gold); }
+
+/* ============================================================
+   美术接入（皮）：卡面图 / 花色纹章(去字化) / 门类标签(乙·双轴)
+   —— 花色只作色相 + 非汉字 SVG 纹章，绝不渲染「威/理/利/情」字面
+   —— 卡面主类目由 .theme-tag 显示（门类词汇），替代四字重复
+   ============================================================ */
+.pc-suit {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; font-size: 0; margin-bottom: 0; /* 覆盖旧的字号/下边距 */
+}
+.seal-svg { width: 20px; height: 20px; display: block; }
+.s-威 { color: #c0392b; } .s-理 { color: #4a7ba0; }
+.s-利 { color: #b8860b; } .s-情 { color: #b56b8a; }
+
+.pc-top { gap: 6px; }
+.pc-top .rarity-tag { margin-left: 0; }
+.pc-top .theme-tag { margin-left: auto; }
+
+.theme-tag {
+  font-size: 10px; line-height: 1; color: var(--ink-dim);
+  border: 1px solid var(--line); border-radius: 10px;
+  padding: 2px 7px; letter-spacing: 1px; white-space: nowrap;
+}
+
+.card-art {
+  width: 100%; height: 108px; object-fit: cover; display: block;
+  border-radius: 5px; border: 1px solid var(--line); margin-bottom: 8px;
+  background: #0e0c0a;
+}
+.card-art-compact { height: 62px; margin-bottom: 6px; }

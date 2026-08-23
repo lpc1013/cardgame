@@ -13,3 +13,9 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Large generated art bundles (kept locally, not in git)
+art/*.zip
+
+# Optional: PNG art assets can be large; keep tracked but exclude if needed
+# app/src/assets/

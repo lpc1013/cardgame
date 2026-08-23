@@ -2,9 +2,10 @@
 // 回归验证套件：node --experimental-strip-types scripts/verify.mts
 //  1) 场景图完整性：所有 next/choice/duel/verdict 目标存在
 //  2) 剧情树可达性：从 start 经三类边可达全部场景
-//  3) 对局可解性 + 难度审计：
-//     - 情绪制：最优色策略是否可胜、所需回合/失言数
-//     - 压制制：BFS 穷举最优线 → 可否胜、剩余气力(紧张度)
+//  3) 对局可解性 + 难度审计（断言「真实 UI 合同」）：
+//     - 情绪制：按真实 UI 可达动作（出牌；v2 情绪局无换气）BFS 穷举可胜性。
+//       严禁在模拟里调用真实 UI 不存在的动作（历史教训：模拟偷调 endTurn → 虚假绿灯）。
+//     - 压制制：BFS 穷举（出牌 + 换气）最优线 → 可否胜、剩余气力(紧张度)。
 //  4) 复盘门控：核心线索存在于线索表；mustPick ≤ 线索总数
 // ============================================================
 import { fuma } from "../src/data/fuma.ts";
@@ -20,11 +21,12 @@ import { changhen } from "../src/data/changhen.ts";
 import { jianfeng } from "../src/data/jianfeng.ts";
 import { xingxing } from "../src/data/xingxing.ts";
 import { touming } from "../src/data/touming.ts";
-import type { Scenario, CardDef } from "../src/engine/types.ts";
-import { initDuel, revealEmotion, playEmotion, playPressure, setDuelShuffle, endTurn, type DuelState } from "../src/engine/duel.ts";
+import type { Scenario, CardDef, Suit } from "../src/engine/types.ts";
+import { initDuel, revealEmotion, playEmotion, playPressure, setDuelShuffle, endTurn, RESTRAIN, type DuelState } from "../src/engine/duel.ts";
 
 setDuelShuffle((a) => a);
 const ALL: Scenario[] = [fuma, qiuwei, sichou, xie, qinhuai, jieyu, shumian, changjiang, diaolan, changhen, jianfeng, xingxing, touming];
+const SUITS: Suit[] = ["策", "器", "势", "隐"];
 let failures = 0, warnings = 0;
 const fail = (m: string) => { failures++; console.error("  ✗", m); };
 const warn = (m: string) => { warnings++; console.warn("  ⚠", m); };
@@ -35,7 +37,7 @@ const cardOf = (sc: Scenario, duelOpp?: CardDef[]) => (id: string): CardDef => {
   return c;
 };
 
-/** v2 对局测试卡组：满编(全部卡池中非资源卡)以获得确定性 */
+/** v2 对局测试卡组：满编(全部卡池中非资源卡)以获得确定性；人物卡由引擎自动场外化 */
 function v2Loadout(sc: Scenario): string[] {
   return sc.cards.filter((c) => (c.layer ?? "成术") !== "资源").map((c) => c.id);
 }
@@ -53,7 +55,7 @@ function starterLoadout(sc: Scenario): string[] {
 /** 四色覆盖检查 */
 function colorCoverage(sc: Scenario, ids: string[]): string {
   const suits = new Set(ids.map((id) => sc.cards.find((c) => c.id === id)?.suit).filter(Boolean));
-  return ["策", "器", "势"].filter((s) => !suits.has(s)).join("") || "全色✓";
+  return SUITS.filter((s) => !suits.has(s)).join("") || "全色✓";
 }
 function edgesOf(sc: Scenario) {
   const E: [string, string][] = [];
@@ -69,6 +71,85 @@ function edgesOf(sc: Scenario) {
     if (s.minigame) E.push([s.id, s.minigame.winNext], [s.id, s.minigame.loseNext]);
   }
   return E;
+}
+
+const cloneD = (d: DuelState): DuelState => JSON.parse(JSON.stringify(d));
+function stateKey(d: DuelState, handAware: boolean): string {
+  const base = `${d.round}|${d.mode === "emotion" ? `${d.rapport},${d.guard},${d.qi}` : `${d.hpPlayer},${d.hpOpponent}`}|${d.finished ?? ""}|${d.lastCardId ?? ""}|${d.ap}|${d.buffPower}`;
+  if (!handAware) return base;
+  return `${base}|h:${d.hand.join(",")}|l:${d.library.join(",")}|x:${d.discard.join(",")}|u:${d.usedCards.join(",")}`;
+}
+
+/** 情绪制：真实 UI 合同下的穷举可胜性。
+ *  真实可达动作 = 从手牌（v2）/全池（classic）打出一张牌；情绪局无「换气」动作。 */
+function emotionCanWin(sc: Scenario, cfg: (typeof sc.duels)[number], loadout: string[]): { win: boolean; steps: number } {
+  const co = cardOf(sc, cfg.oppCards);
+  const isV2 = cfg.rules === "v2";
+  const seen = new Set<string>();
+  const q: { d: DuelState; steps: number }[] = [{ d: (() => { const d = initDuel(cfg, loadout, sc.cards); revealEmotion(d); return d; })(), steps: 0 }];
+  let capHit = false;
+  while (q.length) {
+    if (seen.size > 300000) { capHit = true; break; }
+    const { d, steps } = q.shift()!;
+    if (d.finished === "win") return { win: true, steps };
+    if (d.finished) continue;
+    const pool = isV2 ? [...d.hand] : loadout;
+    for (const id of pool) {
+      const c = co(id);
+      if ((c.layer ?? "成术") !== "成术") continue;
+      const nd = cloneD(d);
+      if (!playEmotion(nd, c)) continue;
+      if (!nd.finished) revealEmotion(nd);
+      const key = stateKey(nd, isV2);
+      if (!seen.has(key)) { seen.add(key); q.push({ d: nd, steps: steps + 1 }); }
+    }
+  }
+  if (capHit) warn(`对局 ${cfg.id} 情绪穷举超状态上限，按贪心复核`);
+  // 贪心兜底（同色 > 克色 > 中性 > 被克），用于超上限时的近似判断
+  const d = initDuel(cfg, loadout, sc.cards); revealEmotion(d);
+  for (let i = 0; !d.finished && i < 400; i++) {
+    const shown = d.opponentShown!;
+    const pool = (isV2 ? [...d.hand] : loadout).map(id => co(id)).filter(c => (c.layer ?? "成术") === "成术");
+    const pick =
+      pool.find(c => c.suit === shown) ??
+      pool.find(c => c.suit && RESTRAIN[c.suit] === shown) ??
+      pool.find(c => c.suit && RESTRAIN[shown] !== c.suit) ??
+      pool[0];
+    if (!pick) return { win: false, steps: i };
+    if (!playEmotion(d, pick)) return { win: false, steps: i };
+    if (!d.finished) revealEmotion(d);
+  }
+  return { win: d.finished === "win", steps: d.round };
+}
+
+/** 压制制：真实 UI 合同下的穷举（出牌 + 换气） */
+function pressureBest(sc: Scenario, cfg: (typeof sc.duels)[number], loadout: string[]): { d: DuelState; line: string[] } | null {
+  const co = cardOf(sc, cfg.oppCards);
+  const isV2 = cfg.rules === "v2";
+  const seen = new Set<string>();
+  let best: { d: DuelState; line: string[] } | null = null;
+  const q: { d: DuelState; line: string[] }[] = [{ d: initDuel(cfg, loadout, sc.cards), line: [] }];
+  while (q.length) {
+    if (seen.size > 400000) { warn(`对局 ${cfg.id} 压制穷举超状态上限，结果可能不完整`); break; }
+    const { d, line } = q.shift()!;
+    if (d.finished === "win" && !best) { best = { d, line }; break; }
+    if (d.finished) continue;
+    const handIds = isV2 ? [...d.hand] : loadout;
+    for (const id of handIds) {
+      const nd = cloneD(d);
+      const oppId = cfg.script[nd.round % cfg.script.length] ?? cfg.script[0]!;
+      if (!playPressure(nd, co(id), oppId, co)) continue;
+      const key = stateKey(nd, isV2);
+      if (!seen.has(key)) { seen.add(key); q.push({ d: nd, line: [...line, id] }); }
+    }
+    if (isV2 && d.ap < 3 && !d.finished) {
+      const nd = cloneD(d);
+      endTurn(nd);
+      const key = stateKey(nd, true);
+      if (!seen.has(key)) { seen.add(key); q.push({ d: nd, line: [...line, "(换气)"] }); }
+    }
+  }
+  return best;
 }
 
 for (const sc of ALL) {
@@ -115,105 +196,32 @@ for (const sc of ALL) {
     if (!cfg.script.length) { fail(`对局 ${cfg.id} script 为空`); continue; }
     for (const id of cfg.deck) if (!sc.cards.find(c => c.id === id) && !cfg.oppCards?.find(c => c.id === id)) fail(`对局 ${cfg.id} deck 引用不存在的卡牌 ${id}`);
     if (cfg.mode === "pressure") for (const id of cfg.script) if (!sc.cards.find(c => c.id === id) && !cfg.oppCards?.find(c => c.id === id)) fail(`对局 ${cfg.id} script 引用不存在的卡牌 ${id}`);
-    const co = cardOf(sc, cfg.oppCards);
     if (cfg.mode === "emotion") {
-      const oppSuit: Record<string, string> = { 策: "势", 势: "器", 器: "策" };
+      for (const s of cfg.script) if (!SUITS.includes(s as Suit)) fail(`对局 ${cfg.id} 脚本含非法花色 ${s}`);
       const pool = cfg.rules === "v2" ? v2Loadout(sc) : cfg.deck;
-      for (const s of cfg.script as string[]) if (!(s in oppSuit)) fail(`对局 ${cfg.id} 脚本含非法花色 ${s}`);
-      // 裸卡组审计
       if (cfg.rules === "v2" && sc.cardSystem) {
         const starter = starterLoadout(sc);
         console.log(`    [裸卡组${starter.length}张] 花色覆盖: ${colorCoverage(sc, starter)}`);
+        const s0 = emotionCanWin(sc, cfg, starter);
+        if (!s0.win) fail(`对局 ${cfg.id}「${cfg.title}」裸卡组在真实 UI 合同下不可胜（情绪制无换气可回气补牌之外无退路）`);
+        else console.log(`    [裸卡组] ✓ 真实UI可胜(${s0.steps}步)`);
       }
-      const d = initDuel(cfg, pool, sc.cards); revealEmotion(d);
-      let misses = 0;
-      for (let i = 0; !d.finished && i < 400; i++) {
-        const shown = d.opponentShown!;
-        const same = pool.filter(id => co(id).suit === shown && (co(id).layer ?? "成术") === "成术").map(id => co(id));
-        const oppSame = pool.filter(id => oppSuit[co(id).suit ?? ""] === shown && (co(id).layer ?? "成术") === "成术").map(id => co(id));
-        const c = same[0] ?? oppSame[0];
-        if (!c) { fail(`对局 ${cfg.id} 花色覆盖不足(${shown})`); break; }
-        const ok = playEmotion(d, c);
-        if (!ok) { endTurn(d); continue; }
-        if (d.lastResult?.kind === "miss") misses++;
-        if (!d.finished) revealEmotion(d);
-      }
+      const r = emotionCanWin(sc, cfg, pool);
+      if (!r.win) fail(`对局 ${cfg.id}「${cfg.title}」满编卡组在真实 UI 合同下不可胜`);
+      else console.log(`  ✓ ${cfg.title}: 真实UI合同可胜(${r.steps}步)`);
     } else {
-      // BFS 穷举最优
-      const seen = new Set<string>();
-      let best: { d: DuelState; line: string[] } | null = null;
       if (cfg.rules === "v2" && sc.cardSystem) {
         const starter = starterLoadout(sc);
-        const seen0 = new Set<string>();
-        let ok0: string[] | null = null;
-        const q0: { d: DuelState; line: string[] }[] = [{ d: initDuel(cfg, starter, sc.cards), line: [] }];
-        while (q0.length) {
-          const { d, line } = q0.shift()!;
-          if (d.finished === "win") { ok0 = line; break; }
-          if (d.finished) continue;
-          for (const id of [...d.hand]) {
-            const nd: DuelState = JSON.parse(JSON.stringify(d));
-            const oppId = cfg.script[nd.round % cfg.script.length] ?? cfg.script[0]!;
-            const ok = playPressure(nd, cardOf(sc, cfg.oppCards)(id), oppId, cardOf(sc, cfg.oppCards));
-            if (!ok) continue;
-            const key = `${nd.round}|${nd.hpPlayer}|${nd.hpOpponent}|${nd.finished ?? ""}|${nd.lastCardId ?? ""}|${nd.hand.join(",")}|${nd.ap}`;
-            if (!seen0.has(key)) { seen0.add(key); q0.push({ d: nd, line: [...line, id] }); }
-          }
-        }
-        // 换气分支
-        {
-          const q1: { d: DuelState; line: string[] }[] = [{ d: initDuel(cfg, starter, sc.cards), line: [] }];
-          const seen1 = new Set<string>();
-          let ok1: string[] | null = null;
-          while (q1.length) {
-            const { d, line } = q1.shift()!;
-            if (d.finished === "win") { ok1 = line; break; }
-            if (d.finished) continue;
-            const push = (nd: DuelState, id: string) => {
-              const key = `${nd.round}|${nd.hpPlayer}|${nd.hpOpponent}|${nd.finished ?? ""}|${nd.lastCardId ?? ""}|${nd.hand.join(",")}|${nd.ap}`;
-              if (!seen1.has(key)) { seen1.add(key); q1.push({ d: nd, line: [...line, id] }); }
-            };
-            for (const id of [...d.hand]) {
-              const nd: DuelState = JSON.parse(JSON.stringify(d));
-              const oppId = cfg.script[nd.round % cfg.script.length] ?? cfg.script[0]!;
-              if (!playPressure(nd, cardOf(sc, cfg.oppCards)(id), oppId, cardOf(sc, cfg.oppCards))) continue;
-              push(nd, id);
-            }
-            if (cfg.rules === "v2" && d.ap < 3) {
-              const nd: DuelState = JSON.parse(JSON.stringify(d));
-              endTurn(nd);
-              push(nd, "(换气)");
-            }
-          }
-          ok0 = ok1;
-        }
-        console.log(`    [裸卡组${starter.length}张] ${ok0 ? "可胜(" + ok0.filter(x=>x!=="(换气)").length + "步)" : "✗ 不可胜 —— 初始卡组无法通关,需调卡组或提示购买"}`);
+        const best0 = pressureBest(sc, cfg, starter);
+        console.log(`    [裸卡组${starter.length}张] ${best0 ? "可胜(" + best0.line.filter(x => x !== "(换气)").length + "步)" : "✗ 不可胜 —— 初始卡组无法通关,需调卡组或提示购买"}`);
       }
       const loadout = cfg.rules === "v2" ? v2Loadout(sc) : cfg.deck;
-      const q: { d: DuelState; line: string[] }[] = [{ d: initDuel(cfg, loadout, sc.cards), line: [] }];
-      while (q.length) {
-        const { d, line } = q.shift()!;
-        if (d.finished === "win" && !best) { best = { d, line }; break; }
-        if (d.finished) continue;
-        for (const id of cfg.deck) {
-          const nd: DuelState = JSON.parse(JSON.stringify(d));
-          const oppId = cfg.script[nd.round % cfg.script.length];
-          playPressure(nd, co(id), oppId, co);
-          const key = `${nd.round}|${nd.hpPlayer}|${nd.hpOpponent}|${nd.finished ?? ""}|${nd.lastCardId ?? ""}|${nd.ap ?? ""}`;
-          if (!seen.has(key)) { seen.add(key); q.push({ d: nd, line: [...line, id] }); }
-        }
-        if (cfg.rules === "v2" && d.ap < 3 && !d.finished) {
-          const nd: DuelState = JSON.parse(JSON.stringify(d));
-          endTurn(nd);
-          const key = `${nd.round}|${nd.hpPlayer}|${nd.hpOpponent}|${nd.finished ?? ""}|${nd.lastCardId ?? ""}|${nd.ap}`;
-          if (!seen.has(key)) { seen.add(key); q.push({ d: nd, line: [...line, "(换气)"] }); }
-        }
-      }
+      const best = pressureBest(sc, cfg, loadout);
       const total = cfg.hp!.player;
       if (best) {
         const margin = best.d.hpPlayer;
         const tenseness = margin <= 2 ? "极高张力" : margin <= Math.ceil(total / 2) ? "中等" : "宽松";
-        console.log(`  ✓ ${cfg.title}: ${best.d.round}回合最优胜,剩${margin}/${total}气力(${tenseness}) 线:${best.line.map(x => co(x).name).join("→")}`);
+        console.log(`  ✓ ${cfg.title}: ${best.d.round}步最优胜,剩${margin}/${total}气力(${tenseness}) 线:${best.line.map(x => x === "(换气)" ? "换气" : cardOf(sc, cfg.oppCards)(x).name).join("→")}`);
       } else {
         // 确认是否"设计性死局"(唯一出口=loseScene)
         console.log(`  ○ ${cfg.title}: 穷举不可胜 —— 设计性死局(必败走向败线)`);

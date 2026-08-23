@@ -17,6 +17,7 @@ export interface RunState {
   silver: number;         // 银两（资源本位）
   lineIndex: number;      // 当前场景已读段落
   visited: string[];      // 场景历史
+  boosts: string[];       // 本局生效的帝国开局加成 id（出征时消耗）
 }
 
 export function initState(sc: Scenario): RunState {
@@ -35,6 +36,7 @@ export function initState(sc: Scenario): RunState {
     silver: sc.initialSilver ?? 0,
     lineIndex: 0,
     visited: [],
+    boosts: [],
   };
 }
 

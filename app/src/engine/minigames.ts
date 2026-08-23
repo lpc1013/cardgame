@@ -65,6 +65,10 @@ export function sicboPayout(st: SicboState): number {
 export interface GobangPuzzle {
   title: string;
   desc: string;
+  /** 残局图（ASCII：B=黑子，W=白子，.=空），开打前展示给玩家看清局面 */
+  board?: string[];
+  /** 残局图例说明（如：黑＝你 · 白＝老者） */
+  boardHint?: string;
   /** 每一手的候选与正解 */
   steps: { prompt: string; options: string[]; answer: number }[];
   winText: string;
@@ -117,14 +121,15 @@ export function initJiuling(cfg: JiulingConfig): JiulingState {
   return { cfg, round: 0, drawn: null, hand: [...cfg.hand], score: 0, status: "playing", log: cfg.desc };
 }
 export function jiulingDraw(st: JiulingState): void {
-  const suits = ["策", "器", "势"];
+  const suits = ["策", "器", "势", "隐"];
   st.drawn = suits[Math.floor(Math.random() * suits.length)]!;
   st.log = `第 ${st.round + 1} 轮令签翻出——「${st.drawn}」。满座目光落在你身上。`;
 }
 export function jiulingPlay(st: JiulingState, cardSuit: string): void {
   if (!st.drawn || st.status !== "playing") return;
   const same = cardSuit === st.drawn;
-  const pair: Record<string, string> = { 策: "势", 势: "器", 器: "策" };
+  // 四色相克环：策克势 · 势克器 · 器克隐 · 隐克策；对令=你所出之色克令签之色
+  const pair: Record<string, string> = { 策: "势", 势: "器", 器: "隐", 隐: "策" };
   const isPair = pair[cardSuit] === st.drawn;
   if (same) { st.score += 2; st.log = `同令而应，满座喝彩！（+2）`; }
   else if (isPair) { st.score += 1; st.log = `对令相和，也博了几声彩。（+1）`; }

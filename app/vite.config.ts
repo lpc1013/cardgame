@@ -24,7 +24,18 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,webp,woff2}'],
+        // 图片走运行时缓存，避免 service worker 安装时拉取 ~300 MB 素材
+        globPatterns: ['**/*.{js,css,html,svg,ico,woff2}'],
+        runtimeCaching: [
+          {
+            urlPattern: /\.(?:png|jpg|jpeg|webp|gif)$/i,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'images',
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
+        ],
       },
     }),
   ],

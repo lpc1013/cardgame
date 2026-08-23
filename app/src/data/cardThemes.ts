@@ -69,7 +69,7 @@ export const cardThemes: Record<string, string> = {
   s_yin10e: "商贾",
   s_yin30d: "商贾",
 
-  // ===== 丝绸贪腐通倭大案（w_* 同上） =====
+  // ===== 丝绸通倭案（w_* 同上） =====
   i_yinpiao2: "商贾",
   i_midce: "宫闱",
   i_mixin: "宫闱",

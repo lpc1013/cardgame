@@ -1,5 +1,6 @@
 import type { RunState } from "./runtime";
 import type { DuelState } from "./duel";
+import type { CardDef } from "./types";
 
 // ============================================================
 // 存档与图鉴（localStorage）
@@ -7,8 +8,8 @@ import type { DuelState } from "./duel";
 //   - 图鉴：全局记录已解锁结局
 // ============================================================
 
-const SAVE_VERSION = 2;
-const SAVE_KEY = "dicun_save_v2";
+const SAVE_VERSION = 3;
+const SAVE_KEY = "dicun_save_v3";
 const GALLERY_KEY = "dicun_gallery_v1";
 
 /** 线格式：flags 序列化为数组（RunState 运行时是 Set） */
@@ -59,7 +60,7 @@ export function loadGame(): SaveData | null {
       return null;
     }
     const wire = d.state as SaveStateWire;
-    const state: RunState = { ...wire, flags: new Set(wire.flags) };
+    const state: RunState = { ...wire, flags: new Set(wire.flags), boosts: Array.isArray(wire.boosts) ? wire.boosts : [] };
     let duel: DuelWire | undefined;
     if (d.duel && typeof d.duel === "object" && typeof (d.duel as DuelWire).cfgId === "string") {
       duel = d.duel as DuelWire;
@@ -142,4 +143,143 @@ export function getTree(): TreeData {
   } catch {
     return {};
   }
+}
+
+// ---------- 帝国：墨铤 / 开局加成 / 跨剧本仓库 / 主题 ----------
+const EMPIRE_KEY = "dicun_empire_v1";
+/** 每个新解锁结局奖励的墨铤 */
+export const INK_PER_ENDING = 20;
+
+export interface EmpireData {
+  ink: number;                 // 墨铤余额（全局货币）
+  grantedEnds: number;         // 已发放过奖励的结局数（防重复发放）
+  warehouse: string[];         // 跨剧本仓库：全局卡 id（仅物品层）
+  themes: string[];            // 已购主题 id
+  theme: string;               // 当前主题（"" = 默认）
+  boosts: Record<string, number>; // 开局加成库存 id -> 数量
+  brokenSeals: string[];       // 花墨铤提前破封的剧本 id（链式解锁之外的特批）
+}
+
+const EMPIRE_DEFAULT: EmpireData = { ink: 0, grantedEnds: 0, warehouse: [], themes: [], theme: "", boosts: {}, brokenSeals: [] };
+
+function readEmpire(): EmpireData {
+  try {
+    const raw = localStorage.getItem(EMPIRE_KEY);
+    if (!raw) return { ...EMPIRE_DEFAULT };
+    return { ...EMPIRE_DEFAULT, ...(JSON.parse(raw) as Partial<EmpireData>) };
+  } catch {
+    return { ...EMPIRE_DEFAULT };
+  }
+}
+
+function writeEmpire(e: EmpireData): void {
+  try { localStorage.setItem(EMPIRE_KEY, JSON.stringify(e)); } catch { /* ignore */ }
+}
+
+/** 读取帝国数据；同时按「新解锁结局 × 20」补发墨铤（幂等） */
+export function settleEmpire(): EmpireData {
+  const e = readEmpire();
+  const ends = getGallery().length;
+  if (ends > e.grantedEnds) {
+    e.ink += (ends - e.grantedEnds) * INK_PER_ENDING;
+    e.grantedEnds = ends;
+    writeEmpire(e);
+  }
+  return e;
+}
+
+/** 花费墨铤；余额不足返回 false */
+export function spendInk(n: number): boolean {
+  const e = settleEmpire();
+  if (e.ink < n) return false;
+  e.ink -= n;
+  writeEmpire(e);
+  return true;
+}
+
+/** 购入开局加成 +1 */
+export function gainBoost(id: string): void {
+  const e = settleEmpire();
+  e.boosts[id] = (e.boosts[id] ?? 0) + 1;
+  writeEmpire(e);
+}
+
+/** 消耗指定加成各一件，返回实际消耗的 id 列表 */
+export function consumeBoosts(ids: string[]): string[] {
+  const e = settleEmpire();
+  const used: string[] = [];
+  for (const id of ids) {
+    const n = e.boosts[id] ?? 0;
+    if (n > 0) { e.boosts[id] = n - 1; used.push(id); }
+  }
+  writeEmpire(e);
+  return used;
+}
+
+/** 解锁主题 */
+export function unlockTheme(id: string): void {
+  const e = settleEmpire();
+  if (!e.themes.includes(id)) e.themes.push(id);
+  writeEmpire(e);
+}
+
+export function setTheme(id: string): void {
+  const e = settleEmpire();
+  e.theme = id;
+  writeEmpire(e);
+}
+
+/** 物品存入跨剧本仓库 */
+export function warehouseAdd(id: string): void {
+  const e = settleEmpire();
+  if (!e.warehouse.includes(id)) e.warehouse.push(id);
+  writeEmpire(e);
+}
+
+/** 物品取出（携带进新剧本时从仓库移除） */
+export function warehouseRemove(id: string): void {
+  const e = settleEmpire();
+  e.warehouse = e.warehouse.filter((x) => x !== id);
+  writeEmpire(e);
+}
+
+/** 提前破封所需墨铤 */
+export const UNSEAL_COST = 60;
+
+/** 花墨铤提前破封指定剧本；余额不足返回 false */
+export function unsealScenario(id: string): boolean {
+  const e = settleEmpire();
+  if (e.brokenSeals.includes(id)) return true;
+  if (e.ink < UNSEAL_COST) return false;
+  e.ink -= UNSEAL_COST;
+  e.brokenSeals.push(id);
+  writeEmpire(e);
+  return true;
+}
+
+// ---------- 全局卡注册表（跨剧本携带物品的定义快照） ----------
+const GLOBAL_CARDS_KEY = "dicun_global_cards_v1";
+type GlobalCards = Record<string, CardDef>;
+
+export function registerGlobalCards(defs: CardDef[]): void {
+  try {
+    const all = getGlobalCards();
+    let changed = false;
+    for (const d of defs) {
+      if (!all[d.id]) { all[d.id] = d; changed = true; }
+    }
+    if (changed) localStorage.setItem(GLOBAL_CARDS_KEY, JSON.stringify(all));
+  } catch { /* ignore */ }
+}
+
+export function getGlobalCards(): GlobalCards {
+  try {
+    return JSON.parse(localStorage.getItem(GLOBAL_CARDS_KEY) ?? "{}") as GlobalCards;
+  } catch {
+    return {};
+  }
+}
+
+export function getGlobalCard(id: string): CardDef | undefined {
+  return getGlobalCards()[id];
 }

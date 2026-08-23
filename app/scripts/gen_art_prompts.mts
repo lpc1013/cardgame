@@ -23,7 +23,9 @@ const SUIT_HUE: Record<string, string> = { 策: "青蓝", 器: "赭金", 势: "�
 const SUIT_EMBLEM: Record<string, string> = { 策: "锦囊", 器: "方孔钱", 势: "官印" };
 const RARITY_BORDER: Record<string, string> = {
   凡: "素麻灰极细边线",
-  良: "赤金极细边线",
+  良: "黛青蓝极细边线",
+  精: "藤萝紫极细边线",
+  传: "赤金极细边线",
   孤品: "朱红描金极细边线",
 };
 
@@ -71,7 +73,7 @@ const ART: Record<string, string> = {
   r_chensan: "粗使杂役直觉今年处处诡异，眉头拧着说不清的不安",
   s_yin10e: "差旅碎银将尽，袋口微敞，灯下清贫",
   s_yin30d: "驿马草料省出的银两，规整小锭，带着驿印",
-  // ===== 丝绸贪腐通倭大案 =====
+  // ===== 丝绸通倭案 =====
   i_yinpiao2: "无落款银票特写，票面干净，钱只认主人",
   i_midce: "军饷簿册边角特写，留着内廷太监的私印暗记",
   i_mixin: "七封无落款密信散开，却夹着一角皇家桑皮纸",
@@ -136,7 +138,7 @@ const OPP: Record<string, { visual: string; layer: string }> = {
 const CASES: [string, any, string][] = [
   ["fuma", fuma, "驸马醉酒杀人案"],
   ["qiuwei", qiuwei, "江南秋闱舞弊案"],
-  ["sichou", sichou, "丝绸贪腐通倭大案"],
+  ["sichou", sichou, "丝绸通倭案"],
   ["xie", xie, "谢秀才自燃案"],
   ["qinhuai", qinhuai, "秦淮河堤秘亡案"],
 ];

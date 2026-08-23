@@ -134,10 +134,10 @@ export const cardThemes: Record<string, string> = {
   y_zhen: "刑名",
 };
 
-/** 兜底：无显式映射时，按花色给一个合理默认（威/理→刑名，利→商贾，情→闺阁）。 */
+/** 兜底：无显式映射时，按父分类给一个合理默认（策→刑名，器→商贾，势→宫闱）。 */
 export function themeOf(id: string, suit?: string): string {
   if (cardThemes[id]) return cardThemes[id];
-  if (suit === "利") return "商贾";
-  if (suit === "情") return "闺阁";
-  return "刑名"; // 威/理 默认刑名
+  if (suit === "器") return "商贾";
+  if (suit === "势") return "宫闱";
+  return "刑名"; // 策 默认刑名
 }

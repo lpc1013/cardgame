@@ -5,7 +5,7 @@ import type { DuelConfig, CardDef, Suit, ItemEffect } from "./types";
 //
 // 经典模式（rules 缺省 / "classic"）：
 //   情绪匹配制：同色共鸣 / 对色破防 / 错色失言。
-//   气力压制制：比点伤气；威牌×2 反噬 1；连出同张「招式用老」-2。
+//   气力压制制：比点伤气；势牌×2 反噬 1；连出同张「招式用老」-2。
 //
 // v2 模式（rules: "v2"，卡牌系统剧本）：
 //   在经典规则之上叠加：
@@ -16,7 +16,7 @@ import type { DuelConfig, CardDef, Suit, ItemEffect } from "./types";
 //   - 每回合行动力耗尽或主动结束 → 对手行动
 // ============================================================
 
-const OPPOSITE: Record<Suit, Suit> = { 威: "理", 理: "威", 利: "情", 情: "利" };
+const OPPOSITE: Record<Suit, Suit> = { 策: "势", 势: "器", 器: "策" };
 
 export interface DuelState {
   cfg: DuelConfig;
@@ -270,7 +270,7 @@ export function playPressure(st: DuelState, playerCard: CardDef, oppCardId: stri
   let selfHarm = 0;
   const stale = st.lastCardId === playerCard.id;
   if (stale) p -= 2;
-  if (playerCard.suit === "威") {
+  if (playerCard.suit === "势") {
     p *= 2;
     selfHarm = 1;
   }

@@ -53,7 +53,7 @@ function starterLoadout(sc: Scenario): string[] {
 /** 四色覆盖检查 */
 function colorCoverage(sc: Scenario, ids: string[]): string {
   const suits = new Set(ids.map((id) => sc.cards.find((c) => c.id === id)?.suit).filter(Boolean));
-  return ["威", "理", "利", "情"].filter((s) => !suits.has(s)).join("") || "全色✓";
+  return ["策", "器", "势"].filter((s) => !suits.has(s)).join("") || "全色✓";
 }
 function edgesOf(sc: Scenario) {
   const E: [string, string][] = [];
@@ -117,7 +117,7 @@ for (const sc of ALL) {
     if (cfg.mode === "pressure") for (const id of cfg.script) if (!sc.cards.find(c => c.id === id) && !cfg.oppCards?.find(c => c.id === id)) fail(`对局 ${cfg.id} script 引用不存在的卡牌 ${id}`);
     const co = cardOf(sc, cfg.oppCards);
     if (cfg.mode === "emotion") {
-      const oppSuit: Record<string, string> = { 威: "理", 理: "威", 利: "情", 情: "利" };
+      const oppSuit: Record<string, string> = { 策: "势", 势: "器", 器: "策" };
       const pool = cfg.rules === "v2" ? v2Loadout(sc) : cfg.deck;
       for (const s of cfg.script as string[]) if (!(s in oppSuit)) fail(`对局 ${cfg.id} 脚本含非法花色 ${s}`);
       // 裸卡组审计

@@ -32,7 +32,7 @@ registerScenarios(SCENARIOS);
 // ============================================================
 // 美术接入（皮）：运行时按 id 载入 src/assets/{cards,portraits,scenes}/<id>.png
 // 图片缺失（外部生成尚未落位）则不出图，文本布局照常，游戏完全不受影响。
-// 甲·去字化纹章：花色只作色相 + 非汉字 SVG 纹章，绝不渲染「威/理/利/情」字面。
+// 甲·去字化纹章：父分类只作色相 + 非汉字 SVG 纹章，绝不渲染「策/器/势」字面。
 // 乙·双轴门类：卡面主类目由 cardThemes 查表给出（~13 词），替代四字重复。
 // ============================================================
 const _CARD_ART = import.meta.glob("./assets/cards/*.png", { eager: true, import: "default" }) as Record<string, string>;
@@ -45,12 +45,11 @@ function cardArt(id: string): string | undefined {
   return _artUrl(_CARD_ART, id) ?? _artUrl(_PORTRAIT_ART, id);
 }
 
-// 四花色非汉字纹章（威=官印 / 理=卷宗 / 利=铜钱 / 情=同心结），currentColor 由 .s-* 上色
+// 三类非汉字纹章（策=锦囊 / 器=方孔钱 / 势=官印），currentColor 由 .s-* 上色
 const SUIT_GLYPH: Record<string, ReactNode> = {
-  威: (<svg viewBox="0 0 24 24" className="seal-svg" aria-hidden="true"><path d="M5 8h11v11H5zM8 5v3M13 5v3M8 12h5M8 15h5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>),
-  理: (<svg viewBox="0 0 24 24" className="seal-svg" aria-hidden="true"><rect x="5" y="5" width="11" height="14" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.7" /><path d="M16 9h3v10H8" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /><line x1="7" y1="10" x2="14" y2="10" stroke="currentColor" strokeWidth="1.4" /></svg>),
-  利: (<svg viewBox="0 0 24 24" className="seal-svg" aria-hidden="true"><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" strokeWidth="1.7" /><rect x="9" y="9" width="6" height="6" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>),
-  情: (<svg viewBox="0 0 24 24" className="seal-svg" aria-hidden="true"><circle cx="9.5" cy="12" r="4.2" fill="none" stroke="currentColor" strokeWidth="1.7" /><circle cx="14.5" cy="12" r="4.2" fill="none" stroke="currentColor" strokeWidth="1.7" /></svg>),
+  策: (<svg viewBox="0 0 24 24" className="seal-svg" aria-hidden="true"><path d="M7 10 Q12 6 17 10 L16 16 Q12 19 8 16 Z" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /><path d="M10 8 Q12 5.5 14 8" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>),
+  器: (<svg viewBox="0 0 24 24" className="seal-svg" aria-hidden="true"><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" strokeWidth="1.7" /><rect x="9.5" y="9.5" width="5" height="5" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>),
+  势: (<svg viewBox="0 0 24 24" className="seal-svg" aria-hidden="true"><rect x="6" y="9" width="12" height="11" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.7" /><rect x="10" y="5" width="4" height="4" rx="1" fill="none" stroke="currentColor" strokeWidth="1.6" /><line x1="9" y1="13" x2="15" y2="13" stroke="currentColor" strokeWidth="1.3" /><line x1="9" y1="16" x2="15" y2="16" stroke="currentColor" strokeWidth="1.3" /></svg>),
 };
 
 function SuitSeal({ suit }: { suit?: string }) {
@@ -374,9 +373,9 @@ export default function App() {
               <h3>玩法速览</h3>
               <div className="guide-sec"><b>基础</b>：点击画面推进文字；选项决定走向；空格=推进，数字键=选支。进度自动保存。</div>
               <div className="guide-sec"><b>案件模式</b>：调查取证 → 结案陈词拣选线索（真/伪/核心）→ 定谳。核心线索+足够实据 = 完整结局。</div>
-              <div className="guide-sec"><b>对局·情绪匹配制</b>：对手亮出情绪（威/理/利/情）。同色接话=共鸣；对色（威↔理、利↔情）=破防；错色=失言。共鸣满则胜。</div>
-              <div className="guide-sec"><b>对局·气力压制制</b>：出牌比点，点差即伤害；威牌×2但反噬1；连出同一张「招式用老」-2。打空对方气力即胜。</div>
-              <div className="guide-sec"><b>✦ 卡牌系统 v2</b>：四层卡——成术（对局四色牌）/ 物品（对局道具，用后消耗，也是剧情钥匙）/ 人物（携带被动）/ 资源（即银两）。市集买卡卖卡开卡包；翻牌三选一；顶栏「卡组」随时编组（上限 12，资源不占槽）。对局中出牌耗行动力，可「换气」回力补牌。</div>
+              <div className="guide-sec"><b>对局·情绪匹配制</b>：对手亮出手段（策/器/势）。同色接话=共鸣；对色（相克环：策克势·势克器·器克策）=破防；错色=失言。共鸣满则胜。</div>
+              <div className="guide-sec"><b>对局·气力压制制</b>：出牌比点，点差即伤害；势牌×2但反噬1；连出同一张「招式用老」-2。打空对方气力即胜。</div>
+              <div className="guide-sec"><b>✦ 卡牌系统 v2</b>：四层卡——成术（对局三类牌）/ 物品（对局道具，用后消耗，也是剧情钥匙）/ 人物（携带被动）/ 资源（即银两）。市集买卡卖卡开卡包；翻牌三选一；顶栏「卡组」随时编组（上限 12，资源不占槽）。对局中出牌耗行动力，可「换气」回力补牌。</div>
               <div className="guide-sec"><b>收集</b>：结局图鉴 · 剧情树（未探明的"？？？"就是多周目的方向）· 卡牌图鉴（孤品现世计数）。</div>
               <button className="btn-main" onClick={() => setShowGuide(false)}>开始查案</button>
             </div>
@@ -817,10 +816,9 @@ function DuelView({ sc, duel, setDuel, toast }: {
   const moodText = useMemo(() => {
     if (duel.mode !== "emotion" || !duel.opponentShown) return null;
     const mood: Record<string, string> = {
-      威: "他端起架子，话里带着压人的威。（威）",
-      理: "他掰着指头，跟你算起了道理。（理）",
-      利: "他眼睛滴溜溜转，句句离不开好处。（利）",
-      情: "他声音低下来，说起了自家的难处。（情）",
+      策: "他目光闪动，话里藏着机锋，像在盘算什么。",
+      器: "他摩挲着手边一件物事，话里尽是实打实的好处。",
+      势: "他往椅背上一靠，气派先压了人半截。",
     };
     return mood[duel.opponentShown];
   }, [duel.mode, duel.opponentShown]);
@@ -892,7 +890,7 @@ function DuelView({ sc, duel, setDuel, toast }: {
       <div className="duel-stage">
         {moodText && <p className="opp-line">{moodText}</p>}
         {duel.mode === "pressure" && !v2 && (
-          <p className="opp-line">对手蓄势待发……出牌比点，点高者伤敌；威牌点数翻倍，但反噬自身一点气力。</p>
+          <p className="opp-line">对手蓄势待发……出牌比点，点高者伤敌；势牌点数翻倍，但反噬自身一点气力。</p>
         )}
         {v2 && duel.mode === "pressure" && !moodText && (
           <p className="opp-line">手牌中打出成术牌对质；物品卡为道具；人物卡提供被动。行动力耗尽可【换气】。</p>
@@ -901,7 +899,7 @@ function DuelView({ sc, duel, setDuel, toast }: {
         {duel.lastPlay && duel.mode === "pressure" && !duel.lastResult?.kind.includes("item") && (
           <p className="duel-log press">
             {duel.lastPlay.stale && "（招式用老，点数-2！）"}
-            你打出「{duel.lastPlay.playerCard?.name}」（{duel.lastPlay.playerCard?.power}{duel.lastPlay.playerCard?.suit === "威" ? "×2" : ""}{duel.lastPlay.stale ? "-2" : ""}），他打出「{duel.lastPlay.oppCard?.name}」（{duel.lastPlay.oppCard?.power}）——
+            你打出「{duel.lastPlay.playerCard?.name}」（{duel.lastPlay.playerCard?.power}{duel.lastPlay.playerCard?.suit === "势" ? "×2" : ""}{duel.lastPlay.stale ? "-2" : ""}），他打出「{duel.lastPlay.oppCard?.name}」（{duel.lastPlay.oppCard?.power}）——
             {duel.lastPlay.to === "o"
               ? `他折了 ${duel.lastPlay.damage} 点气力！`
               : duel.lastPlay.to === "p"
@@ -933,7 +931,7 @@ function DuelView({ sc, duel, setDuel, toast }: {
               </div>
               <div className="pc-name">{c.name}</div>
               <div className="pc-text">{c.text}</div>
-              {c.power !== undefined && <div className="pc-power">点数 {c.power}{c.suit === "威" ? "×2（反噬1）" : ""}</div>}
+              {c.power !== undefined && <div className="pc-power">点数 {c.power}{c.suit === "势" ? "×2（反噬1）" : ""}</div>}
               {isChar && <div className="pc-power">被动 · 不可打出</div>}
             </button>
           );
@@ -942,11 +940,11 @@ function DuelView({ sc, duel, setDuel, toast }: {
       <p className="duel-rule muted">
         {duel.mode === "emotion"
           ? v2
-            ? "v2 规则：出牌耗行动力；物品卡为道具；人物卡被动生效。同色=共鸣+1；对色（威↔理，利↔情）=破防备；错色=失言气力-1。"
-            : "规则：同色接话=共鸣+1；对色（威↔理，利↔情）=破其防备；错色=失言，气力-1。共鸣满则胜，气力尽则败。"
+            ? "v2 规则：出牌耗行动力；物品卡为道具；人物卡被动生效。同色=共鸣+1；对色（相克环：策克势·势克器·器克策）=破防备；错色=失言气力-1。"
+            : "规则：同色接话=共鸣+1；对色（相克环：策克势·势克器·器克策）=破其防备；错色=失言，气力-1。共鸣满则胜，气力尽则败。"
           : v2
-            ? "v2 规则：出牌耗行动力，点差即伤害；威×2反噬1；连出同张「招式用老」-2；物品卡一锤定音。"
-            : "规则：每回合各出一牌比点，点差即伤害；威牌×2但反噬1；连出同一张牌招式用老-2。先打空对方气力者胜。"}
+            ? "v2 规则：出牌耗行动力，点差即伤害；势×2反噬1；连出同张「招式用老」-2；物品卡一锤定音。"
+            : "规则：每回合各出一牌比点，点差即伤害；势牌×2但反噬1；连出同一张牌招式用老-2。先打空对方气力者胜。"}
       </p>
     </div>
   );

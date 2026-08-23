@@ -185,8 +185,8 @@ button { font-family: inherit; }
 .play-card:hover:not(:disabled) { border-color: var(--gold); box-shadow: 0 0 0 1px var(--accent-soft); }
 .play-card:disabled { opacity: .45; cursor: not-allowed; }
 .pc-suit { font-size: 20px; margin-bottom: 6px; }
-.s-威 { color: #b06a5a; } .s-理 { color: #7f9bb0; }
-.s-利 { color: #c9a86a; } .s-情 { color: #9d7fb0; }
+.s-策 { color: #4a7ba0; } .s-器 { color: #b8860b; }
+.s-势 { color: #c0392b; }
 .pc-name { color: var(--gold); margin-bottom: 6px; }
 .pc-text { font-size: 12px; color: var(--ink-dim); line-height: 1.7; }
 .pc-power { margin-top: 8px; font-size: 12px; color: var(--gold); }
@@ -307,8 +307,8 @@ button { font-family: inherit; }
   width: 22px; height: 22px; font-size: 0; margin-bottom: 0; /* 覆盖旧的字号/下边距 */
 }
 .seal-svg { width: 20px; height: 20px; display: block; }
-.s-威 { color: #c0392b; } .s-理 { color: #4a7ba0; }
-.s-利 { color: #b8860b; } .s-情 { color: #b56b8a; }
+.s-策 { color: #4a7ba0; } .s-器 { color: #b8860b; }
+.s-势 { color: #c0392b; }
 
 .pc-top { gap: 6px; }
 .pc-top .rarity-tag { margin-left: 0; }

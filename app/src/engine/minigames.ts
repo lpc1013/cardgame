@@ -117,14 +117,14 @@ export function initJiuling(cfg: JiulingConfig): JiulingState {
   return { cfg, round: 0, drawn: null, hand: [...cfg.hand], score: 0, status: "playing", log: cfg.desc };
 }
 export function jiulingDraw(st: JiulingState): void {
-  const suits = ["威", "理", "利", "情"];
+  const suits = ["策", "器", "势"];
   st.drawn = suits[Math.floor(Math.random() * suits.length)]!;
   st.log = `第 ${st.round + 1} 轮令签翻出——「${st.drawn}」。满座目光落在你身上。`;
 }
 export function jiulingPlay(st: JiulingState, cardSuit: string): void {
   if (!st.drawn || st.status !== "playing") return;
   const same = cardSuit === st.drawn;
-  const pair: Record<string, string> = { 威: "理", 理: "威", 利: "情", 情: "利" };
+  const pair: Record<string, string> = { 策: "势", 势: "器", 器: "策" };
   const isPair = pair[cardSuit] === st.drawn;
   if (same) { st.score += 2; st.log = `同令而应，满座喝彩！（+2）`; }
   else if (isPair) { st.score += 1; st.log = `对令相和，也博了几声彩。（+1）`; }

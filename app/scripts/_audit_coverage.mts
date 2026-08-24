@@ -1,4 +1,5 @@
-// 临时审计脚本：美术资产覆盖率核查
+// 临时审计：资产覆盖率核实（卡图/立绘/场景/封面/结局），按 <id>.{jpg,png} 精确匹配
+import { readdirSync } from "node:fs";
 import { fuma } from "../src/data/fuma.ts";
 import { qiuwei } from "../src/data/qiuwei.ts";
 import { sichou } from "../src/data/sichou.ts";
@@ -12,41 +13,40 @@ import { changhen } from "../src/data/changhen.ts";
 import { jianfeng } from "../src/data/jianfeng.ts";
 import { xingxing } from "../src/data/xingxing.ts";
 import { touming } from "../src/data/touming.ts";
-import { readdirSync } from "node:fs";
+import type { Scenario } from "../src/engine/types.ts";
 
-const ALL = [fuma, qiuwei, sichou, xie, qinhuai, jieyu, shumian, changjiang, diaolan, changhen, jianfeng, xingxing, touming];
-const names = (dir: string) => new Set(readdirSync(new URL(`../src/assets/${dir}`, import.meta.url)).filter(f => f.endsWith(".png")));
-const cards = names("cards"), portraits = names("portraits"), scenes = names("scenes"), covers = names("covers"), ends = names("endings");
+const ALL: Scenario[] = [fuma, qiuwei, sichou, xie, qinhuai, jieyu, shumian, changjiang, diaolan, changhen, jianfeng, xingxing, touming];
+const dir = (p: string) => new Set(readdirSync(p).filter((f) => /\.(png|jpe?g)$/.test(f)).map((f) => f.replace(/\.(png|jpe?g)$/, "")));
+const cards = dir("src/assets/cards");
+const portraits = dir("src/assets/portraits");
+const scenes = dir("src/assets/scenes");
+const covers = dir("src/assets/covers");
+const endings = dir("src/assets/endings");
 
-let missCard: string[] = [], missScene: string[] = [], missEnd: string[] = [], missCover: string[] = [];
+const missingCard: string[] = [];
+const missingScene: string[] = [];
+const missingCover: string[] = [];
+const missingEnd: string[] = [];
+
 for (const sc of ALL) {
-  if (!covers.has(`cover_${sc.id}.png`)) missCover.push(sc.id);
+  if (!covers.has("cover_" + sc.id)) missingCover.push(sc.id);
   for (const c of sc.cards) {
-    if (!cards.has(`${c.id}.png`) && !portraits.has(`${c.id}.png`)) missCard.push(`${sc.id}/${c.id}(${c.layer ?? "成术"})`);
+    const layer = c.layer ?? "成术";
+    if (layer === "资源") continue;
+    if (!cards.has(c.id) && !portraits.has(c.id)) missingCard.push(`${sc.id}/${c.id}(${layer},${c.rarity ?? "凡"},${c.name})`);
   }
   for (const s of sc.scenes) {
-    if (!scenes.has(`${sc.id}_${s.id}.png`) && !scenes.has(`${s.id}.png`)) missScene.push(`${sc.id}/${s.id}`);
-    if (s.ending && !ends.has(`end_${sc.id}_${s.id}.png`)) missEnd.push(`${sc.id}/${s.id}`);
+    if (!scenes.has(`${sc.id}_${s.id}`) && !scenes.has(s.id) && !scenes.has(`scn_${s.id}`)) missingScene.push(`${sc.id}/${s.id}`);
+    if (s.ending && !endings.has(`end_${sc.id}_${s.id}`)) missingEnd.push(`${sc.id}/${s.id}`);
   }
 }
-console.log("缺卡图:", missCard.length, missCard.join(", "));
-console.log("缺场景图:", missScene.length, missScene.join(", "));
-console.log("缺结局图:", missEnd.length, missEnd.join(", "));
-console.log("缺封面:", missCover.join(", ") || "无");
 
-// 数据层交叉检查：市集/翻牌/对局引用完整性 + 可卖钥匙卡风险
-for (const sc of ALL) {
-  for (const s of sc.scenes) {
-    if (s.shop) for (const id of s.shop.stock) if (!sc.cards.find(c => c.id === id)) console.log(`[市集悬空] ${sc.id}/${s.id} 货架引用不存在卡 ${id}`);
-    if (s.cardPick) for (const id of s.cardPick.options) if (!sc.cards.find(c => c.id === id)) console.log(`[翻牌悬空] ${sc.id}/${s.id} 翻牌引用不存在卡 ${id}`);
-  }
-  // 可被卖掉的「钥匙卡」：后续有 cond.card 引用的卡出现在市集货架
-  const keyed = new Set<string>();
-  for (const s of sc.scenes) for (const c of s.choices ?? []) if (c.cond?.card) keyed.add(c.cond.card);
-  for (const s of sc.scenes) {
-    if (!s.shop) continue;
-    for (const id of s.shop.stock) if (keyed.has(id)) console.log(`[钥匙卡可卖] ${sc.id} 市集货架含条件钥匙卡 ${id}（可被玩家卖掉导致分支永久关闭）`);
-  }
-  // 情绪局 goal 缺省一致性
-  for (const d of sc.duels) if (d.mode === "emotion" && !d.goal) console.log(`[goal缺省] ${sc.id}/${d.id} 情绪局未设 goal（引擎默认5，UI默认3）`);
-}
+console.log(`卡图/立绘缺失 ${missingCard.length}：`);
+for (const m of missingCard) console.log("  " + m);
+console.log(`\n场景图缺失 ${missingScene.length}（按剧本统计）：`);
+const bySc = new Map<string, number>();
+for (const m of missingScene) bySc.set(m.split("/")[0], (bySc.get(m.split("/")[0]) ?? 0) + 1);
+for (const [k, v] of bySc) console.log(`  ${k}: ${v}`);
+console.log(`\n封面缺失 ${missingCover.length}：${missingCover.join(",") || "无"}`);
+console.log(`结局图缺失 ${missingEnd.length}：${missingEnd.join(",") || "无"}`);
+console.log(`\n资产库存：卡图${cards.size} 立绘${portraits.size} 场景${scenes.size} 封面${covers.size} 结局${endings.size}`);

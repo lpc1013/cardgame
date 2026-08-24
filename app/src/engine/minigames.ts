@@ -3,7 +3,7 @@
 // 纯状态机，UI 只负责渲染与回调。
 // ============================================================
 
-/** 骰宝：押注 大(4-10)/小(11-17)/豹子(三同)，三骰定胜负 */
+/** 骰宝：押注 大(11-17)/小(4-10)/豹子(三同，大小通吃)，三骰定胜负 */
 export interface SicboState {
   bet: number;          // 押注额
   side: "大" | "小" | "豹" | null;
@@ -25,11 +25,18 @@ export function sicboRoll(st: SicboState, side: "大" | "小" | "豹", cheat: bo
   const r = () => 1 + Math.floor(Math.random() * 6);
   let dice: [number, number, number];
   if (cheat && Math.random() < 0.75) {
-    // 出千：七成概率控骰到押注侧
-    const total = side === "大" ? 13 + Math.floor(Math.random() * 5) : 5 + Math.floor(Math.random() * 4);
-    const a = 1 + Math.floor(Math.random() * 6);
-    const b = Math.max(1, Math.min(6, total - a - 1));
-    dice = [a, b, total - a - b];
+    // 出千：七成概率控骰到押注侧（拒绝采样保证三骰均为合法骰面且符合押注）
+    if (side === "豹") {
+      const d = r();
+      dice = [d, d, d];
+    } else {
+      const total = side === "大" ? 13 + Math.floor(Math.random() * 5) : 5 + Math.floor(Math.random() * 4);
+      let a = r(), b = r(), c = total - a - b;
+      for (let i = 0; i < 64 && !(c >= 1 && c <= 6 && !(a === b && b === c)); i++) {
+        a = r(); b = r(); c = total - a - b;
+      }
+      dice = [a, b, c];
+    }
   } else {
     dice = [r(), r(), r()];
   }
@@ -53,10 +60,7 @@ export function sicboRoll(st: SicboState, side: "大" | "小" | "豹", cheat: bo
   }
 }
 export function sicboPayout(st: SicboState): number {
-  if (st.result === "win") {
-    if (st.caught) return -st.bet * 2;
-    return st.side === "豹" ? st.bet * 5 : st.bet;
-  }
+  if (st.result === "win") return st.side === "豹" ? st.bet * 5 : st.bet;
   if (st.result === "lose") return st.caught ? -st.bet * 2 : -st.bet;
   return 0;
 }
@@ -134,7 +138,9 @@ export function jiulingPlay(st: JiulingState, cardSuit: string): void {
   if (same) { st.score += 2; st.log = `同令而应，满座喝彩！（+2）`; }
   else if (isPair) { st.score += 1; st.log = `对令相和，也博了几声彩。（+1）`; }
   else { st.score -= 1; st.log = `岔了令。有人嗤笑出声。（-1）`; }
-  st.hand = st.hand.filter((c) => c !== cardSuit || st.hand.filter((x) => x === cardSuit).length > 1).slice(0, Math.max(0, st.hand.length - 1));
+  // 按索引删除打出的第一张所出花色（旧实现遇重复花色会误截数组末位的另一花色）
+  const idx = st.hand.indexOf(cardSuit);
+  if (idx >= 0) st.hand = [...st.hand.slice(0, idx), ...st.hand.slice(idx + 1)];
   st.round += 1;
   st.drawn = null;
   if (st.round >= st.cfg.rounds) {

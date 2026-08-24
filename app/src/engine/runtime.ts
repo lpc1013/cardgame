@@ -7,10 +7,11 @@ import type { Scenario, Scene, Choice, Cond, Effect } from "./types";
 export interface RunState {
   scenarioId: string;
   sceneId: string;
+  /** 多视角剧本：当前主视角 id（单视角剧本缺省） */
+  viewpoint?: string;
   flags: Set<string>;
   stats: Record<string, number>;
   clues: string[];        // 已解锁线索 id
-  cards: string[];        // 当前卡池 card id（经典模式=全部可用）
   // ---- 卡牌系统 v2 ----
   bag: string[];          // 背包（收集到的所有非资源卡）
   deck: string[];         // 编组卡组（对局可用，上限 deckLimit）
@@ -20,19 +21,24 @@ export interface RunState {
   boosts: string[];       // 本局生效的帝国开局加成 id（出征时消耗）
 }
 
-export function initState(sc: Scenario): RunState {
+export function initState(sc: Scenario, viewpointId?: string): RunState {
   const stats: Record<string, number> = {};
   sc.stats?.forEach((s) => (stats[s.key] = s.init));
+  const vp = viewpointId ? sc.viewpoints?.find((v) => v.id === viewpointId) : undefined;
   const allCards = sc.cards.map((c) => c.id);
+  // 视角专属起手卡 > 剧本全局默认（经典模式全卡 / 卡牌系统初始卡组）
+  const bag = vp?.initialDeck
+    ? [...vp.initialDeck]
+    : sc.cardSystem ? (sc.initialDeck ? [...sc.initialDeck] : []) : allCards;
   return {
     scenarioId: sc.id,
-    sceneId: sc.startScene,
+    sceneId: vp?.startScene ?? sc.startScene,
+    viewpoint: vp?.id,
     flags: new Set(),
     stats,
     clues: [],
-    cards: allCards,
-    bag: sc.cardSystem ? (sc.initialDeck ? [...sc.initialDeck] : []) : allCards,
-    deck: sc.cardSystem ? (sc.initialDeck ? [...sc.initialDeck] : []) : allCards,
+    bag,
+    deck: [...bag],
     silver: sc.initialSilver ?? 0,
     lineIndex: 0,
     visited: [],
@@ -47,6 +53,7 @@ export function cardLayer(c: { layer?: string }): string {
 export function checkCond(cond: Cond | undefined, st: RunState): boolean {
   if (!cond) return true;
   if (cond.flag && !st.flags.has(cond.flag)) return false;
+  if (cond.flag2 && !st.flags.has(cond.flag2)) return false;
   if (cond.notFlag && st.flags.has(cond.notFlag)) return false;
   if (cond.clue && !st.clues.includes(cond.clue)) return false;
   if (cond.cluesAtLeast !== undefined && st.clues.length < cond.cluesAtLeast) return false;

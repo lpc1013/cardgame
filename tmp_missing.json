@@ -1,0 +1,201 @@
+{
+ "total": 65,
+ "missing": [
+  {
+   "sc": "sichou",
+   "scene": "end_flip",
+   "name": "翻棋",
+   "rank": "隐藏结局 · 救人一线",
+   "file": "end_sichou_end_flip.jpg"
+  },
+  {
+   "sc": "qinhuai",
+   "scene": "end_qingyi",
+   "name": "青衣人",
+   "rank": "隐藏结局 · 内廷深水",
+   "file": "end_qinhuai_end_qingyi.jpg"
+  },
+  {
+   "sc": "jieyu",
+   "scene": "end_withcity",
+   "name": "与城同烬",
+   "rank": "败线结局 · 以身守城",
+   "file": "end_jieyu_end_withcity.jpg"
+  },
+  {
+   "sc": "jieyu",
+   "scene": "end_unknown",
+   "name": "无名",
+   "rank": "传令兵结局 · 送到了",
+   "file": "end_jieyu_end_unknown.jpg"
+  },
+  {
+   "sc": "jieyu",
+   "scene": "end_letter",
+   "name": "没有送达的信",
+   "rank": "败线结局 · 迟到",
+   "file": "end_jieyu_end_letter.jpg"
+  },
+  {
+   "sc": "jieyu",
+   "scene": "end_kaihua",
+   "name": "开花了",
+   "rank": "景泰帝结局 · 八年天子",
+   "file": "end_jieyu_end_kaihua.jpg"
+  },
+  {
+   "sc": "jieyu",
+   "scene": "end_duoyu",
+   "name": "多余的那个",
+   "rank": "景泰帝结局 · 垂帘之后",
+   "file": "end_jieyu_end_duoyu.jpg"
+  },
+  {
+   "sc": "shumian",
+   "scene": "end_xinren",
+   "name": "信人不疑",
+   "rank": "主公结局 · 疑人不用",
+   "file": "end_shumian_end_xinren.jpg"
+  },
+  {
+   "sc": "shumian",
+   "scene": "end_flag",
+   "name": "旗",
+   "rank": "主公结局 · 为旗不为刃",
+   "file": "end_shumian_end_flag.jpg"
+  },
+  {
+   "sc": "shumian",
+   "scene": "end_crack",
+   "name": "裂",
+   "rank": "败线结局 · 疑种",
+   "file": "end_shumian_end_crack.jpg"
+  },
+  {
+   "sc": "shumian",
+   "scene": "end_slaughter",
+   "name": "强攻之殇",
+   "rank": "败线结局 · 惨胜",
+   "file": "end_shumian_end_slaughter.jpg"
+  },
+  {
+   "sc": "changjiang",
+   "scene": "end_bensang",
+   "name": "奔丧",
+   "rank": "剑线结局 · 君臣一场",
+   "file": "end_changjiang_end_bensang.jpg"
+  },
+  {
+   "sc": "changjiang",
+   "scene": "end_yingxun",
+   "name": "鹰隼",
+   "rank": "剑线结局 · 永镇边关",
+   "file": "end_changjiang_end_yingxun.jpg"
+  },
+  {
+   "sc": "changjiang",
+   "scene": "end_guchen",
+   "name": "孤臣",
+   "rank": "剑线结局 · 布衣入朝",
+   "file": "end_changjiang_end_guchen.jpg"
+  },
+  {
+   "sc": "changjiang",
+   "scene": "end_juelie",
+   "name": "覆盘",
+   "rank": "决裂结局 · 覆盘",
+   "file": "end_changjiang_end_juelie.jpg"
+  },
+  {
+   "sc": "changjiang",
+   "scene": "end_changcheng",
+   "name": "长城",
+   "rank": "镇边结局 · 相忘江湖",
+   "file": "end_changjiang_end_changcheng.jpg"
+  },
+  {
+   "sc": "changjiang",
+   "scene": "end_qinwang",
+   "name": "亲往",
+   "rank": "隐藏结局 · 御驾出关",
+   "file": "end_changjiang_end_qinwang.jpg"
+  },
+  {
+   "sc": "diaolan",
+   "scene": "end_across",
+   "name": "隔岸",
+   "rank": "公器结局 · 剑不在手",
+   "file": "end_diaolan_end_across.jpg"
+  },
+  {
+   "sc": "diaolan",
+   "scene": "end_far",
+   "name": "远芳",
+   "rank": "人心结局 · 不召而来",
+   "file": "end_diaolan_end_far.jpg"
+  },
+  {
+   "sc": "diaolan",
+   "scene": "end_ninegates",
+   "name": "九门",
+   "rank": "败死结局 · 焚毒力战",
+   "file": "end_diaolan_end_ninegates.jpg"
+  },
+  {
+   "sc": "changhen",
+   "scene": "end_cut_fail",
+   "name": "将死的军",
+   "rank": "遗恨结局 · 左右皆不成",
+   "file": "end_changhen_end_cut_fail.jpg"
+  },
+  {
+   "sc": "changhen",
+   "scene": "end_oath",
+   "name": "病榻之盟",
+   "rank": "盟约结局 · 一言所护",
+   "file": "end_changhen_end_oath.jpg"
+  },
+  {
+   "sc": "changhen",
+   "scene": "end_oath_broken",
+   "name": "被风吹散的誓",
+   "rank": "破盟结局 · 人死言轻",
+   "file": "end_changhen_end_oath_broken.jpg"
+  },
+  {
+   "sc": "jianfeng",
+   "scene": "end_nowater",
+   "name": "水未用",
+   "rank": "仁兵结局 · 闸在你手里",
+   "file": "end_jianfeng_end_nowater.jpg"
+  },
+  {
+   "sc": "jianfeng",
+   "scene": "end_brush",
+   "name": "直笔",
+   "rank": "直笔结局 · 自领骂名",
+   "file": "end_jianfeng_end_brush.jpg"
+  },
+  {
+   "sc": "jianfeng",
+   "scene": "end_search",
+   "name": "那一次搜寻",
+   "rank": "余温结局 · 留下一条命",
+   "file": "end_jianfeng_end_search.jpg"
+  },
+  {
+   "sc": "xingxing",
+   "scene": "end_xiansheng",
+   "name": "先生",
+   "rank": "结局 · 亦师",
+   "file": "end_xingxing_end_xiansheng.jpg"
+  },
+  {
+   "sc": "xingxing",
+   "scene": "end_yaohuilai",
+   "name": "要回来的",
+   "rank": "结局 · 守灯人",
+   "file": "end_xingxing_end_yaohuilai.jpg"
+  }
+ ]
+}

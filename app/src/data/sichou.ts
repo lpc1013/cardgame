@@ -59,8 +59,8 @@ export const sichou: Scenario = {
     { id: "t9", name: "「阴雨毁堤」之说", kind: "false", desc: "官府文告定论——天灾加小吏贪墨，恰是最省事的答案。" },
     { id: "t10", name: "倭文密信夹桑皮纸", kind: "true", desc: "倭人私信竟夹带皇家专用桑皮纸——内外勾连非同一般。" },
     { id: "t11", name: "岛上中土之人与织造局令牌", kind: "true", desc: "远海孤岛有中土装束、军纪森严之人，令牌纹近织造局。" },
-    { id: "t12", name: "暗锦金线帝王私纹", kind: "core", desc: "特制云锦锦底暗藏帝王私用暗纹——专供内廷密探、远海暗卫。（核心）" },
-    { id: "t13", name: "囚牢桑皮纸与黑衣内侍", kind: "core", desc: "周书年被褥夹层御用桑皮纸残页；子夜黑衣内侍静坐囚牢。（核心·夜探解锁）" },
+    { id: "t12", name: "暗锦金线帝王私纹", kind: "core", desc: "特制云锦锦底暗藏帝王私用暗纹。" },
+    { id: "t13", name: "囚牢桑皮纸与黑衣内侍", kind: "core", desc: "周书年被褥夹层藏御用桑皮纸残页；子夜黑衣内侍静坐囚牢。" },
   ],
   verdict: {
     scene: "verdict",
@@ -73,6 +73,7 @@ export const sichou: Scenario = {
   duels: [
     {
       id: "d_zhou",
+      gambit: true,
       mode: "emotion",
       rules: "v2",
       title: "刑部大牢 · 对坐",
@@ -86,6 +87,7 @@ export const sichou: Scenario = {
     },
     {
       id: "d_yamamoto",
+      gambit: true,
       mode: "pressure",
       rules: "v2",
       title: "提审 · 山本一郎",
@@ -338,7 +340,7 @@ export const sichou: Scenario = {
         "而周书年，是皇家暗部的人。奉命南下，刻意认罪赴死——帝王定下的弃子。",
         "你把那匹锦裁下一角，收进袖中。从今往后，这方寸之物，就是你见过的深渊。",
       ],
-      effects: [{ unlockClue: "t12" }, { unlockCard: "i_anyun" }, { setFlag: "deep_seen" }],
+      effects: [{ unlockClue: "t12" }, { unlockCard: "i_anyun" }, { setFlag: "deep_seen" }, { stat: { minxin: 10 } }],
       next: "deep_pick",
     },
     {
@@ -374,10 +376,17 @@ export const sichou: Scenario = {
       choices: [
         {
           text: "【深层】密奏直呈御前：帝王暗线、远海暗卫、私库通倭。",
-          hint: "看见深渊的人 · 袖中当有暗纹云锦为凭",
-          cond: { card: "i_anyun" },
+          hint: "看见深渊的人 · 需暗纹云锦为凭 · 民命≥60",
+          cond: { card: "i_anyun", statAtLeast: { minxin: 60 } },
           effects: [{ setFlag: "accuse_deep" }],
           next: "end_deep",
+        },
+        {
+          text: "【翻棋】不密奏、不攀龙——只办崔福全：把弃子从刑台上抢回来。",
+          hint: "救人一线 · 需桑皮纸为凭 · 民命≥65",
+          cond: { card: "i_sangpizhi", statAtLeast: { minxin: 65 } },
+          effects: [{ setFlag: "accuse_flip" }],
+          next: "end_flip",
         },
         {
           text: "【中层】江南官商兵宦协同贪腐、私通海商，罚没降级。",
@@ -435,6 +444,21 @@ export const sichou: Scenario = {
         "只有每年霜降，织造局的暗船照旧出海。船上的锦，织着帝王才知道的纹。",
       ],
       ending: { name: "秋后", rank: "表层结局 · 官府定论", desc: "天下最省事的答案，由你亲手写进了文告。" },
+    },
+    {
+      id: "end_flip",
+      title: "结局 · 翻棋",
+      lines: [
+        "你没有写密奏。密奏是递到深渊手里的——你写的是题本，登闻鼓能敲得响的那种。",
+        "题本只办一件事：掌印太监崔福全，私造无备案御用官印、放行走私漕船、勾连倭人密信、凿堤灭口寒门主簿。人证刘小三，物证空白官印、桑皮纸残页、霜降暗锦的台账。",
+        "通篇不提帝王，不涉私库，不碰那条最深的线——你把深渊小心翼翼地绕了过去，只把深渊门口看门的那条狗，钉在了午门外。",
+        "朝堂不能不办：官印的来历若深究，烧着的是另一层。于是崔福全成了答案。弃卒保帅，从来是宫里最熟的刀法——只是这一次，被丢掉的卒，换成了他们自己人。",
+        "周书年开释，以「失察之罪」除名，发往边远州县，改换名姓，终身不得复入仕途。行刑那日的刑台空着，围观的人群散了个干净。",
+        "刘小三替你把登闻鼓的槌递到手上时，笑得很亮：「小人无靠山——所以小人什么都不怕。大人，鼓槌给您，小人去牢里接人。」",
+        "出城那日天晴。周书年只带了一个包袱，包袱里是半张桑皮纸。他在官道口朝你长揖到底，没说话。",
+        "你在私记里写：深渊还在，望深渊的人还在。但自今夜起，这盘棋里，少了一颗替死的棋子。",
+      ],
+      ending: { name: "翻棋", rank: "隐藏结局 · 救人一线", desc: "不掀桌、不密奏，只在悬崖边上，把一个赴死的人拉了回来。" },
     },
     {
       id: "end_surface_bad",

@@ -49,8 +49,8 @@ export const qinhuai: Scenario = {
     { id: "m5", name: "青衣人夜立岸畔", kind: "true", desc: "艄公与军卒两处独立目击——有人在小舟靠岸前后，远远盯着。" },
     { id: "m6", name: "船底两层新旧水痕", kind: "true", desc: "小舟两次靠岸，与渡口登记时辰不合——有人夜里上过那条船。" },
     { id: "m7", name: "挥不去的淡香与人为清扫", kind: "true", desc: "非兰麝非汤药；舱面擦拭规整，余香不散——遮掩痕迹的痕迹。" },
-    { id: "m8", name: "谷进忠密奏小本失踪", kind: "core", desc: "随身密奏整册无踪，仅余无字残纸。（核心）" },
-    { id: "m9", name: "「阴雨赶工」之说", kind: "false", desc: "楼庸与监工众口一词的托词——看似合理，恰是串供的形状。" },
+    { id: "m8", name: "谷进忠密奏小本失踪", kind: "core", desc: "随身密奏整册无踪，仅余无字残纸。" },
+    { id: "m9", name: "「阴雨赶工」之说", kind: "false", desc: "楼庸与监工众口一词：阴雨误工，抢工实为天时所迫。" },
     { id: "m10", name: "「年老疾发」之说", kind: "false", desc: "巡抚与巡检的口径——体表无症可佐，纯为开脱。" },
     { id: "m11", name: "裴府器械半近官式", kind: "true", desc: "逾私宅规制的防卫器械——监察官早料到有人会来。" },
     { id: "m12", name: "周莽：重金相邀、事后灭口弃沟", kind: "true", desc: "「邀我之人身居高位」——滋事非盗匪，是买凶。" },
@@ -66,6 +66,7 @@ export const qinhuai: Scenario = {
   duels: [
     {
       id: "d_zhoumang",
+      gambit: true,
       mode: "emotion",
       rules: "v2",
       title: "提审 · 周莽",
@@ -79,6 +80,7 @@ export const qinhuai: Scenario = {
     },
     {
       id: "d_shishang",
+      gambit: true,
       mode: "emotion",
       rules: "v2",
       title: "画舫夜话 · 苏十娘",
@@ -162,7 +164,7 @@ export const qinhuai: Scenario = {
         { text: "【裴府巷陌】勘验斗殴现场", hint: "官殴民讼之核", cond: { notFlag: "done_alley" }, effects: [{ setFlag: "done_alley" }], next: "alley" },
         { text: "【大牢】提审周莽", hint: "买凶的口子（卡牌对局）", cond: { notFlag: "done_zm" }, effects: [{ setFlag: "done_zm" }], next: "zm_intro" },
         { text: "【秦淮夜宴】夜访苏十娘", hint: "内臣之死的钥匙（卡牌对局）", cond: { notFlag: "done_ss" }, effects: [{ setFlag: "done_ss" }], next: "ss_intro" },
-        { text: "【河畔酒肆】入席行令——酒过三巡，舌头比口供松。", hint: "宴会行令 · 赢得席间传闻", cond: { notFlag: "done_jiuling" }, effects: [{ setFlag: "done_jiuling" }], next: "jiuling_scene" },
+        { text: "【河畔酒肆】入席行令——酒过三巡，舌头比口供松。", hint: "宴会行令 · 赢得席间传闻（败可再战）", cond: { notFlag: "done_jiuling" }, next: "jiuling_scene" },
         { text: "◆ 回公堂结案（至少勘得五条线索方可定谳）", cond: { cluesAtLeast: 5 }, next: "verdict" },
       ],
     },
@@ -296,7 +298,7 @@ export const qinhuai: Scenario = {
         "他压低声音：「谷公公登舟那夜，河岸暗处立着个青衣人，远远盯着小舟，良久才走。小人当时只当是哪个相好的……如今想想，那身形站得笔直，倒像是当兵的。」",
         "你把这段话，一个字一个字咽进了卷宗。",
       ],
-      effects: [{ unlockClue: "m5" }, { stat: { shenwang: 5 } }],
+      effects: [{ unlockClue: "m5" }, { stat: { shenwang: 5 } }, { setFlag: "done_jiuling" }],
       next: "hub",
     },
     {
@@ -304,9 +306,8 @@ export const qinhuai: Scenario = {
       title: "罚酒三杯",
       lines: [
         "岔了两回令，满堂哄笑里你连干三杯。再想开口套话，令官已经换了题目，席间众人推杯换盏，再没人看你。",
-        "罢了。明日自己去码头问。",
+        "罢了。改日再来——这席上的嘴，总有一回是松的。",
       ],
-      effects: [{ stat: { shenwang: -3 } }],
       next: "hub",
     },
 
@@ -340,7 +341,8 @@ export const qinhuai: Scenario = {
       choices: [
         {
           text: "参议楼庸：侵吞河工银、买凶袭监察宅、灭口内臣。",
-          hint: "账证链最全 · 但他背后的人会袖手么",
+          hint: "账证链最全 · 需圣望≥55 · 但他背后的人会袖手么",
+          cond: { statAtLeast: { shenwang: 55 } },
           effects: [{ setFlag: "accuse_lou" }],
           next: "end_lou",
         },
@@ -349,6 +351,13 @@ export const qinhuai: Scenario = {
           hint: "位高者顶罪，朝堂最省事 · 半个真相",
           effects: [{ setFlag: "accuse_wei" }],
           next: "end_wei",
+        },
+        {
+          text: "皇城方向：密奏失踪、双重水痕、青衣人——灭口谷进忠的，是宫里来的人。",
+          hint: "隐藏指控 · 需谷公公香囊为凭 · 密奏之线索在握",
+          cond: { clue: "m8", card: "i_gongxiang" },
+          effects: [{ setFlag: "accuse_shadow" }],
+          next: "end_qingyi",
         },
         {
           text: "封卷。四事皆存疑，不敢妄定爰书，存待复审。",
@@ -398,6 +407,21 @@ export const qinhuai: Scenario = {
         "「河工之下，还有河工。」",
       ],
       ending: { name: "密卷缄藏", rank: "悬案结局", desc: "你没给出答案，你把问题留给了下一个人。" },
+    },
+    {
+      id: "end_qingyi",
+      title: "结局 · 青衣人",
+      lines: [
+        "你的爰书没有写给三法司——你写的是密奏，只呈御前。",
+        "「谷进忠南下之前，只知河工；到了金陵才知，河工之下还有河工。他随身的密奏小本整册失踪，内舱密语问的是「密奏里写了什么」。臣勘得：双重水痕、淡香清扫、青衣伫立——杀谷进忠的，不是楼庸，不是卫承霖，是怕那本密奏到京的人。」",
+        "十日后，宫里来了人。没有仪仗，没有口谕，只有一个青衣内侍，把那枚「不见下落」的香囊轻轻放回你的公案上。",
+        "「咱家们查过了。」他的声音很平，「谷公公确实是暴疾。——大人您说呢？」",
+        "你说是。有些爰书，写了就是办到了；不必有人画押，也不必有人偿命。",
+        "当年底，内帑拨银三万两，秦淮河堤中段重修，工部派员驻场验收；卫承霖、楼庸各降三级，调离江南；荒沟伤者领了双份汤药钱。次年春汛，水涨过旧痕三尺，新堤纹丝不动。",
+        "只是那册密卷的卷末，多了两行不相干的字：一行是官笔——「谷进忠，暴疾亡，优恤」；另一行是你深夜添的小字，墨色比旁的深：",
+        "「青衣犹在，河工犹在。堤是人修的，也是人守的。」",
+      ],
+      ending: { name: "青衣人", rank: "隐藏结局 · 内廷深水", desc: "你把爰书写给了皇城。没等到画押，却等到了堤。" },
     },
     {
       id: "end_seal_bad",

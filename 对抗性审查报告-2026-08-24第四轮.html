@@ -1,0 +1,146 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>帝成观止 · 对抗性审查报告（第四轮）</title>
+<style>
+  :root{--ink:#2b2320;--paper:#f4efe6;--card:#fffdf8;--line:#d8cfbe;--red:#b03a2e;--amber:#b07a2e;--green:#3a7d44;--blue:#3a5f8a;--muted:#8a7f6f}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font:15px/1.7 "Songti SC","Noto Serif SC","SimSun",serif;color:var(--ink);background:var(--paper);padding:32px 18px}
+  .wrap{max-width:980px;margin:0 auto}
+  header.hero{background:linear-gradient(135deg,#2b2320,#4a3b2f);color:#f0e7d8;border-radius:14px;padding:34px 38px;margin-bottom:26px}
+  header.hero h1{font-size:26px;letter-spacing:2px;margin-bottom:8px}
+  header.hero .sub{opacity:.85;font-size:14px;margin-bottom:14px}
+  .verdict-line{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);padding:8px 16px;border-radius:8px;font-size:14px}
+  h2{font-size:19px;margin:34px 0 12px;padding-left:12px;border-left:4px solid var(--red);letter-spacing:1px}
+  h3{font-size:16px;margin:18px 0 8px}
+  table{width:100%;border-collapse:collapse;background:var(--card);font-size:13.5px;margin:10px 0 6px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:#efe7d8;font-weight:600}
+  tr:nth-child(even) td{background:#faf6ee}
+  .ok{color:var(--green);font-weight:700}
+  .bad{color:var(--red);font-weight:700}
+  .warn{color:var(--amber);font-weight:700}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:12px 0}
+  .card.p1{border-left:5px solid var(--red)}
+  .card.p2{border-left:5px solid var(--amber)}
+  .card.p3{border-left:5px solid var(--muted)}
+  .card h3{margin-top:0;display:flex;align-items:center;gap:8px}
+  .tag{font-size:12px;padding:2px 9px;border-radius:20px;color:#fff;white-space:nowrap}
+  .tag.p1{background:var(--red)} .tag.p2{background:var(--amber)} .tag.p3{background:var(--muted)}
+  .metrics{display:flex;gap:14px;flex-wrap:wrap;margin:14px 0}
+  .metric{flex:1;min-width:150px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;text-align:center}
+  .metric .num{font-size:28px;font-weight:700;color:var(--red)}
+  .metric .lbl{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .chain{background:#f1e9da;border-left:4px solid var(--blue);border-radius:8px;padding:12px 16px;margin:10px 0;font-size:13.5px}
+  code{background:#ece4d5;border-radius:4px;padding:1px 6px;font-size:12.5px;font-family:Consolas,monospace}
+  .fix{background:#eef3ea;border-left:4px solid var(--green);border-radius:8px;padding:10px 14px;margin:10px 0;font-size:13.5px}
+  .timeline{border-left:2px solid var(--line);margin:14px 0 14px 8px;padding-left:20px}
+  .tl-item{position:relative;margin-bottom:14px}
+  .tl-item::before{content:"";position:absolute;left:-26px;top:6px;width:10px;height:10px;border-radius:50%;background:var(--blue)}
+  .tl-item b{display:block}
+  .tl-item span{font-size:13px;color:var(--muted)}
+  footer{margin-top:34px;padding-top:14px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:720px){.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body><div class="wrap">
+
+<header class="hero">
+  <h1>帝成观止 · 对抗性审查报告</h1>
+  <div class="sub">第四轮复审 · 2026-08-24 &nbsp;|&nbsp; 审计对象：E:\CardGame\app（Vite + React 19 + TS 叙事卡牌引擎）· 13 部剧本全量 · 美术资产</div>
+  <div class="verdict-line">✅ 第三轮 9 条建议全部落地（历轮首次全清）· 🔴 本轮新暴露 1 处 P1 UI 合同断链 · 无不可玩级缺陷</div>
+</header>
+
+<div class="metrics">
+  <div class="metric"><div class="num">0</div><div class="lbl">verify 失败 / 警告</div></div>
+  <div class="metric"><div class="num">13/23</div><div class="lbl">情绪制对局受反馈断链影响（56%）</div></div>
+  <div class="metric"><div class="num">3.1%</div><div class="lbl">行令单局必输概率（2/64 序列）</div></div>
+  <div class="metric"><div class="num">9/9</div><div class="lbl">上轮建议复核属实</div></div>
+</div>
+
+<h2>〇、第三轮回执复核 —— 全清</h2>
+<table>
+<tr><th>第三轮建议</th><th>本轮复核</th><th>判定</th></tr>
+<tr><td>行令运气门（楼庸结局）</td><td>入口文案改「败可再战」，`done_jiuling` 胜后置旗，败可重入</td><td class="ok">✅ 已修</td></tr>
+<tr><td>市集/翻牌/卡包引用无校验</td><td>verify 新增第 7 组断言（货架∪卡包池∪翻牌选项 → 卡表）</td><td class="ok">✅ 属实</td></tr>
+<tr><td>jiulingPlay 消耗错牌（潜伏）</td><td>改为按索引删除第一张所出花色</td><td class="ok">✅ 属实</td></tr>
+<tr><td>图鉴分母含资源卡</td><td>分母改 collectible.length，资源卡组剔除</td><td class="ok">✅ 属实</td></tr>
+<tr><td>气力加成文案超卖 / 回气无上限</td><td>文案限定「压制制」；回气钳制 qi≤10 / hp≤hpMax</td><td class="ok">✅ 属实</td></tr>
+<tr><td>0 两孤品上架</td><td>buy 对 price===0 显式拒购，按钮显「非卖」</td><td class="ok">✅ 属实</td></tr>
+<tr><td>道具回合不触发存档</td><td>存档依赖补 duel?.usedCards.length</td><td class="ok">✅ 属实</td></tr>
+<tr><td>卡包重复静默吞银</td><td>开包结果加「已有 · 不入袋」角标</td><td class="ok">✅ 属实</td></tr>
+<tr><td>DuelView 状态直变（遗留）</td><td>全面改 structuredClone 深拷贝再交引擎 —— 历史最大工程债清偿</td><td class="ok">✅ 属实</td></tr>
+</table>
+
+<h2>一、新发现</h2>
+
+<div class="card p1">
+  <h3><span class="tag p1">P1</span> 情绪制对局出牌反馈文本全部丢失（UI 合同断链 · 实测实证）</h3>
+  <div class="chain">
+    <b>断链机制：</b><code>playEmotion</code> 结算写入 <code>lastResult</code>（「接得严丝合缝」「防备松动了」）→ <code>DuelView.clickCard</code> 立即调用 <code>revealEmotion(d)</code> → <code>revealEmotion</code> 无条件执行 <code>st.lastResult = null</code>（duel.ts:113）→ React 批量提交的是「已清空的下一回合状态」，<b>带反馈文本的中间状态永不渲染</b>。
+  </div>
+  <table>
+  <tr><th>场景</th><th>表现</th></tr>
+  <tr><td>对局进行中（每轮出牌后）</td><td class="bad">共鸣/破防/失言文案不显示，只剩数值静默变化</td></tr>
+  <tr><td>胜利 / 失败结算</td><td>正常显示（finished 守卫挡住清理）</td></tr>
+  </table>
+  <p><b>影响面：</b>13 个情绪制对局 / 全库 23 个对局（56%），波及 11 部剧本。对以文案为灵魂的权谋叙事游戏，是核心体验缺陷。</p>
+  <p><b>为何历轮未捕获：</b>verify 的 BFS 只断言可胜性与状态可达，<code>stateKey</code> 不含 lastResult —— 这是「引擎正确、UI 合同断链」的结构性盲区。</p>
+  <div class="fix"><b>修复（十行内）：</b>① revealEmotion 不再清 lastResult（由下一轮结算自然覆盖）；② 或 UI 将 lastResult 存独立 state；③ verify 加断言「情绪局未 finish 时出牌后 lastResult 非空」，把反馈合同纳入回归。</div>
+</div>
+
+<div class="card p2">
+  <h3><span class="tag p2">P2</span> 行令「必输序列」残留 3.1%，界面无征兆</h3>
+  <p>64 种令签序列枚举（4³，玩家最优应对）：<b>2 种必输</b>（最差 2 分，如「器器器」），离 3 分门槛差 1 分。上一轮的「永久锁结局」已解除（败可再战），但单局内玩家会经历「怎么选都输」的困惑局且无任何提示。</p>
+  <div class="fix"><b>修复（一行数据改动）：</b>① 手牌 +1 备牌把最差分抬到门槛；② 门槛降 1；③ 界面提示「此巡牌势不济，可退席重入」。建议 ①。</div>
+</div>
+
+<div class="card p2">
+  <h3><span class="tag p2">P2</span> removeCard×钥匙卡：机制无防线（当前数据安全，未来地雷）</h3>
+  <p>verify 第 5 组只断言「cond.card 有获得途径」，<b>不建模"获得后被剧情移除"</b>。实测 3 处命中（fuma 银票收入内廷 / fuma 烧银票 / qiuwei 烧银票进埋骨结局）均为设计性消耗；但未来若作者把无条件 removeCard 写在 cond.card 分支之前，软锁将伴随绿灯通过。</p>
+  <div class="fix"><b>修复：</b>verify 增交叉断言 —— removeCard 命中集 ∩ cond.card/notCard 引用集，命中即 warn（十行内）。</div>
+</div>
+
+<div class="card p2">
+  <h3><span class="tag p2">P2</span> 物品「抽牌」卡空库抽 0 张，不洗弃牌堆</h3>
+  <p><code>drawUp</code> 的空库洗回逻辑未复用于「抽牌」道具效果（duel.ts:262-268 直接从 library shift）。全库 5 张受影响（i_wenji / i_sangpizhi / i_shigao / i_gongxiang 等）。牌库见底时使用，文案说「摸出两张」实际 0 张。</p>
+  <div class="fix"><b>修复：</b>抽牌效果前复用 drawUp 的洗回逻辑，约五行。</div>
+</div>
+
+<h2>二、工程小账（P3）</h2>
+<table>
+<tr><th>条目</th><th>说明</th><th>建议</th></tr>
+<tr><td>行令按钮去重渲染</td><td>手牌 5 张显 4 个按钮（Set 去重），玩家感知「少一个选择」</td><td>角标显示余量</td></tr>
+<tr><td>渲染期 setState</td><td>MiniGameView 在 render 中 initPuzzle/initJiuling，StrictMode 下多渲染数次，当前稳定</td><td>改 effect 初始化</td></tr>
+<tr><td>classic 卡层断言</td><td>全量扫描确认 classic 对局 deck 零混入非成术层卡（当前安全）</td><td>verify 加一行，防未来写错</td></tr>
+<tr><td>verify 终端乱码</td><td>Windows PowerShell 下中文输出乱码，环境问题，不影响退出码</td><td>——</td></tr>
+</table>
+
+<h2>三、加分项（对抗审计也要记功）</h2>
+<div class="timeline">
+  <div class="tl-item"><b>历史首个「九条全清」</b><span>本轮逐条实证无虚报，structuredClone 清偿 in-place mutate 历史债</span></div>
+  <div class="tl-item"><b>verify.mts 是项目最可信资产</b><span>七组断言持续扩权、从未虚报；本轮新增暴露面恰在其结构性盲区之外</span></div>
+  <div class="tl-item"><b>行令门控修法克制且正确</b><span>不动数值、不删结局，仅「胜后置旗」+ 文案明示，保留运气参与同时解除惩罚</span></div>
+  <div class="tl-item"><b>发布物与源码同步</b><span>dist 构建（18:43）晚于全部源码 mtime，无陈旧发布风险</span></div>
+</div>
+
+<h2>四、行动建议（落地顺序）</h2>
+<div class="grid2">
+  <div class="card">
+    <h3>半天内（一行至十行改动）</h3>
+    <p>① P1 反馈断链：引擎一行 + verify 一条断言；② 抽牌卡洗回；③ verify 增 removeCard×钥匙卡 warn。</p>
+  </div>
+  <div class="card">
+    <h3>本周（数据调参）</h3>
+    <p>④ 行令手牌 +1 备牌或界面提示，改后重跑 64 序列枚举确认必输清零；回归 verify + tsc + build，实操一局情绪对局验证反馈可见。</p>
+  </div>
+</div>
+
+<footer>
+实测依据：verify.mts（0 失败/0 警告）· tsc -b（退出码 0）· 构建产物新鲜度核对 · 引擎行为实证 ×2 · 数据层定向扫描 ×1（临时脚本已删，方法与结论留存本报告）。与上轮不一致处（行令门控处置、b_qi 文案）已在第〇章显式标注。
+</footer>
+</div></body>
+</html>

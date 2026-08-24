@@ -3,10 +3,13 @@
 //  1) 场景图完整性：所有 next/choice/duel/verdict 目标存在
 //  2) 剧情树可达性：从 start 经三类边可达全部场景
 //  3) 对局可解性 + 难度审计（断言「真实 UI 合同」）：
-//     - 情绪制：按真实 UI 可达动作（出牌；v2 情绪局无换气）BFS 穷举可胜性。
+//     - 情绪制：按真实 UI 可达动作（出牌；博弈局加读牌；v2 情绪局无换气）BFS 穷举可胜性。
 //       严禁在模拟里调用真实 UI 不存在的动作（历史教训：模拟偷调 endTurn → 虚假绿灯）。
-//     - 压制制：BFS 穷举（出牌 + 换气）最优线 → 可否胜、剩余气力(紧张度)。
-//  4) 复盘门控：核心线索存在于线索表；mustPick ≤ 线索总数
+//     - 压制制：BFS 穷举（出牌 + 换气；博弈局加蓄势/破招×4色）最优线 → 可否胜、剩余气力(紧张度)。
+//  4) 复盘门控：核心线索存在于线索表；mustPick ≤ 线索总数且 ≤ 全剧本可解锁线索数（防「呈上御案」永锁）
+//  5) 钥匙卡可达性：cond.card 引用的卡必须在剧本内有获得途径（防条件型软锁）
+//  5b) 数值可达性轻模型：cond.statAtLeast 门槛 ≤ 理论上限（初值+全部正向增量之和），防选项永锁
+//  6) 小游戏数据合法性：残局正解索引不越界；行令轮数/手牌非空
 // ============================================================
 import { fuma } from "../src/data/fuma.ts";
 import { qiuwei } from "../src/data/qiuwei.ts";
@@ -22,7 +25,7 @@ import { jianfeng } from "../src/data/jianfeng.ts";
 import { xingxing } from "../src/data/xingxing.ts";
 import { touming } from "../src/data/touming.ts";
 import type { Scenario, CardDef, Suit } from "../src/engine/types.ts";
-import { initDuel, revealEmotion, playEmotion, playPressure, setDuelShuffle, endTurn, RESTRAIN, type DuelState } from "../src/engine/duel.ts";
+import { initDuel, revealEmotion, playEmotion, playPressure, setDuelShuffle, endTurn, readEmotion, chargeUp, breakMove, RESTRAIN, type DuelState } from "../src/engine/duel.ts";
 
 setDuelShuffle((a) => a);
 const ALL: Scenario[] = [fuma, qiuwei, sichou, xie, qinhuai, jieyu, shumian, changjiang, diaolan, changhen, jianfeng, xingxing, touming];
@@ -62,7 +65,7 @@ function edgesOf(sc: Scenario) {
   for (const s of sc.scenes) {
     if (s.next) E.push([s.id, s.next]);
     for (const c of s.choices ?? []) E.push([s.id, c.next]);
-    if (s.duel) { const d = sc.duels.find(x => x.id === s.duel)!; E.push([s.id, d.winScene], [s.id, d.loseScene]); }
+    if (s.duel) { const d = sc.duels.find(x => x.id === s.duel)!; E.push([s.id, d.winScene], [s.id, d.loseScene]); if (d.loseScene2) E.push([s.id, d.loseScene2.scene]); }
   }
   if (sc.verdict) E.push([sc.verdict.scene, sc.verdict.winScene], [sc.verdict.scene, sc.verdict.loseScene]);
   for (const s of sc.scenes) {
@@ -75,13 +78,13 @@ function edgesOf(sc: Scenario) {
 
 const cloneD = (d: DuelState): DuelState => JSON.parse(JSON.stringify(d));
 function stateKey(d: DuelState, handAware: boolean): string {
-  const base = `${d.round}|${d.mode === "emotion" ? `${d.rapport},${d.guard},${d.qi}` : `${d.hpPlayer},${d.hpOpponent}`}|${d.finished ?? ""}|${d.lastCardId ?? ""}|${d.ap}|${d.buffPower}`;
+  const base = `${d.round}|${d.mode === "emotion" ? `${d.rapport},${d.guard},${d.qi}` : `${d.hpPlayer},${d.hpOpponent}`}|${d.finished ?? ""}|${d.lastCardId ?? ""}|${d.ap}|${d.buffPower}|${d.charge}|${d.foresuit ?? ""}|${d.bluffed ? "b" : ""}`;
   if (!handAware) return base;
   return `${base}|h:${d.hand.join(",")}|l:${d.library.join(",")}|x:${d.discard.join(",")}|u:${d.usedCards.join(",")}`;
 }
 
 /** 情绪制：真实 UI 合同下的穷举可胜性。
- *  真实可达动作 = 从手牌（v2）/全池（classic）打出一张牌；情绪局无「换气」动作。 */
+ *  真实可达动作 = 从手牌（v2）/全池（classic）打出一张牌；博弈局加「读牌」；情绪局无「换气」动作。 */
 function emotionCanWin(sc: Scenario, cfg: (typeof sc.duels)[number], loadout: string[]): { win: boolean; steps: number } {
   const co = cardOf(sc, cfg.oppCards);
   const isV2 = cfg.rules === "v2";
@@ -103,11 +106,19 @@ function emotionCanWin(sc: Scenario, cfg: (typeof sc.duels)[number], loadout: st
       const key = stateKey(nd, isV2);
       if (!seen.has(key)) { seen.add(key); q.push({ d: nd, steps: steps + 1 }); }
     }
+    if (cfg.gambit && d.opponentShown && d.qi >= 1) {
+      const nd = cloneD(d);
+      if (readEmotion(nd)) {
+        const key = stateKey(nd, isV2);
+        if (!seen.has(key)) { seen.add(key); q.push({ d: nd, steps: steps + 1 }); }
+      }
+    }
   }
   if (capHit) warn(`对局 ${cfg.id} 情绪穷举超状态上限，按贪心复核`);
-  // 贪心兜底（同色 > 克色 > 中性 > 被克），用于超上限时的近似判断
+  // 贪心兜底（同色 > 克色 > 中性 > 被克），用于超上限时的近似判断；虚张时先读牌拆穿（保气力底线）
   const d = initDuel(cfg, loadout, sc.cards); revealEmotion(d);
   for (let i = 0; !d.finished && i < 400; i++) {
+    if (cfg.gambit && d.bluffed && d.qi >= 2 && readEmotion(d)) continue;
     const shown = d.opponentShown!;
     const pool = (isV2 ? [...d.hand] : loadout).map(id => co(id)).filter(c => (c.layer ?? "成术") === "成术");
     const pick =
@@ -122,7 +133,7 @@ function emotionCanWin(sc: Scenario, cfg: (typeof sc.duels)[number], loadout: st
   return { win: d.finished === "win", steps: d.round };
 }
 
-/** 压制制：真实 UI 合同下的穷举（出牌 + 换气） */
+/** 压制制：真实 UI 合同下的穷举（出牌 + 换气；博弈局加蓄势/破招×4色） */
 function pressureBest(sc: Scenario, cfg: (typeof sc.duels)[number], loadout: string[]): { d: DuelState; line: string[] } | null {
   const co = cardOf(sc, cfg.oppCards);
   const isV2 = cfg.rules === "v2";
@@ -135,12 +146,27 @@ function pressureBest(sc: Scenario, cfg: (typeof sc.duels)[number], loadout: str
     if (d.finished === "win" && !best) { best = { d, line }; break; }
     if (d.finished) continue;
     const handIds = isV2 ? [...d.hand] : loadout;
+    const oppId = cfg.script[d.round % cfg.script.length] ?? cfg.script[0]!;
     for (const id of handIds) {
       const nd = cloneD(d);
-      const oppId = cfg.script[nd.round % cfg.script.length] ?? cfg.script[0]!;
       if (!playPressure(nd, co(id), oppId, co)) continue;
       const key = stateKey(nd, isV2);
       if (!seen.has(key)) { seen.add(key); q.push({ d: nd, line: [...line, id] }); }
+    }
+    if (cfg.gambit) {
+      const nd = cloneD(d);
+      if (chargeUp(nd, oppId, co)) {
+        const key = stateKey(nd, isV2);
+        if (!seen.has(key)) { seen.add(key); q.push({ d: nd, line: [...line, "(蓄势)"] }); }
+      }
+      if (!d.foresuit) {
+        for (const s of SUITS) {
+          const nb = cloneD(d);
+          if (!breakMove(nb, s, oppId, co)) continue;
+          const key = stateKey(nb, isV2);
+          if (!seen.has(key)) { seen.add(key); q.push({ d: nb, line: [...line, `(破${s})`] }); }
+        }
+      }
     }
     if (isV2 && d.ap < 3 && !d.finished) {
       const nd = cloneD(d);
@@ -169,6 +195,8 @@ for (const sc of ALL) {
     }
     for (const c of s.choices ?? []) {
       if (c.cond?.clue && !sc.clues?.find(x => x.id === c.cond!.clue)) fail(`场景 ${s.id} 选项条件引用不存在的线索 ${c.cond.clue}`);
+      if (c.cond?.card && !sc.cards.find(x => x.id === c.cond!.card)) fail(`场景 ${s.id} 选项条件引用不存在的卡牌 ${c.cond.card}`);
+      if (c.cond?.notCard && !sc.cards.find(x => x.id === c.cond!.notCard)) fail(`场景 ${s.id} 选项条件引用不存在的卡牌 ${c.cond.notCard}`);
       for (const k of Object.keys(c.cond?.statAtLeast ?? {})) if (!sc.stats?.find(t => t.key === k)) fail(`场景 ${s.id} 选项条件引用未定义数值 ${k}`);
       for (const ef of c.effects ?? []) {
         if (ef.unlockClue && !sc.clues?.find(x => x.id === ef.unlockClue)) fail(`场景 ${s.id} 选项解锁不存在的线索 ${ef.unlockClue}`);
@@ -177,19 +205,113 @@ for (const sc of ALL) {
       }
     }
   }
-  // 2) 可达性
-  const reach = new Set([sc.startScene]);
+  // 2) 可达性（多视角剧本：全部视角入口并集为根）
+  const roots = [sc.startScene, ...(sc.viewpoints?.map(v => v.startScene) ?? [])];
+  const reach = new Set(roots);
   for (let p = 0; p < sc.scenes.length; p++) {
     for (const [a, b] of edgesOf(sc)) if (reach.has(a)) reach.add(b);
   }
   const unreachable = sc.scenes.filter(s => !reach.has(s.id)).map(s => s.id);
   if (unreachable.length) fail(`剧情树不可达: ${unreachable.join(",")}`);
-  // 4) 复盘门控
+  // 2b) 视角通道断言：入口存在、起手卡/结局归属引用有效、id 不重复
+  if (sc.viewpoints?.length) {
+    const vpIds = new Set<string>();
+    const endingScenes = new Set(sc.scenes.filter(s => s.ending).map(s => s.id));
+    for (const v of sc.viewpoints) {
+      if (vpIds.has(v.id)) fail(`视角 id 重复: ${v.id}`);
+      vpIds.add(v.id);
+      if (!sc.scenes.find(s => s.id === v.startScene)) fail(`视角 ${v.id} 入口场景 ${v.startScene} 不存在`);
+      for (const cid of v.initialDeck ?? []) if (!sc.cards.find(c => c.id === cid)) fail(`视角 ${v.id} 起手卡 ${cid} 不在卡表`);
+      for (const eid of v.endings ?? []) if (!endingScenes.has(eid)) fail(`视角 ${v.id} 归属结局 ${eid} 不是结局场景`);
+    }
+  }
+  // 4) 复盘门控（含实得线索对账：全剧本可解锁线索去重后 ≥ mustPick，否则「呈上御案」永久禁用）
   if (sc.verdict) {
     const v = sc.verdict;
     if (!sc.clues?.find(c => c.id === v.coreClue)) fail(`复盘核心线索 ${v.coreClue} 不在线索表`);
     if (v.mustPick > (sc.clues?.length ?? 0)) fail(`复盘选数 ${v.mustPick} 超过线索总数`);
     if (v.minTrue >= v.mustPick) fail(`minTrue(${v.minTrue}) >= mustPick(${v.mustPick}),门槛矛盾`);
+    const unlockable = new Set<string>();
+    for (const s of sc.scenes) {
+      for (const e of s.effects ?? []) if (e.unlockClue) unlockable.add(e.unlockClue);
+      for (const c of s.choices ?? []) for (const e of c.effects ?? []) if (e.unlockClue) unlockable.add(e.unlockClue);
+    }
+    if (unlockable.size < v.mustPick) fail(`全剧本可解锁线索去重后仅 ${unlockable.size} 条 < 复盘选数 mustPick(${v.mustPick})，复盘按钮将永锁`);
+  }
+  // 5) 钥匙卡可达性：cond.card 所引之卡必须在剧本内有获得途径（初始卡组/解锁/翻牌/市集），否则该选项永久锁死
+  {
+    const obtainable = new Set<string>(sc.initialDeck ?? []);
+    for (const s of sc.scenes) {
+      for (const e of s.effects ?? []) if (e.unlockCard) obtainable.add(e.unlockCard);
+      for (const c of s.choices ?? []) for (const e of c.effects ?? []) if (e.unlockCard) obtainable.add(e.unlockCard);
+      if (s.cardPick) for (const id of s.cardPick.options) obtainable.add(id);
+      if (s.shop) {
+        for (const id of s.shop.stock) obtainable.add(id);
+        for (const p of s.shop.packs ?? []) for (const id of p.pool) obtainable.add(id);
+      }
+    }
+    for (const s of sc.scenes) {
+      for (const c of s.choices ?? []) {
+        if (c.cond?.card && !obtainable.has(c.cond.card)) fail(`场景 ${s.id} 选项要求卡牌 ${c.cond.card}，但剧本内无获得途径（选项永久锁死）`);
+      }
+    }
+  }
+  // 5b) 数值可达性：门槛超过理论上限的选项必然永锁（轻模型：不计重复路径叠加，取全量正增上界）
+  {
+    const maxStat = new Map<string, number>();
+    for (const t of sc.stats ?? []) maxStat.set(t.key, t.init);
+    const acc = (ef: { stat?: Record<string, number> }) => {
+      for (const [k, d] of Object.entries(ef.stat ?? {})) {
+        if (typeof d === "number" && d > 0) maxStat.set(k, (maxStat.get(k) ?? 0) + d);
+      }
+    };
+    for (const s of sc.scenes) {
+      for (const e of s.effects ?? []) acc(e);
+      for (const c of s.choices ?? []) for (const e of c.effects ?? []) acc(e);
+    }
+    for (const s of sc.scenes) {
+      for (const c of s.choices ?? []) {
+        for (const [k, need] of Object.entries(c.cond?.statAtLeast ?? {})) {
+          const max = maxStat.get(k);
+          if (max === undefined) fail(`场景 ${s.id} 选项要求未定义数值 ${k}≥${need}`);
+          else if (max < need) fail(`场景 ${s.id} 选项要求 ${k}≥${need}，但全剧本理论上限仅 ${max}（选项永锁）`);
+        }
+      }
+    }
+  }
+  // 6) 小游戏数据合法性（不建模可解性，但拦下必然失败的配置错误）
+  for (const s of sc.scenes) {
+    const mg = s.minigame;
+    if (!mg) continue;
+    if (mg.type === "gobang" && mg.gobang) {
+      if (!mg.gobang.steps.length) fail(`场景 ${s.id} 残局无步骤`);
+      mg.gobang.steps.forEach((step, i) => {
+        if (!step.options.length) fail(`场景 ${s.id} 残局第${i + 1}手无候选`);
+        if (step.answer < 0 || step.answer >= step.options.length) fail(`场景 ${s.id} 残局第${i + 1}手正解索引 ${step.answer} 越界`);
+      });
+    }
+    if (mg.type === "jiuling" && mg.jiuling) {
+      if (mg.jiuling.rounds < 1) fail(`场景 ${s.id} 行令轮数非法`);
+      if (!mg.jiuling.hand.length) fail(`场景 ${s.id} 行令手牌为空`);
+    }
+  }
+  // 7) 市集/翻牌/卡包引用完整性：货架/卡包池/翻牌选项引用的卡必须存在于卡牌表，
+  //    否则 UI def() 返回 undefined（静默缺卡，最坏背包视图对 undefined 取属性崩溃）
+  {
+    const cardIds = new Set(sc.cards.map((c) => c.id));
+    const checkRef = (where: string, id: string) => {
+      if (!cardIds.has(id)) fail(`${where} 引用的卡牌 ${id} 不在卡牌表`);
+    };
+    for (const s of sc.scenes) {
+      if (s.shop) {
+        for (const id of s.shop.stock) checkRef(`场景 ${s.id} 货架`, id);
+        for (const p of s.shop.packs ?? []) for (const id of p.pool) checkRef(`场景 ${s.id} 卡包 ${p.id} 池`, id);
+      }
+      if (s.cardPick) {
+        for (const id of s.cardPick.options) checkRef(`场景 ${s.id} 翻牌`, id);
+        if (s.cardPick.options.length !== 3) warn(`场景 ${s.id} 翻牌选项数 = ${s.cardPick.options.length}（类型约定为三选一）`);
+      }
+    }
   }
   // 3) 对局审计
   for (const cfg of sc.duels) {
@@ -221,7 +343,7 @@ for (const sc of ALL) {
       if (best) {
         const margin = best.d.hpPlayer;
         const tenseness = margin <= 2 ? "极高张力" : margin <= Math.ceil(total / 2) ? "中等" : "宽松";
-        console.log(`  ✓ ${cfg.title}: ${best.d.round}步最优胜,剩${margin}/${total}气力(${tenseness}) 线:${best.line.map(x => x === "(换气)" ? "换气" : cardOf(sc, cfg.oppCards)(x).name).join("→")}`);
+        console.log(`  ✓ ${cfg.title}: ${best.d.round}步最优胜,剩${margin}/${total}气力(${tenseness}) 线:${best.line.map(x => x.startsWith("(") ? x.slice(1, -1) : cardOf(sc, cfg.oppCards)(x).name).join("→")}`);
       } else {
         // 确认是否"设计性死局"(唯一出口=loseScene)
         console.log(`  ○ ${cfg.title}: 穷举不可胜 —— 设计性死局(必败走向败线)`);

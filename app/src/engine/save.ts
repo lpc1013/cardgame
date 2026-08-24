@@ -153,7 +153,7 @@ export const INK_PER_ENDING = 20;
 export interface EmpireData {
   ink: number;                 // 墨铤余额（全局货币）
   grantedEnds: number;         // 已发放过奖励的结局数（防重复发放）
-  warehouse: string[];         // 跨剧本仓库：全局卡 id（仅物品层）
+  warehouse: string[];         // 跨剧本仓库：全局卡 id（仅旧档兼容读取；行囊已改自动收藏，不再写入）
   themes: string[];            // 已购主题 id
   theme: string;               // 当前主题（"" = 默认）
   boosts: Record<string, number>; // 开局加成库存 id -> 数量
@@ -226,20 +226,6 @@ export function unlockTheme(id: string): void {
 export function setTheme(id: string): void {
   const e = settleEmpire();
   e.theme = id;
-  writeEmpire(e);
-}
-
-/** 物品存入跨剧本仓库 */
-export function warehouseAdd(id: string): void {
-  const e = settleEmpire();
-  if (!e.warehouse.includes(id)) e.warehouse.push(id);
-  writeEmpire(e);
-}
-
-/** 物品取出（携带进新剧本时从仓库移除） */
-export function warehouseRemove(id: string): void {
-  const e = settleEmpire();
-  e.warehouse = e.warehouse.filter((x) => x !== id);
   writeEmpire(e);
 }
 

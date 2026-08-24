@@ -15,10 +15,21 @@ import type { DuelConfig, CardDef, Suit, ItemEffect } from "./types";
 //   - 情绪制：出牌不耗行动力（无限出牌），靠手牌轮换与四色克制博弈。
 //   - 压制制：每回合行动力 3 点，卡牌费用缺省 1；克制对手牌色 +1 点，被克 -1 点。
 //   - 物品卡：打出即触发 itemEffect，本局消耗（不进弃牌堆）。
+//
+// 博弈机制（cfg.gambit，第三批；全部确定性可穷举，设计性死局禁用）：
+//   - 情绪制·虚张/读牌：对手每三招亮一次假色（亮其真色所克之色，跟假色即撞枪口）；
+//     玩家可「读牌」耗 1 气力拆穿真色。
+//   - 压制制·蓄势/破招：蓄势耗 1 行动力（classic 则以一回合敌方出牌为代价）叠蓄力层，
+//     下张成术每层 +2 点；破招宣言敌方本招花色，押中则该招作废。
 // ============================================================
 
 /** 四色相克环：RESTRAIN[X] = X 所克制的颜色（策克势·势克器·器克隐·隐克策） */
 export const RESTRAIN: Record<Suit, Suit> = { 策: "势", 势: "器", 器: "隐", 隐: "策" };
+
+/** 情绪制缺省共鸣目标（引擎判定与 UI 渲染共用，避免缺省值分裂） */
+export const DEFAULT_GOAL = 5;
+/** 压制制缺省每回合行动力（帝国加成在 baseAp 上叠加，换气后不丢） */
+export const DEFAULT_AP = 3;
 
 export interface DuelState {
   cfg: DuelConfig;
@@ -30,17 +41,23 @@ export interface DuelState {
   guard: number;         // 对手防备
   qi: number;            // 我方气力
   opponentShown: Suit | null;
-  lastResult: { text: string; kind: "match" | "press" | "miss" | "win" | "lose" | "item" } | null;
+  opponentTrue: Suit | null;  // 对手真色（博弈·虚张时与 shown 分离）
+  bluffed: boolean;      // 当前亮色是否为虚张（读牌后拆穿置 false）
+  lastResult: { text: string; kind: "match" | "press" | "miss" | "win" | "lose" | "item" | "gambit" } | null;
   // pressure
   hpPlayer: number;
   hpOpponent: number;
-  lastPlay: { playerCard?: CardDef; oppCard?: CardDef; damage: number; to: "p" | "o" | "none"; stale?: boolean; edge?: number } | null;
+  hpMax: number;         // 我方气力上限（含加成）：回气钳制与气力条显示共用
+  charge: number;        // 蓄势层（下张成术每层 +2，上限 2）
+  foresuit: Suit | null; // 破招宣言（押中敌方本招花色则敌招作废）
+  lastPlay: { playerCard?: CardDef; oppCard?: CardDef; damage: number; to: "p" | "o" | "none"; stale?: boolean; edge?: number; broke?: boolean } | null;
   finished: "win" | "lose" | null;
   // ---- v2 ----
   library: string[];     // 牌库（剩余）
   hand: string[];        // 手牌
   discard: string[];     // 弃牌堆
   ap: number;            // 本回合行动力
+  baseAp: number;        // 行动力基准（含帝国加成，换气回补用）
   usedCards: string[];   // 本局已消耗（物品）
   buffPower: number;     // 「强牌」加成（下一张成术）
   lastCardId?: string;   // 招式用老判定
@@ -71,6 +88,7 @@ export function initDuel(cfg: DuelConfig, deck: string[], allCards: CardDef[], b
   const bonusQi = passives.reduce((s, p) => s + p.qi, 0);
   // 人物卡不进牌库：开局即场外生效（被动已在上方解析）
   const library = rules === "v2" ? shuffleFn(deck.filter((id) => (allCards.find((c) => c.id === id)?.layer ?? "成术") !== "人物")) : [];
+  const hpBase = (cfg.hp?.player ?? 10) + bonusQi + (boosts?.qi ?? 0);
   const st: DuelState = {
     cfg,
     mode: cfg.mode,
@@ -80,20 +98,26 @@ export function initDuel(cfg: DuelConfig, deck: string[], allCards: CardDef[], b
     guard: 3,
     qi: 3,
     opponentShown: null,
+    opponentTrue: null,
+    bluffed: false,
     lastResult: null,
-    hpPlayer: (cfg.hp?.player ?? 10) + bonusQi + (boosts?.qi ?? 0),
+    hpPlayer: hpBase,
     hpOpponent: cfg.hp?.opponent ?? 10,
+    hpMax: hpBase,
+    charge: 0,
+    foresuit: null,
     lastPlay: null,
     finished: null,
     library,
     hand: [],
     discard: [],
-    ap: 3 + (boosts?.ap ?? 0),
+    ap: DEFAULT_AP + (boosts?.ap ?? 0),
+    baseAp: DEFAULT_AP + (boosts?.ap ?? 0),
     usedCards: [],
     buffPower: 0,
     passives,
   };
-  if (rules === "v2") drawUp(st, 4 + (boosts?.draw ?? 0));
+  if (rules === "v2") drawUp(st, 4 + (boosts?.draw ?? 0) + passives.reduce((s, p) => s + p.draw, 0));
   return st;
 }
 
@@ -109,12 +133,10 @@ function shuffle<T>(a: T[]): T[] {
   return arr;
 }
 
-/** 抽牌至 n 张（含被动加抽；牌库抽空调洗弃牌堆回填） */
-export function drawUp(st: DuelState, n?: number): void {
+/** 抽牌至 n 张（牌库抽空调洗弃牌堆回填；被动加抽由调用方计入目标值） */
+export function drawUp(st: DuelState, n: number = 4): void {
   if (st.rules !== "v2") return;
-  const extra = st.passives.reduce((s, p) => s + p.draw, 0);
-  const target = (n ?? 4) + (n === undefined ? extra : 0);
-  while (st.hand.length < target) {
+  while (st.hand.length < n) {
     if (st.library.length === 0) {
       if (st.discard.length === 0) break;
       st.library = shuffleFn([...st.discard]);
@@ -142,11 +164,31 @@ function opponentSuitAt(cfg: DuelConfig, round: number): Suit {
   return s as Suit;
 }
 
-/** 情绪匹配制：开局亮出对手情绪 */
+/** 情绪匹配制：开局/每招后亮出对手情绪（博弈局：每三招亮一次假色——亮其真色所克之色，跟假色即撞枪口）。
+ *  幂等：已亮色时不重复（读牌结果不被覆盖）。 */
 export function revealEmotion(st: DuelState): void {
-  if (st.mode !== "emotion" || st.finished) return;
-  st.opponentShown = opponentSuitAt(st.cfg, st.round);
+  if (st.mode !== "emotion" || st.finished || st.opponentShown) return;
+  const truth = opponentSuitAt(st.cfg, st.round);
+  const bluff = !!st.cfg.gambit && st.round % 3 === 2;
+  st.opponentTrue = truth;
+  st.bluffed = bluff;
+  st.opponentShown = bluff ? RESTRAIN[truth] : truth;
   st.lastResult = null;
+}
+
+/** 博弈·读牌（情绪制）：耗 1 气力验色——是虚张则拆穿亮真色，无虚张则确认无误；不推进回合。气尽则败。 */
+export function readEmotion(st: DuelState): boolean {
+  if (st.mode !== "emotion" || st.finished || !st.cfg.gambit || !st.opponentShown) return false;
+  if (st.qi < 1) return false;
+  st.qi -= 1;
+  const wasBluff = st.bluffed;
+  st.opponentShown = st.opponentTrue;
+  st.bluffed = false;
+  st.lastResult = wasBluff
+    ? { text: `你不动声色地一试——果然，那色是装出来的，真意在此。（气力-1）`, kind: "gambit" }
+    : { text: `你仔细掂了掂——这色不假，没有虚张。（气力-1）`, kind: "gambit" };
+  finishCheck(st, st.cfg.goal ?? DEFAULT_GOAL);
+  return true;
 }
 
 function finishCheck(st: DuelState, goal: number): void {
@@ -169,8 +211,9 @@ export function playEmotion(st: DuelState, card: CardDef): boolean {
     st.hand = st.hand.filter((c) => c !== card.id);
     st.discard.push(card.id);
   }
-  const shown = st.opponentShown;
-  const goal = st.cfg.goal ?? 5;
+  // 虚张未拆穿时，结算以真色为准：跟假色（=真色所克之色）即撞枪口（被克 -2）
+  const shown = (st.bluffed && st.opponentTrue) || st.opponentShown;
+  const goal = st.cfg.goal ?? DEFAULT_GOAL;
   if (card.suit === shown) {
     st.rapport += 1;
     st.lastResult = { text: `你顺着对方的意，一句「${card.name}」接得严丝合缝。`, kind: "match" };
@@ -196,16 +239,63 @@ export function playEmotion(st: DuelState, card: CardDef): boolean {
   return true;
 }
 
-/** v2：结束本回合（压制制：回行动力 + 补牌至 4） */
+/** v2：结束本回合（压制制：回行动力至基准 + 补牌至 4+被动；破招宣言不跨回合） */
 export function endTurn(st: DuelState): void {
   if (st.rules !== "v2" || st.finished) return;
-  st.ap = 3;
-  drawUp(st, 4);
+  st.ap = st.baseAp;
+  st.foresuit = null;
+  drawUp(st, 4 + st.passives.reduce((s, p) => s + p.draw, 0));
+}
+
+/** 博弈·蓄势（压制制）：叠一层蓄力（上限 2），下张成术每层 +2 点。
+ *  v2 耗 1 行动力不推进回合；classic 以敌方一招为代价（敌方出牌、我方蓄力）。 */
+export function chargeUp(st: DuelState, oppCardId: string, cardOf: (id: string) => CardDef): boolean {
+  if (st.mode !== "pressure" || st.finished || !st.cfg.gambit || st.charge >= 2) return false;
+  if (st.rules === "v2") {
+    if (st.ap < 1) return false;
+    st.ap -= 1;
+    st.charge += 1;
+    st.lastResult = { text: `你按兵不动，吐纳蓄力，把锋芒收进袖中。（蓄势+1层）`, kind: "gambit" };
+    return true;
+  }
+  const opp = cardOf(oppCardId);
+  const o = opp.power ?? 1;
+  st.hpPlayer -= o;
+  st.charge += 1;
+  st.round += 1;
+  st.lastPlay = { oppCard: opp, damage: o, to: "p" };
+  st.lastResult = { text: `你硬接了他一招，不退反蓄。（受 ${o} 点，蓄势+1层）`, kind: "gambit" };
+  if (st.hpPlayer <= 0) st.finished = "lose";
+  return true;
+}
+
+/** 博弈·破招（压制制）：宣言敌方本招花色，押中则该招作废。
+ *  v2 耗 1 行动力、本回合首张出牌结算时生效；classic 立即结算敌方一招（押中免伤）。 */
+export function breakMove(st: DuelState, suit: Suit, oppCardId: string, cardOf: (id: string) => CardDef): boolean {
+  if (st.mode !== "pressure" || st.finished || !st.cfg.gambit || st.foresuit) return false;
+  if (st.rules === "v2") {
+    if (st.ap < 1) return false;
+    st.ap -= 1;
+    st.foresuit = suit;
+    st.lastResult = { text: `你眯起眼：「下一招，你必出『${suit}』。」`, kind: "gambit" };
+    return true;
+  }
+  const opp = cardOf(oppCardId);
+  const broke = opp.suit === suit;
+  const o = broke ? 0 : (opp.power ?? 1);
+  st.hpPlayer -= o;
+  st.round += 1;
+  st.lastPlay = { oppCard: opp, damage: o, to: broke ? "none" : "p", broke };
+  st.lastResult = broke
+    ? { text: `押中了——他这招「${opp.name}」被你一眼看破，半途而废。`, kind: "gambit" }
+    : { text: `押岔了。他出的不是「${suit}」，一招结实落在你身上。（-${o}）`, kind: "gambit" };
+  if (st.hpPlayer <= 0) st.finished = "lose";
+  return true;
 }
 
 function afterTurn(st: DuelState): void {
   if (st.rules === "v2") {
-    drawUp(st, 4);
+    drawUp(st, 4 + st.passives.reduce((s, p) => s + p.draw, 0));
   }
 }
 
@@ -223,7 +313,7 @@ export function playItem(st: DuelState, card: CardDef): boolean {
     st.library = st.library.filter((c) => c !== card.id);
   }
   applyItemEffect(st, eff, card.name);
-  if (st.mode === "emotion") finishCheck(st, st.cfg.goal ?? 5);
+  if (st.mode === "emotion") finishCheck(st, st.cfg.goal ?? DEFAULT_GOAL);
   else {
     if (st.hpOpponent <= 0 && st.hpPlayer > 0) st.finished = "win";
     else if (st.hpPlayer <= 0) st.finished = "lose";
@@ -244,8 +334,9 @@ function applyItemEffect(st: DuelState, eff: ItemEffect, name: string): void {
       }
       break;
     case "回气":
-      if (st.mode === "emotion") st.qi += 3;
-      else st.hpPlayer += 3;
+      // 钳制上限：情绪制气力上限 10（与 QiBar 显示一致）；压制制不超开局上限，防止数值越界展示
+      if (st.mode === "emotion") st.qi = Math.min(10, st.qi + 3);
+      else st.hpPlayer = Math.min(st.hpMax ?? (st.cfg.hp?.player ?? 10), st.hpPlayer + 3);
       st.lastResult = { text: `「${name}」入袖，你缓过一口气来。（+3）`, kind: "item" };
       break;
     case "强牌":
@@ -285,9 +376,15 @@ export function playPressure(st: DuelState, playerCard: CardDef, oppCardId: stri
     st.discard.push(playerCard.id);
   }
   const opp = cardOf(oppCardId);
-  let p = (playerCard.power ?? 1) + suitBonus(st, playerCard) + st.buffPower;
+  let p = (playerCard.power ?? 1) + suitBonus(st, playerCard) + st.buffPower + st.charge * 2;
   st.buffPower = 0;
-  const o = opp.power ?? 1;
+  st.charge = 0;
+  let o = opp.power ?? 1;
+  let broke = false;
+  if (st.foresuit) {
+    if (opp.suit === st.foresuit) { o = 0; broke = true; }
+    st.foresuit = null;
+  }
   let selfHarm = 0;
   const stale = st.lastCardId === playerCard.id;
   if (stale) p -= 2;
@@ -301,7 +398,7 @@ export function playPressure(st: DuelState, playerCard: CardDef, oppCardId: stri
     p *= 2;
     selfHarm = 1;
   }
-  st.lastPlay = { playerCard, oppCard: opp, damage: 0, to: "none", stale, edge };
+  st.lastPlay = { playerCard, oppCard: opp, damage: 0, to: "none", stale, edge, broke };
   st.lastCardId = playerCard.id;
   if (p > o) {
     const d = p - o;

@@ -1,0 +1,644 @@
+{
+ "jieyu": {
+  "start": "start",
+  "scenes": [
+   {
+    "id": "start",
+    "t": "第一视角 · 兵部尚书",
+    "ch": [
+     {
+      "n": "p1_intro"
+     },
+     {
+      "n": "p1_intro"
+     }
+    ]
+   },
+   {
+    "id": "p1_intro",
+    "t": "九门血线",
+    "ch": [],
+    "duel": "d_defense"
+   },
+   {
+    "id": "p1_win",
+    "t": "守住了一日",
+    "next": "p2_intro",
+    "ch": []
+   },
+   {
+    "id": "p1_lose",
+    "t": "血染的城墙",
+    "ch": [
+     {
+      "n": "p2_intro"
+     },
+     {
+      "n": "end_withcity"
+     }
+    ]
+   },
+   {
+    "id": "end_withcity",
+    "t": "结局 · 与城同烬",
+    "ch": [],
+    "end": "与城同烬|败线结局 · 以身守城"
+   },
+   {
+    "id": "p2_intro",
+    "t": "第二视角 · 传令兵",
+    "ch": [],
+    "duel": "d_deliver"
+   },
+   {
+    "id": "p2_win",
+    "t": "五日 · 密信到",
+    "ch": [
+     {
+      "n": "p2_mercy"
+     },
+     {
+      "n": "end_unknown"
+     }
+    ]
+   },
+   {
+    "id": "end_unknown",
+    "t": "结局 · 无名",
+    "ch": [],
+    "end": "无名|传令兵结局 · 送到了"
+   },
+   {
+    "id": "p2_lose",
+    "t": "第七日 · 惨至",
+    "ch": [
+     {
+      "n": "p2_mercy"
+     },
+     {
+      "n": "end_letter"
+     }
+    ]
+   },
+   {
+    "id": "end_letter",
+    "t": "结局 · 没有送达的信",
+    "ch": [],
+    "end": "没有送达的信|败线结局 · 迟到"
+   },
+   {
+    "id": "p2_mercy",
+    "t": "战场收殓",
+    "ch": [
+     {
+      "n": "p3_intro",
+      "cond": [
+       "statAtLeast"
+      ]
+     },
+     {
+      "n": "p3_intro"
+     }
+    ]
+   },
+   {
+    "id": "p3_intro",
+    "t": "第三视角 · 偏院的孩子",
+    "ch": [],
+    "duel": "d_court"
+   },
+   {
+    "id": "p3_win",
+    "t": "朕意已决",
+    "ch": [
+     {
+      "n": "p4_intro"
+     },
+     {
+      "n": "end_kaihua"
+     }
+    ]
+   },
+   {
+    "id": "end_kaihua",
+    "t": "结局 · 开花了",
+    "ch": [],
+    "end": "开花了|景泰帝结局 · 八年天子"
+   },
+   {
+    "id": "p3_lose",
+    "t": "垂帘之后",
+    "ch": [
+     {
+      "n": "p4_intro"
+     },
+     {
+      "n": "end_duoyu"
+     }
+    ]
+   },
+   {
+    "id": "end_duoyu",
+    "t": "结局 · 多余的那个",
+    "ch": [],
+    "end": "多余的那个|景泰帝结局 · 垂帘之后"
+   },
+   {
+    "id": "p4_intro",
+    "t": "终章 · 夺门",
+    "next": "p5_prison",
+    "ch": []
+   },
+   {
+    "id": "p5_prison",
+    "t": "诏狱",
+    "ch": [
+     {
+      "n": "p5_light_mercy",
+      "cond": [
+       "flag"
+      ]
+     },
+     {
+      "n": "p5_light_child"
+     },
+     {
+      "n": "p5_light_robe"
+     },
+     {
+      "n": "p5_final"
+     }
+    ]
+   },
+   {
+    "id": "p5_light_mercy",
+    "t": "走马灯 · 刀下",
+    "next": "p5_prison",
+    "ch": []
+   },
+   {
+    "id": "p5_light_child",
+    "t": "走马灯 · 弹弓",
+    "next": "p5_prison",
+    "ch": []
+   },
+   {
+    "id": "p5_light_robe",
+    "t": "走马灯 · 红衣",
+    "next": "p5_prison",
+    "ch": []
+   },
+   {
+    "id": "p5_final",
+    "t": "刑场 · 雪",
+    "ch": [],
+    "end": "要留清白在人间|终章"
+   }
+  ]
+ },
+ "shumian": {
+  "start": "start",
+  "scenes": [
+   {
+    "id": "start",
+    "t": "第一幕 · 陉谷",
+    "ch": [
+     {
+      "n": "a1_intro"
+     },
+     {
+      "n": "a1_intro"
+     }
+    ]
+   },
+   {
+    "id": "a1_intro",
+    "t": "箭雨",
+    "ch": [],
+    "duel": "d_xinggu"
+   },
+   {
+    "id": "a1_win",
+    "t": "鸣金",
+    "next": "a1_arrow",
+    "ch": []
+   },
+   {
+    "id": "a1_lose",
+    "t": "苦战而退",
+    "next": "a1_arrow",
+    "ch": []
+   },
+   {
+    "id": "a1_arrow",
+    "t": "一箭",
+    "ch": [
+     {
+      "n": "a2_intro"
+     },
+     {
+      "n": "a2_intro",
+      "cond": [
+       "statAtLeast"
+      ]
+     },
+     {
+      "n": "a2_intro"
+     }
+    ]
+   },
+   {
+    "id": "a2_intro",
+    "t": "第二幕 · 孤城（主公视角）",
+    "ch": [
+     {
+      "n": "a2_doubt"
+     },
+     {
+      "n": "a2_doubt"
+     }
+    ]
+   },
+   {
+    "id": "a2_doubt",
+    "t": "裂隙",
+    "next": "a2_break",
+    "ch": []
+   },
+   {
+    "id": "a2_break",
+    "t": "夜遁",
+    "ch": [],
+    "duel": "d_taopao"
+   },
+   {
+    "id": "a2_escape",
+    "t": "余响",
+    "ch": [
+     {
+      "n": "a3_intro"
+     },
+     {
+      "n": "end_xinren",
+      "cond": [
+       "flag"
+      ]
+     },
+     {
+      "n": "end_flag"
+     }
+    ]
+   },
+   {
+    "id": "end_xinren",
+    "t": "结局 · 信人不疑",
+    "ch": [],
+    "end": "信人不疑|主公结局 · 疑人不用"
+   },
+   {
+    "id": "end_flag",
+    "t": "结局 · 旗",
+    "ch": [],
+    "end": "旗|主公结局 · 为旗不为刃"
+   },
+   {
+    "id": "a2_escape_bad",
+    "t": "夜遁 · 带伤",
+    "ch": [
+     {
+      "n": "end_crack",
+      "cond": [
+       "flag"
+      ]
+     },
+     {
+      "n": "a3_intro"
+     }
+    ]
+   },
+   {
+    "id": "end_crack",
+    "t": "结局 · 裂",
+    "ch": [],
+    "end": "裂|败线结局 · 疑种"
+   },
+   {
+    "id": "a3_intro",
+    "t": "第三幕 · 垓下（韩信视角）",
+    "ch": [],
+    "duel": "d_chuge"
+   },
+   {
+    "id": "a3_win",
+    "t": "四面楚歌",
+    "next": "a3_final",
+    "ch": []
+   },
+   {
+    "id": "a3_lose",
+    "t": "强攻",
+    "next": "end_slaughter",
+    "ch": []
+   },
+   {
+    "id": "end_slaughter",
+    "t": "结局 · 强攻之殇",
+    "ch": [],
+    "end": "强攻之殇|败线结局 · 惨胜"
+   },
+   {
+    "id": "a3_final",
+    "t": "尾声 · 我的时代",
+    "ch": [],
+    "end": "属于我的时代|终章"
+   }
+  ]
+ },
+ "changjiang": {
+  "start": "start",
+  "scenes": [
+   {
+    "id": "start",
+    "t": "棋 · 金陵御花园",
+    "next": "q_intro",
+    "ch": []
+   },
+   {
+    "id": "q_intro",
+    "t": "手谈",
+    "ch": [],
+    "duel": "d_qipan"
+   },
+   {
+    "id": "q_win",
+    "t": "手谈 · 接住了",
+    "next": "zhuanzhe",
+    "ch": []
+   },
+   {
+    "id": "q_lose",
+    "t": "手谈 · 说岔了",
+    "next": "zhuanzhe",
+    "ch": []
+   },
+   {
+    "id": "zhuanzhe",
+    "t": "剑 · 战场（柴将军视角）",
+    "ch": [
+     {
+      "n": "r_intro"
+     },
+     {
+      "n": "r_intro"
+     }
+    ]
+   },
+   {
+    "id": "r_intro",
+    "t": "围魏救赵",
+    "ch": [],
+    "duel": "d_junxi"
+   },
+   {
+    "id": "r_win",
+    "t": "大破",
+    "ch": [
+     {
+      "n": "cheng_feng"
+     },
+     {
+      "n": "end_bensang"
+     },
+     {
+      "n": "end_yingxun"
+     }
+    ]
+   },
+   {
+    "id": "end_bensang",
+    "t": "结局 · 奔丧",
+    "ch": [],
+    "end": "奔丧|剑线结局 · 君臣一场"
+   },
+   {
+    "id": "end_yingxun",
+    "t": "结局 · 鹰隼",
+    "ch": [],
+    "end": "鹰隼|剑线结局 · 永镇边关"
+   },
+   {
+    "id": "r_lose",
+    "t": "血战",
+    "ch": [
+     {
+      "n": "cheng_feng"
+     },
+     {
+      "n": "end_guchen"
+     },
+     {
+      "n": "end_yingxun"
+     }
+    ]
+   },
+   {
+    "id": "end_guchen",
+    "t": "结局 · 孤臣",
+    "ch": [],
+    "end": "孤臣|剑线结局 · 布衣入朝"
+   },
+   {
+    "id": "cheng_feng",
+    "t": "局 · 功高（帝王视角 · 新帝）",
+    "ch": [
+     {
+      "n": "end_qiyou",
+      "cond": [
+       "flag",
+       "statAtLeast"
+      ]
+     },
+     {
+      "n": "end_beiju_gate"
+     },
+     {
+      "n": "end_changcheng"
+     },
+     {
+      "n": "end_qinwang",
+      "cond": [
+       "statAtLeast"
+      ]
+     }
+    ]
+   },
+   {
+    "id": "end_beiju_gate",
+    "t": "御书房外 · 夜",
+    "ch": [
+     {
+      "n": "end_beiju",
+      "cond": [
+       "flag"
+      ]
+     },
+     {
+      "n": "end_juelie"
+     }
+    ]
+   },
+   {
+    "id": "end_juelie",
+    "t": "结局 · 覆盘",
+    "ch": [],
+    "end": "覆盘|决裂结局 · 覆盘"
+   },
+   {
+    "id": "end_qiyou",
+    "t": "结局 · 终局之局",
+    "ch": [],
+    "end": "终局之局|隐藏结局 · 棋友"
+   },
+   {
+    "id": "end_beiju",
+    "t": "结局 · 血色棋子",
+    "ch": [],
+    "end": "血色棋子|正史结局"
+   },
+   {
+    "id": "end_changcheng",
+    "t": "结局 · 长城",
+    "ch": [],
+    "end": "长城|镇边结局 · 相忘江湖"
+   },
+   {
+    "id": "end_qinwang",
+    "t": "结局 · 亲往",
+    "ch": [],
+    "end": "亲往|隐藏结局 · 御驾出关"
+   }
+  ]
+ },
+ "xingxing": {
+  "start": "start",
+  "scenes": [
+   {
+    "id": "start",
+    "t": "祠堂",
+    "next": "zhengzhi",
+    "ch": []
+   },
+   {
+    "id": "zhengzhi",
+    "t": "军阀！旧军阀！",
+    "next": "geban_intro",
+    "ch": []
+   },
+   {
+    "id": "geban_intro",
+    "t": "深夜 · 煤油灯",
+    "ch": [],
+    "duel": "d_geban"
+   },
+   {
+    "id": "gb_win",
+    "t": "隔板 · 拉开了",
+    "next": "kaike",
+    "ch": []
+   },
+   {
+    "id": "gb_lose",
+    "t": "隔板 · 一夜",
+    "next": "kaike",
+    "ch": []
+   },
+   {
+    "id": "kaike",
+    "t": "识字班 · 「人」",
+    "ch": [
+     {
+      "n": "kaike_ren"
+     },
+     {
+      "n": "kaike_ren"
+     }
+    ]
+   },
+   {
+    "id": "kaike_ren",
+    "t": "「人」与「手」",
+    "next": "ranfang",
+    "ch": []
+   },
+   {
+    "id": "ranfang",
+    "t": "染坊 · 宣纸",
+    "ch": [
+     {
+      "n": "huiyi"
+     },
+     {
+      "n": "end_xiansheng",
+      "cond": [
+       "statAtLeast"
+      ]
+     }
+    ]
+   },
+   {
+    "id": "end_xiansheng",
+    "t": "结局 · 先生",
+    "ch": [],
+    "end": "先生|结局 · 亦师"
+   },
+   {
+    "id": "huiyi",
+    "t": "训话 · 二十六天",
+    "ch": [
+     {
+      "n": "answer"
+     },
+     {
+      "n": "answer",
+      "cond": [
+       "statAtLeast"
+      ]
+     }
+    ]
+   },
+   {
+    "id": "answer",
+    "t": "星星之火",
+    "next": "gaobie",
+    "ch": []
+   },
+   {
+    "id": "gaobie",
+    "t": "清晨 · 告别",
+    "ch": [
+     {
+      "n": "junzhuang"
+     },
+     {
+      "n": "end_yaohuilai",
+      "cond": [
+       "statAtLeast"
+      ]
+     }
+    ]
+   },
+   {
+    "id": "end_yaohuilai",
+    "t": "结局 · 要回来的",
+    "ch": [],
+    "end": "要回来的|结局 · 守灯人"
+   },
+   {
+    "id": "junzhuang",
+    "t": "黑边领章",
+    "ch": [],
+    "end": "可以燎原|终章"
+   }
+  ]
+ }
+}

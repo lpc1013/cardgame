@@ -46,15 +46,15 @@ export const xie: Scenario = {
     { id: "v1", name: "酒罐残液与干燥结块", kind: "true", desc: "烈酒浸透桌面，散落集中于死者座位——火势放大器。" },
     { id: "v2", name: "由外向内的灼烧痕迹", kind: "true", desc: "燃烧自表及里，非贴身火源——外部持续高温灼烧特征。" },
     { id: "v3", name: "窗边无遮挡的直射位", kind: "true", desc: "正午日光可垂直落于死者肩头——人为选址。" },
-    { id: "v4", name: "孩童上缴的凸面镜片", kind: "core", desc: "标准聚光镜片，可汇聚正午日光引燃布衣。（核心）" },
+    { id: "v4", name: "孩童上缴的凸面镜片", kind: "core", desc: "标准聚光之镜，可汇正午日光于一点。" },
     { id: "v5", name: "高墙外侧半枚小脚印", kind: "true", desc: "鞋纹细密、尺寸偏小，非劳作乡民——布局者登墙所留。" },
-    { id: "v6", name: "尸身无搏斗伤痕", kind: "false", desc: "看似佐证「天罚自殒」——实为事前昏厥的旁证，单独无用。" },
+    { id: "v6", name: "尸身无搏斗伤痕", kind: "false", desc: "尸身并无搏斗抵御之伤。" },
     { id: "v7", name: "袖口微量油脂", kind: "true", desc: "成分近似蜡烛蜡脂——白磷粉末残留的引子。" },
     { id: "v8", name: "墙头白衣丝缕与镜片附土", kind: "true", desc: "与死者衣料吻合、与墙面土质一致——三证互印，有人深夜登墙布镜。" },
-    { id: "v9", name: "后堂高度烈酒", kind: "false", desc: "看似寻常存酒——单拎出无涉案情，误导方向。" },
+    { id: "v9", name: "后堂高度烈酒", kind: "false", desc: "后堂存放高度烈酒一坛，日常所用。" },
     { id: "v10", name: "白磷粉末入库后凭空遗失", kind: "true", desc: "无出库记录而失踪——官吏受贿毁证。" },
     { id: "v11", name: "雷如账目异常暴富", kind: "true", desc: "库房都头莫名新增大额进项——灭口贿银。" },
-    { id: "v12", name: "织妇夜话：墙头素衣人影", kind: "core", desc: "目击者亲见有人于案发黎明登墙置物、跃下遁走。（核心·夜访解锁）" },
+    { id: "v12", name: "织妇夜话：墙头素衣人影", kind: "core", desc: "目击者亲见有人于案发黎明登墙置物、跃下遁走。" },
   ],
   verdict: {
     scene: "verdict",
@@ -67,6 +67,7 @@ export const xie: Scenario = {
   duels: [
     {
       id: "d_zhifu",
+      gambit: true,
       mode: "emotion",
       rules: "v2",
       title: "夜访 · 檐下织妇",
@@ -290,8 +291,8 @@ export const xie: Scenario = {
       choices: [
         {
           text: "【袖藏镜片 · 密奏直呈】以凸面镜片为证，附密奏直递御前——哪怕石沉大海，也要留下一笔。",
-          hint: "需要：凸面镜片 · 史笔如铁，圣眷难保",
-          cond: { card: "i_jing" },
+          hint: "需要：凸面镜片 · 民心≥55 · 史笔如铁，圣眷难保",
+          cond: { card: "i_jing", statAtLeast: { minxin: 55 } },
           effects: [{ setFlag: "truth_written" }, { stat: { shengyuan: -30, minxin: 20 } }],
           next: "end_historian",
         },

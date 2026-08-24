@@ -80,6 +80,7 @@ export interface ClueDef {
 /** 数值/条件/效果（通用） */
 export interface Cond {
   flag?: string;          // 需要该旗标
+  flag2?: string;         // 需要第二个旗标（与 flag 同时成立）
   notFlag?: string;       // 需要没有该旗标
   clue?: string;          // 需要已解锁该线索
   cluesAtLeast?: number;  // 需要已解锁线索总数 ≥ n
@@ -118,8 +119,15 @@ export interface DuelConfig {
   oppCards?: CardDef[];
   /** 对局规则：v2=手牌+行动力+道具+被动；缺省 classic（旧剧本兼容） */
   rules?: "classic" | "v2";
+  /** 博弈开关（第三批）：启用后解锁心理博弈动作——
+   *  情绪制：对手虚张（周期性亮假色）+ 玩家读牌（耗气拆穿）；
+   *  压制制：蓄势（蓄力层加成下张）+ 破招（宣言敌色，押中作废敌招）。
+   *  设计性死局（必败叙事）不得开启。 */
+  gambit?: boolean;
   winScene: string;
   loseScene: string;
+  /** 可选条件败线：满足 cond 时优先于 loseScene（同局多形态败局） */
+  loseScene2?: { cond: Cond; scene: string };
 }
 
 /** 三选一翻牌（剧情奖励点） */
@@ -190,6 +198,21 @@ export interface Choice {
   next: string;
 }
 
+/** 视角（多视角剧本体验通道）：开局选定主视角，其余视角折为插叙 */
+export interface Viewpoint {
+  id: string;
+  /** 视角人物名（如「于谦」） */
+  name: string;
+  /** 一句话视角简介（选视角界面展示） */
+  desc: string;
+  /** 该视角入口场景 */
+  startScene: string;
+  /** 专属起手卡（玩法差异；缺省用剧本全局默认） */
+  initialDeck?: string[];
+  /** 归属该视角的结局场景 id（结局图鉴按视角单列；缺省不归类） */
+  endings?: string[];
+}
+
 /** 剧本（一张总表 + 子表引用） */
 export interface Scenario {
   id: string;
@@ -220,4 +243,6 @@ export interface Scenario {
   duels: DuelConfig[];
   scenes: Scene[];
   startScene: string;
+  /** 多视角剧本：开局须先选定主视角才能进入 */
+  viewpoints?: Viewpoint[];
 }

@@ -266,7 +266,7 @@ md += `\n## 10. 引擎接入说明（提示词之外，需补的代码）\n\n`;
 md += `- \`src/engine/types.ts\` 的 \`CardDef\` 增加 \`image?: string\`（卡面图路径）与 \`theme?: string\`（门类，亦可运行时查 \`cardThemes\`）。\n`;
 md += `- \`App.tsx\` 卡牌渲染：\`.play-card\` 内 \`<img class="card-art">\` 占满卡面主体；叠加三层框：① \`.suit-seal\`（按三类色相 + 非字纹章 SVG，\**绝不显示策/器/势 汉字\**）；② \`.theme-tag\`（门类文字标签，来自 \`cardThemes[id]\`）；③ \`.rarity-border\` 极细边框。\n`;
 md += `- 立绘（A 古风厚涂）用于对局对手头像与图鉴；物品/场景（C 水墨融合）用于卡面与背景。\n`;
-md += `- 图片落位：\`src/assets/cards/<cardId>.png\`、\`src/assets/portraits/<id>.png\`、\`src/assets/scenes/<id>.png\`。\n`;
+md += `- 图片落位：\`src/assets/cards/<cardId>.jpg\`、\`src/assets/portraits/<id>.jpg\`、\`src/assets/scenes/<id>.jpg\`（jpg 优先，png 亦兼容）。\n`;
 md += `- 建议先用「孤品 + 良」共约 30 张跑通接入与视觉，再铺满 凡。\n`;
 
 import { writeFileSync } from "fs";

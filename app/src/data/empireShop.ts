@@ -14,7 +14,7 @@ export interface BoostDef {
 /** 开局加成（单局生效，用过即消耗） */
 export const SHOP_BOOSTS: BoostDef[] = [
   { id: "b_silver", name: "粮草丰足", desc: "本局初始银两 +10", price: 15 },
-  { id: "b_qi", name: "底气十足", desc: "本局全部对局气力上限 +2", price: 20 },
+  { id: "b_qi", name: "底气十足", desc: "本局压制制对局气力上限 +2", price: 20 },
   { id: "b_ap", name: "援军接济", desc: "本局压制制初始行动力 +1", price: 20 },
   { id: "b_draw", name: "精锐随行", desc: "本局 v2 对局起手多抽 1 张", price: 25 },
 ];

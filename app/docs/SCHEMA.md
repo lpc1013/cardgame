@@ -1,5 +1,12 @@
 # 剧本数据表格规范（SCHEMA）
 
+> ⚠️ **管线现状（2026-08-24 审计后标注）**：`scripts/content.mjs` 尚未实现下文全部 v2 列，
+> 按本文档制表的新剧本经 Excel→CSV→.ts 转换会被**静默降级**。目前仅直编 `src/data/*.ts` 可保真。
+> **尚未支持的列**：卡牌表 `layer / rarity / itemEffect / passive / resource / price / image / theme`（导入连 `cost` 也丢）；
+> 场景表 `cardPick / shop / minigame / next2`；选项条件 `card / notCard / resourceAtLeast`；
+> 效果 `removeCard / gainSilver / spendSilver`；对局表 `rules / oppCards`；总表 `cardSystem / deckLimit / initialDeck / initialSilver`。
+> 管线补齐前，请勿用表格产出含上述字段的内容。
+>
 > 目标：剧本内容全部由表格（Excel/CSV）维护，代码只负责解释执行。
 > 对应代码：`src/engine/types.ts`。转换流程：Excel 每个_sheet_ → CSV → 构建时转为 `src/data/*.ts`。
 
@@ -46,7 +53,7 @@
 | itemEffect | 物品卡道具效果：`破防/回气/强牌/共鸣/抽牌`（用后本局消耗） |
 | passive | 人物卡被动：`bonusSuit+bonusPower`（花色加点）/ `bonusQi`（气力上限）/ `extraDraw` |
 | resource | 资源卡面额（获得即入钱袋） |
-| price | 市集售价；非卖品不填 |
+| price | 市集售价；非卖品不填（引擎默认按 10 两结算）。**显式填 0 = 陈列非卖品**：买/卖均被拒（2026-08-24 审计后补语义） |
 
 **条件（Cond）新增**：`card=x`（背包有该卡——卡牌即钥匙）、`notCard=x`、`resourceAtLeast=n`。
 **效果（Effect）新增**：`unlockCard=x`（入背包，卡组未满自动上组）、`removeCard=x`（打出/送出/烧毁）、`gainSilver=n`、`spendSilver=n`。

@@ -50,6 +50,8 @@ export interface DuelState {
   hpMax: number;         // 我方气力上限（含加成）：回气钳制与气力条显示共用
   charge: number;        // 蓄势层（下张成术每层 +2，上限 2）
   foresuit: Suit | null; // 破招宣言（押中敌方本招花色则敌招作废）
+  /** 隐色陷阱（盖放区，限 1 张）：下一轮对手出牌时自动触发 */
+  trap: { cardId: string; name: string; effect: "反伤" | "抵消" | "蓄锋" } | null;
   lastPlay: { playerCard?: CardDef; oppCard?: CardDef; damage: number; to: "p" | "o" | "none"; stale?: boolean; edge?: number; broke?: boolean } | null;
   finished: "win" | "lose" | null;
   // ---- v2 ----
@@ -61,7 +63,16 @@ export interface DuelState {
   usedCards: string[];   // 本局已消耗（物品）
   buffPower: number;     // 「强牌」加成（下一张成术）
   lastCardId?: string;   // 招式用老判定
-  passives: { suit?: Suit; power: number; qi: number; draw: number }[]; // 解析后的人物被动
+  /** 洞察·看破粒度：当前已知的对手下一手（压制制；"none"=无知） */
+  seeNext: "none" | "suit" | "card" | "power";
+  passives: { suit?: Suit; power: number; qi: number; draw: number; peek?: number; scan?: boolean }[]; // 解析后的人物被动
+  // ---- 随从（斥候/内应）----
+  scoutLeft: number;     // 刺探剩余次数
+  insiderLeft: number;   // 收买剩余次数
+  sharedUsed: number;    // 共用次数已用（精/传级随从）
+  sharedTotal: number;   // 共用次数上限（0=斥候/内应各自独立）
+  insiderActive: boolean;// 收买已发动：对手下一招作废
+  retinueNames: string[];// 随从名（UI 展示）
 }
 
 /** 帝国开局加成（由 App 从 RunState.boosts 解析后传入，均可缺省） */
@@ -72,22 +83,43 @@ export interface DuelBoosts {
 }
 
 export function initDuel(cfg: DuelConfig, deck: string[], allCards: CardDef[], boosts?: DuelBoosts): DuelState {
+  // script 常驻扰动：有变体池时开局随机选一个作为本局 script（副本写回，UI/引擎读同一来源）
+  if (cfg.scriptVariants?.length) {
+    cfg = { ...cfg, script: cfg.scriptVariants[Math.floor(Math.random() * cfg.scriptVariants.length)]! };
+  }
   if (!cfg.script?.length) throw new Error(`对局配置错误「${cfg.id}」: script 为空`);
   const rules = cfg.rules ?? "classic";
-  const passives = rules === "v2"
-    ? deck
-        .map((id) => allCards.find((c) => c.id === id))
-        .filter((c): c is CardDef => !!c?.passive)
-        .map((c) => ({
-          suit: c.passive!.bonusSuit,
-          power: c.passive!.bonusPower ?? 1,
-          qi: c.passive!.bonusQi ?? 0,
-          draw: c.passive!.extraDraw ?? 0,
-        }))
-    : [];
+  // 人物被动：classic 与 v2 统一解析（叙事剧本 deck 中若有随从同样生效）
+  const passives = deck
+    .map((id) => allCards.find((c) => c.id === id))
+    .filter((c): c is CardDef => !!c?.passive)
+    .map((c) => ({
+      suit: c.passive!.bonusSuit,
+      power: c.passive!.bonusPower ?? 1,
+      qi: c.passive!.bonusQi ?? 0,
+      draw: c.passive!.extraDraw ?? 0,
+      peek: c.passive!.peekEvery ?? 0,
+      scan: !!c.passive!.readScript,
+    }));
+  // 随从（斥候/内应）聚合：凡=斥候1 · 良=内应1 · 精=双能共1 · 传=双能共2
+  const retinueCards = deck
+    .map((id) => allCards.find((c) => c.id === id))
+    .filter((c): c is CardDef => !!c?.passive && ((c.passive!.scout ?? 0) > 0 || (c.passive!.insider ?? 0) > 0));
+  const scoutTotal = retinueCards.reduce((s, c) => s + (c.passive!.scout ?? 0), 0);
+  const insiderTotal = retinueCards.reduce((s, c) => s + (c.passive!.insider ?? 0), 0);
+  // 共用次数：多张共用随从取各张 sharedTotal 之和
+  const sharedTotal = retinueCards.reduce((s, c) => s + (c.passive!.sharedTotal ?? 0), 0);
+
   const bonusQi = passives.reduce((s, p) => s + p.qi, 0);
   // 人物卡不进牌库：开局即场外生效（被动已在上方解析）
-  const library = rules === "v2" ? shuffleFn(deck.filter((id) => (allCards.find((c) => c.id === id)?.layer ?? "成术") !== "人物")) : [];
+  // 局外被动物品（clueReveal / shopPeek 等无 itemEffect）也不进牌库：对局内不可用，抽到即死牌
+  const library = rules === "v2" ? shuffleFn(deck.filter((id) => {
+    const c = allCards.find((x) => x.id === id);
+    const layer = c?.layer ?? "成术";
+    if (layer === "人物") return false;
+    if (layer === "物品" && !c?.itemEffect) return false;
+    return true;
+  })) : [];
   const hpBase = (cfg.hp?.player ?? 10) + bonusQi + (boosts?.qi ?? 0);
   const st: DuelState = {
     cfg,
@@ -106,6 +138,7 @@ export function initDuel(cfg: DuelConfig, deck: string[], allCards: CardDef[], b
     hpMax: hpBase,
     charge: 0,
     foresuit: null,
+    trap: null,
     lastPlay: null,
     finished: null,
     library,
@@ -115,7 +148,14 @@ export function initDuel(cfg: DuelConfig, deck: string[], allCards: CardDef[], b
     baseAp: DEFAULT_AP + (boosts?.ap ?? 0),
     usedCards: [],
     buffPower: 0,
+    seeNext: "none",
     passives,
+    scoutLeft: scoutTotal,
+    insiderLeft: insiderTotal,
+    sharedUsed: 0,
+    sharedTotal,
+    insiderActive: false,
+    retinueNames: retinueCards.map((c) => c.name),
   };
   if (rules === "v2") drawUp(st, 4 + (boosts?.draw ?? 0) + passives.reduce((s, p) => s + p.draw, 0));
   return st;
@@ -173,7 +213,6 @@ export function revealEmotion(st: DuelState): void {
   st.opponentTrue = truth;
   st.bluffed = bluff;
   st.opponentShown = bluff ? RESTRAIN[truth] : truth;
-  st.lastResult = null;
 }
 
 /** 博弈·读牌（情绪制）：耗 1 气力验色——是虚张则拆穿亮真色，无虚张则确认无误；不推进回合。气尽则败。 */
@@ -232,6 +271,13 @@ export function playEmotion(st: DuelState, card: CardDef): boolean {
     st.qi -= 1;
     st.lastResult = { text: `话说岔了。他的眼神冷了下来，你心里一紧。`, kind: "miss" };
   }
+  // 强牌（物品「强牌」）：下一言掷地有声——接住/破防的下一手额外共鸣+1
+  // 情绪制无点数，故以「额外共鸣」等价兑现；一次性消费后清零。
+  if (st.buffPower > 0 && (card.suit === shown || (card.suit && RESTRAIN[card.suit] === shown))) {
+    st.rapport += 1;
+    if (st.lastResult) st.lastResult.text += "（强牌·掷地有声，共鸣+1）";
+  }
+  st.buffPower = 0;
   st.round += 1;
   st.opponentShown = null;
   finishCheck(st, goal);
@@ -355,18 +401,53 @@ function applyItemEffect(st: DuelState, eff: ItemEffect, name: string): void {
       break;
     case "抽牌":
     {
+      // 牌库抽空时洗回弃牌堆（与 drawUp 一致），避免空库抽到 0 张变成死卡
+      if (st.library.length === 0 && st.discard.length > 0) {
+        st.library = shuffleFn([...st.discard]);
+        st.discard = [];
+      }
       const got: string[] = [];
       for (let i = 0; i < 2 && st.library.length > 0; i++) got.push(st.library.shift()!);
       st.hand.push(...got);
-      st.lastResult = { text: `你翻检「${name}」，又摸出两张可用的牌。`, kind: "item" };
+      st.lastResult = { text: `你翻检「${name}」，又摸出 ${got.length} 张可用的牌。`, kind: "item" };
       break;
     }
+    case "观牌":
+      st.seeNext = "card";
+      st.lastResult = { text: `你借「${name}」的镜光一照——他下一手落进了你眼里。`, kind: "item" };
+      break;
+    case "观色":
+      st.seeNext = "suit";
+      st.lastResult = { text: `你凝神听风辨位——他下一手的路数，你心里有数了。`, kind: "item" };
+      break;
+    case "观点":
+      st.seeNext = "power";
+      st.lastResult = { text: `你掂了掂他腕上的劲道——他下一手的深浅，你估出了大概。`, kind: "item" };
+      break;
   }
 }
 
 /** 气力压制制：双方同时出牌结算（四色克制：克敌+1 / 被克-1） */
 export function playPressure(st: DuelState, playerCard: CardDef, oppCardId: string, cardOf: (id: string) => CardDef): boolean {
   if (st.mode !== "pressure" || st.finished) return false;
+  // 隐色陷阱：打出即盖放（本轮不结算，对手本轮也不出手——布局回合），下一轮自动触发
+  if (playerCard.trap && playerCard.suit === "隐") {
+    if (st.trap) { st.lastResult = { text: "案上已经扣着一张牌了——只能盖一张。", kind: "miss" }; return false; }
+    if (st.rules === "v2") {
+      if (st.ap < cardCost(playerCard)) return false;
+      st.ap -= cardCost(playerCard);
+      st.hand = st.hand.filter((c) => c !== playerCard.id);
+      st.discard.push(playerCard.id);
+    }
+    st.trap = { cardId: playerCard.id, name: playerCard.name, effect: playerCard.trap };
+    st.lastPlay = null;
+    st.lastCardId = playerCard.id; // 招式用老只盯成术，陷阱不计入
+    st.lastResult = { text: `你把「${playerCard.name}」反扣在案上——不急着亮。`, kind: "gambit" };
+    st.round += 1;
+    if (st.seeNext !== "none") st.seeNext = "none";
+    afterTurn(st);
+    return true;
+  }
   if (st.rules === "v2") {
     if (cardLayerIs(playerCard, "物品")) return playItem(st, playerCard);
     if (cardLayerIs(playerCard, "人物")) return false;
@@ -376,15 +457,22 @@ export function playPressure(st: DuelState, playerCard: CardDef, oppCardId: stri
     st.discard.push(playerCard.id);
   }
   const opp = cardOf(oppCardId);
+  // 触发已盖陷阱（本轮对手出牌时）
+  const trap = st.trap;
+  st.trap = null;
+  if (trap?.effect === "蓄锋") st.buffPower += 2;
   let p = (playerCard.power ?? 1) + suitBonus(st, playerCard) + st.buffPower + st.charge * 2;
   st.buffPower = 0;
   st.charge = 0;
   let o = opp.power ?? 1;
   let broke = false;
+  // 收买·内应：对手本招作废（先于破招判定）
+  if (st.insiderActive) { o = 0; broke = true; st.insiderActive = false; }
   if (st.foresuit) {
     if (opp.suit === st.foresuit) { o = 0; broke = true; }
     st.foresuit = null;
   }
+  if (trap?.effect === "抵消") { o = 0; broke = true; }
   let selfHarm = 0;
   const stale = st.lastCardId === playerCard.id;
   if (stale) p -= 2;
@@ -394,9 +482,20 @@ export function playPressure(st: DuelState, playerCard: CardDef, oppCardId: stri
     else if (RESTRAIN[opp.suit] === playerCard.suit) edge = -1;
   }
   p += edge;
+  // 情境位：对手为该花色时 +bonus（普通卡功能位，叠加在克制之外）
+  if (playerCard.situational && opp.suit === playerCard.situational.suit) p += playerCard.situational.bonus;
+  // 机制位·牺牲：自伤 N 点换 +2N（零交互）
+  if (playerCard.sacrifice && playerCard.sacrifice > 0) {
+    p += playerCard.sacrifice * 2;
+    selfHarm += playerCard.sacrifice;
+  }
   if (playerCard.suit === "势") {
     p *= 2;
     selfHarm = 1;
+  }
+  // 机制位·抽牌：打出时抽 N 张（v2；每张抽牌卡各自触发一次）
+  if (playerCard.drawOnPlay && st.rules === "v2" && playerCard.drawOnPlay > 0) {
+    drawUp(st, playerCard.drawOnPlay);
   }
   st.lastPlay = { playerCard, oppCard: opp, damage: 0, to: "none", stale, edge, broke };
   st.lastCardId = playerCard.id;
@@ -406,8 +505,14 @@ export function playPressure(st: DuelState, playerCard: CardDef, oppCardId: stri
     st.lastPlay = { ...st.lastPlay, damage: d, to: "o" };
   } else if (o > p) {
     const d = o - p;
-    st.hpPlayer -= d;
-    st.lastPlay = { ...st.lastPlay, damage: d, to: "p" };
+    // 反伤陷阱：本轮受的伤害原样弹回对手
+    if (trap?.effect === "反伤") {
+      st.hpOpponent -= d;
+      st.lastPlay = { ...st.lastPlay, damage: d, to: "o", broke: true };
+    } else {
+      st.hpPlayer -= d;
+      st.lastPlay = { ...st.lastPlay, damage: d, to: "p" };
+    }
   } else {
     st.hpPlayer -= 1;
     st.hpOpponent -= 1;
@@ -415,8 +520,51 @@ export function playPressure(st: DuelState, playerCard: CardDef, oppCardId: stri
   }
   st.hpPlayer -= selfHarm;
   st.round += 1;
+  // 洞察·揭示（成术「诈问」）：结算后揭示下一手花色/全牌（先于胜负判定，仅信息型不参与判定）
+  if (playerCard.reveal) st.seeNext = playerCard.reveal === "card" ? "card" : "suit";
+  // 洞察情报在结算后过期（观牌揭示的正是本轮刚结算的那手）
+  else if (st.seeNext !== "none") st.seeNext = "none";
   if (st.hpOpponent <= 0 && st.hpPlayer > 0) st.finished = "win";
   else if (st.hpPlayer <= 0) st.finished = "lose";
   afterTurn(st);
   return true;
+}
+
+// ============================================================
+// 随从·刺探/收买（压制制对局内动作——须携带斥候/内应随从）
+//   刺探：看破对手下一手全牌（seeNext="card"）
+//   收买：对手下一招作废（insiderActive）
+//   银两只用于「雇随从」（黑市/剧情），对局内动作只消耗随从次数、不耗银两
+//   次数：凡=斥候1 · 良=内应1 · 精=双能共1(sharedTotal=1) · 传=双能共2(sharedTotal=2)
+// ============================================================
+export const SCOUT_COST = 10;
+export const INSIDER_COST = 20;
+
+export function duelSpend(
+  st: DuelState,
+  kind: "scout" | "insider",
+): { ok: boolean; log?: string } {
+  if (st.mode !== "pressure" || st.finished) return { ok: false, log: "对局已结束。" };
+  // 刺探/收买必须由随从执行：无随从不可用
+  if (st.retinueNames.length === 0) {
+    return { ok: false, log: "无随从随行——需先雇斥候/内应。" };
+  }
+  if (st.sharedTotal > 0 && st.sharedUsed >= st.sharedTotal) {
+    return { ok: false, log: "随从已用尽了力气。" };
+  }
+  if (kind === "scout" && st.scoutLeft <= 0) {
+    return { ok: false, log: "斥候已无余力再探。" };
+  }
+  if (kind === "insider" && st.insiderLeft <= 0) {
+    return { ok: false, log: "内应已无余力再动。" };
+  }
+  if (kind === "scout") {
+    st.seeNext = "card";
+    st.scoutLeft -= 1;
+  } else {
+    st.insiderActive = true;
+    st.insiderLeft -= 1;
+  }
+  st.sharedUsed += 1;
+  return { ok: true, log: kind === "scout" ? "斥候探得军情——看清对手下一手。" : "内应已买通——对手下一招将成空。" };
 }

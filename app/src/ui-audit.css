@@ -1,0 +1,155 @@
+/* ============================================================
+   2026-08-27 审计落地（卡牌篇 C-2/C-3/C-5 · 排版按钮篇 L-1/L-2/L-4/L-5）
+   本表在 app.css 之后加载；同名选择器覆盖旧值，旧规则保持原位不动。
+   ============================================================ */
+
+/* ---------------- L-2 · 全局焦点可见 & 按下反馈 ---------------- */
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.choice:active,
+.btn-main:active,
+.btn-cta:active,
+.gambit-btn:active,
+.emporia-buy:active,
+.shop-tab:active,
+.nav-btns button:active {
+  transform: translateY(1px);
+}
+
+/* ---------------- C-2 · 文字区双向治理 ---------------- */
+/* 图鉴大卡：说明区自适应高度——不再预留 80px 死区；短文本收窄为两行余量 */
+.tcard-bottom {
+  min-height: 38px;
+  max-height: none;
+}
+/* 对局手牌：长文本最多三行省略，防止把 283px 卡图顶破 */
+.pc-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-height: 62px;
+}
+.cost-tag { font-size: 12px; } /* 10px → 12px（排版篇与 U-2 同源整改） */
+
+/* ---------------- C-3/C-5 · 卡面右上「层语言」角标位 ---------------- */
+/* 成术 = 金色点数角标；物品/人物/资源 = 层徽（方孔钱/人形剪影/银锭+面额）。
+   与左上花色楷体圆章对角呼应，图鉴缩略态即可分辨四层。 */
+.tcard-power {
+  position: absolute; top: 8px; right: 8px; z-index: 2;
+  min-width: 24px; text-align: center; padding: 1px 6px;
+  font-size: 12px; font-weight: 700; line-height: 1.5; color: #17130c;
+  background: linear-gradient(160deg, #ecd08a, #b3853a);
+  border-radius: 7px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+  pointer-events: auto; cursor: help;
+}
+.pc-power-badge {
+  position: absolute; top: -9px; right: 8px; z-index: 1;
+  min-width: 22px; text-align: center; padding: 1px 6px;
+  font-size: 12px; font-weight: 700; color: #17130c;
+  background: linear-gradient(160deg, #ecd08a, #b3853a);
+  border-radius: 7px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+.layer-mark {
+  position: absolute; top: 8px; right: 8px; z-index: 2;
+  display: inline-flex; align-items: center; justify-content: center; gap: 3px;
+  width: 26px; height: 26px; padding: 0 3px;
+  border-radius: 13px;
+  background: radial-gradient(circle at 50% 40%, rgba(22, 19, 14, 0.78), rgba(10, 8, 6, 0.92));
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(214, 204, 182, 0.28);
+  pointer-events: auto; cursor: help;
+}
+.layer-mark svg { width: 14px; height: 14px; flex: none; }
+.l-物品 { color: #cfc6b2; }
+.l-人物 { color: #d9a066; }
+/* 资源=银锭徽 + 面额数字（面额即角标，C-3 资源项） */
+.l-资源 {
+  width: auto; min-width: 34px; height: 22px;
+  padding: 0 7px 0 5px;
+}
+.l-资源 b { font-size: 11px; font-weight: 700; color: var(--gold); letter-spacing: 0; }
+/* 放大镜态同步放大一档 */
+.codex-zoom-overlay .tcard-power, .codex-zoom-overlay .layer-mark,
+.card-zoom-body .tcard-power, .card-zoom-body .layer-mark { transform: scale(1.18); }
+
+/* ---------------- L-1 · 高频小目标治理 ---------------- */
+.emporia-buy { min-height: 32px; }
+.end-progress-mile::after {
+  /* 视觉仍是原尺寸圆点，点击热区外扩至 ~36px */
+  content: "";
+  position: absolute; inset: -7px; border-radius: 50%;
+}
+@media (max-width: 720px) {
+  .gambit-bar { gap: 14px; }
+  .gambit-btn { min-height: 36px; padding: 9px 16px; font-size: 13px; }
+}
+
+/* ---------------- L-4 · 顶栏分组分隔线 + 移动端书斋 ---------------- */
+.nav-sep {
+  width: 1px; align-self: stretch; margin: 5px 2px;
+  background: linear-gradient(180deg, transparent, rgba(214, 204, 182, 0.35), transparent);
+}
+.nav-book { display: none; }
+@media (max-width: 640px) {
+  .nav-assets { display: none; }   /* 行囊/图鉴/卡册/成就 折入书斋 */
+  .nav-book { display: inline-block; }
+}
+.study-overlay {
+  position: fixed; inset: 0; z-index: 90;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(8, 6, 4, 0.68);
+  backdrop-filter: blur(2px);
+}
+.study-sheet {
+  display: flex; flex-direction: column; gap: 12px;
+  width: min(320px, 86vw);
+  padding: 20px 22px 18px;
+  background: linear-gradient(170deg, #221e18, #191512);
+  border: 1px solid #3a342c; border-radius: 14px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
+}
+.study-sheet h3 {
+  margin: 0 0 4px; text-align: center;
+  font-size: 17px; letter-spacing: 7px; text-indent: 7px;
+  color: #c9a86a;
+}
+.study-item {
+  min-height: 46px;
+  font-size: 15px; letter-spacing: 5px; text-indent: 5px;
+  color: #e8e2d5;
+  background: linear-gradient(160deg, rgba(201, 168, 106, 0.07), rgba(201, 168, 106, 0.02));
+  border: 1px solid #3a342c; border-radius: 10px; cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.study-item:hover { border-color: #c9a86a; color: #c9a86a; }
+
+/* ---------------- L-5 · 危险操作防御升级 ---------------- */
+.danger-ghost {
+  padding: 7px 16px; min-height: 32px;
+  font-size: 12px; letter-spacing: 1px;
+  color: #d96b5b; background: none;
+  border: 1px solid #8a463a; border-radius: 10px; cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.danger-ghost:hover { border-color: #d96b5b; background: rgba(217, 107, 91, 0.08); }
+.danger-final {
+  padding: 6px 12px; min-height: 32px;
+  font-size: 12px; color: #f4ebd8; letter-spacing: 1px;
+  background: linear-gradient(160deg, #7a3328, #57241c);
+  border: 1px solid #c65b49; border-radius: 10px; cursor: pointer;
+}
+.danger-final:disabled { opacity: 0.45; cursor: not-allowed; }
+.settings-confirm { flex-wrap: wrap; row-gap: 8px; max-width: 100%; }
+
+/* 文字链升级触控变体（PrepModal「再想想」等） */
+.link-btn.touch {
+  padding: 8px 16px; min-height: 36px;
+  font-size: 13px;
+  border: 1px dashed #3a342c; border-radius: 10px;
+}
+.link-btn.touch:hover { border-color: #c9a86a; color: #c9a86a; }

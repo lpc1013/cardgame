@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --bg: #171512;
   --panel: #211e1a;
   --panel-top: #242019;   /* 面板渐变亮端 */
@@ -91,20 +91,21 @@ button { font-family: inherit; }
   width: 100%; max-width: 1200px; display: flex; align-items: center; gap: 14px;
   padding: 8px 4px; border-bottom: 1px solid var(--line);
 }
-.nav-logo { color: var(--gold); font-size: 20px; letter-spacing: 8px; font-weight: 600; }
+.nav-logo { color: var(--gold); font-size: 28px; letter-spacing: 10px; font-weight: 600; }
 .ink-chip {
-  font-size: 12px; color: var(--gold); border: 1px solid var(--accent-soft);
-  padding: 3px 12px; border-radius: 10px; background: rgba(201,168,106,.06);
-  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 16px; color: var(--gold); border: 1px solid var(--accent-soft);
+  padding: 5px 16px; border-radius: 12px; background: rgba(201,168,106,.06);
+  display: inline-flex; align-items: center; gap: 8px;
 }
 .ingot-icon { flex-shrink: 0; }
-.nav-btns { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+.nav-btns { margin-left: auto; display: flex; gap: 10px; flex-wrap: wrap; }
 .nav-btns button {
   background: none; border: 1px solid var(--line); color: var(--ink);
-  font-size: 13px; padding: 6px 16px; cursor: pointer; letter-spacing: 2px;
-  transition: color .2s, border-color .2s;
+  font-size: 16px; padding: 12px 26px; cursor: pointer; letter-spacing: 3px;
+  line-height: 1.4; border-radius: 6px;
+  transition: color .2s, border-color .2s, background .2s;
 }
-.nav-btns button:hover { color: var(--gold); border-color: var(--gold); }
+.nav-btns button:hover { color: var(--gold); border-color: var(--gold); background: rgba(210,164,79,.06); }
 .resume-inline { flex-direction: row; gap: 16px; margin-top: 0; }
 
 .cover-stage {
@@ -261,7 +262,7 @@ button { font-family: inherit; }
 .emporia-buy:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); background: rgba(201,168,106,.08); }
 .emporia-buy:disabled { opacity: .4; cursor: not-allowed; }
 .emporia-buy.danger { border-color: var(--accent); color: var(--accent); background: none; }
-.settings-panel { max-width: 480px; }
+.settings-panel { max-width: 720px; }
 .settings-row {
   display: flex; align-items: center; gap: 14px; padding: 10px 0;
   border-bottom: 1px dashed var(--line);
@@ -319,7 +320,38 @@ button { font-family: inherit; }
   border: 1px solid var(--line); overflow: hidden;
 }
 .gsc-progress i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent-soft), var(--gold)); }
-.prep-panel { max-width: 560px; }
+.prep-panel { max-width: 840px; }
+/* 出征：左池右槽 */
+.prep-split { display: flex; gap: 18px; align-items: flex-start; }
+.prep-pool { flex: 1; min-width: 0; }
+.prep-slots { width: 300px; flex: 0 0 auto; }
+.prep-slots-title { color: var(--gold); font-size: 14px; letter-spacing: 2px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px dashed var(--line); }
+.prep-slot-grid { display: flex; flex-direction: column; gap: 10px; }
+.prep-slot {
+  width: 100%; aspect-ratio: 16 / 10; border-radius: 8px; position: relative; overflow: hidden;
+  background: rgba(0,0,0,.15); border: 1px dashed var(--line); padding: 0; cursor: pointer;
+}
+.prep-slot.empty { display: flex; align-items: center; justify-content: center; color: var(--ink-dim); font-size: 12px; letter-spacing: 5px; cursor: default; }
+.prep-slot.filled { border-style: solid; border-width: 2px; }
+.prep-slot.filled img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.prep-slot-tag { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.66); color: #e8d9b0; font-size: 11px; padding: 3px 0; text-align: center; letter-spacing: 1px; }
+.prep-card {
+  width: 100%; border: 2px solid; border-radius: 8px; background: #1c1915; overflow: hidden;
+  cursor: pointer; padding: 0; text-align: left; transition: transform .15s, box-shadow .15s; position: relative;
+}
+.prep-card:hover { transform: translateY(-3px); box-shadow: 0 8px 18px rgba(0,0,0,.45); }
+.prep-card.on { box-shadow: 0 0 0 2px rgba(201,168,106,.5), 0 8px 18px rgba(0,0,0,.5); }
+.prep-card-art { position: relative; display: block; width: 100%; aspect-ratio: 16 / 10; }
+.prep-card-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.prep-card-fallback { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #14110e; color: var(--gold); font-size: 38px; }
+.prep-card-check { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 50%; background: var(--gold); color: #14110e; font-size: 14px; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+.prep-card-badge { position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,.72); color: #e8d9b0; font-size: 10px; padding: 2px 6px; border-radius: 3px; }
+.prep-card-name { display: block; padding: 6px 8px; font-size: 12px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prep-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+@media (max-width: 900px) {
+  .prep-split { flex-direction: column; }
+  .prep-slots { width: 100%; }
+}
 .prep-list { display: flex; flex-direction: column; gap: 8px; }
 .prep-item {
   display: flex; align-items: flex-start; gap: 10px; font-size: 14px;
@@ -377,10 +409,14 @@ button { font-family: inherit; }
   width: 94%; max-width: 1000px; max-height: 90vh;
   display: flex; flex-direction: column; padding: 18px;
 }
-.tree-header { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
+.tree-header { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
 .tree-header h3 { margin: 0; color: var(--gold); letter-spacing: 2px; flex: 1; }
-.tree-scroll { overflow: auto; border: 1px dashed var(--line); padding: 8px; }
+.tree-pan-hint { font-size: 11px; margin: 2px 0 6px; opacity: .65; }
+.tree-scroll { overflow: hidden; border: 1px dashed var(--line); padding: 8px; height: 80vh; max-height: 1500px; touch-action: none; cursor: grab; }
+.tree-scroll:active { cursor: grabbing; }
+.tree-scroll svg { display: block; user-select: none; }
 .tree-legend { margin: 10px 0 0; text-align: center; font-size: 12px; }
+.tree-reset { padding: 4px 12px; font-size: 12px; }
 
 /* ---------- 阅读页 ---------- */
 .story-root { height: 100%; display: flex; flex-direction: column; position: relative; }
@@ -709,7 +745,7 @@ button { font-family: inherit; }
 /* ---------- 背包 ---------- */
 .bag-panel {
   /* 背景/描边/阴影见「帝国面板」段；此处只管布局 */
-  max-width: 900px; width: 94%; max-height: 85vh; overflow-y: auto; padding: 24px;
+  max-width: 1350px; width: 94%; max-height: 85vh; overflow-y: auto; padding: 24px;
 }
 .bag-group { margin: 14px 0; }
 .bag-group-title { color: var(--gold); font-size: 13px; letter-spacing: 2px; margin-bottom: 8px; }
@@ -722,9 +758,9 @@ button { font-family: inherit; }
   transition: transform .15s, box-shadow .15s, border-color .15s;
 }
 .bag-card:hover { transform: translateY(-3px); border-color: #d2a44f; box-shadow: 0 8px 18px rgba(0,0,0,.45); }
-/* 行囊列表卡：更大更高，卡图改竖版近 3:4，尽量完整展示画幅 */
-.bag-item { width: 236px; padding: 12px; }
-.bag-item .card-art-compact { height: 283px; margin-bottom: 10px; }
+/* 行囊列表卡：与图鉴卡一致尺寸（200px），文字精简——详情点卡弹层看 */
+.bag-item { width: 200px; padding: 10px; }
+.bag-item .card-art-compact { height: 240px; margin-bottom: 10px; }
 .bag-item .bag-card-name { font-size: 15px; }
 /* 行囊展阅：放大的单卡浮层 */
 .luggage-zoom-overlay { z-index: 56; background: rgba(0,0,0,.78); }
@@ -743,6 +779,86 @@ button { font-family: inherit; }
 .codex-zoom-overlay .suit-glyph { width: 40px; height: 40px; font-size: 25px; }
 .codex-zoom-overlay .tcard .tcard-top { padding: 7px 5px 7px 48px; }
 .codex-zoom-overlay .tcard-name { font-size: 19px; }
+
+/* ===== 卡牌详情弹层（图鉴/行囊共用）：左侧大卡 + 右侧详情框 ===== */
+.card-zoom-overlay { z-index: 56; background: rgba(0,0,0,.78); display: flex; align-items: center; justify-content: center; }
+.card-zoom-body {
+  display: flex; flex-direction: row; gap: 22px; align-items: stretch; justify-content: center;
+  max-width: min(96vw, 1000px); max-height: 92vh; padding: 18px;
+  background: linear-gradient(170deg, var(--panel-top) 0%, var(--panel) 100%);
+  border: 1px solid var(--line); border-top: 2px solid var(--accent-soft);
+  border-radius: 8px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.65), inset 0 1px 0 rgba(201,168,106,.08); overflow: auto;
+}
+.card-zoom-body .tcard { width: 320px; max-width: 46vw; flex-shrink: 0; align-self: flex-start; }
+.card-zoom-body .tcard .card-art { height: 380px; }
+.card-zoom-body .tcard .suit-glyph { width: 40px; height: 40px; font-size: 25px; }
+.card-zoom-body .tcard .tcard-top { padding: 7px 5px 7px 48px; }
+.card-zoom-body .tcard-name { font-size: 19px; }
+.card-detail {
+  flex: 1; min-width: 300px; max-width: 580px; display: flex; flex-direction: column; gap: 12px;
+  align-self: flex-start; padding: 4px 4px 4px 0;
+}
+.card-detail-name {
+  margin: 0; padding-bottom: 10px;
+  color: var(--gold); letter-spacing: 3px; font-size: 22px; font-weight: 600;
+  border-bottom: 1px solid var(--line);
+  text-shadow: 0 1px 2px rgba(0,0,0,.6);
+}
+.card-detail-tags { display: flex; gap: 7px; flex-wrap: wrap; }
+/* tags chip：精致胶囊 + 微妙内辉光，跟随品级/花色同色 */
+.detail-tag {
+  font-size: 11px; padding: 3px 11px; border: 1px solid var(--line);
+  border-radius: 999px; opacity: .95; letter-spacing: 1px;
+  background: rgba(255,255,255,.025);
+}
+.detail-tag.s-策 { color: var(--suit-ce); border-color: var(--suit-ce); background: color-mix(in srgb, var(--suit-ce) 8%, transparent); }
+.detail-tag.s-器 { color: var(--suit-qi); border-color: var(--suit-qi); background: color-mix(in srgb, var(--suit-qi) 8%, transparent); }
+.detail-tag.s-势 { color: var(--suit-shi); border-color: var(--suit-shi); background: color-mix(in srgb, var(--suit-shi) 8%, transparent); }
+.detail-tag.s-隐 { color: var(--suit-yin); border-color: var(--suit-yin); background: color-mix(in srgb, var(--suit-yin) 8%, transparent); }
+/* 品级色严格等于卡框色（与 .rarity-* 边框同色板），不引主题变量 */
+.detail-tag.rarity-凡 { color: #6b6558; border-color: #565040; background: rgba(86,80,64,.10); }
+.detail-tag.rarity-良 { color: #5b8fb8; border-color: #5b8fb8; background: color-mix(in srgb, #5b8fb8 12%, transparent); }
+.detail-tag.rarity-精 { color: #8b7ab8; border-color: #8b7ab8; background: color-mix(in srgb, #8b7ab8 12%, transparent); }
+.detail-tag.rarity-传 { color: #d2a44f; border-color: #d2a44f; background: color-mix(in srgb, #d2a44f 14%, transparent); }
+.detail-tag.rarity-孤品 { color: #e0745a; border-color: #e0745a; background: color-mix(in srgb, #e0745a 14%, transparent); }
+/* 段头：去掉 ▸ 三角与 dashed border-top，改中式小标题 + 暗面板 */
+.card-detail-sec {
+  padding: 10px 12px;
+  background: rgba(0,0,0,.18);
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 4px;
+}
+.card-detail-sec + .card-detail-sec { margin-top: 2px; }
+.card-detail-sec-title {
+  font-size: 11px; letter-spacing: 4px; color: var(--accent);
+  margin-bottom: 6px; font-weight: 600;
+  text-transform: none;
+}
+.detail-line { margin: 2px 0; font-size: 13px; line-height: 1.7; color: var(--ink-dim); }
+.detail-lore { color: var(--ink); font-style: italic; }
+/* 番外阅读弹层 */
+.bonus-read-panel { max-width: 560px; }
+.bonus-lines { display: flex; flex-direction: column; gap: 8px; margin: 12px 0 16px; }
+.bonus-lines .detail-line { font-size: 15px; line-height: 2; color: var(--ink); }
+.card-detail .link-btn { align-self: flex-start; margin-top: 4px; }
+/* 收回按钮：金色描边 + 深底，与主行动按钮协调 */
+.card-detail .btn-main {
+  margin-top: 4px; align-self: stretch;
+  background: linear-gradient(180deg, rgba(201,168,106,.12) 0%, rgba(201,168,106,.04) 100%);
+  border: 1px solid var(--gold); color: var(--gold);
+  letter-spacing: 4px;
+}
+.card-detail .btn-main:hover {
+  background: linear-gradient(180deg, rgba(201,168,106,.22) 0%, rgba(201,168,106,.08) 100%);
+  box-shadow: 0 0 12px rgba(201,168,106,.25);
+}
+@media (max-width: 720px) {
+  .card-zoom-body { flex-direction: column; align-items: center; }
+  .card-zoom-body .tcard { max-width: 82vw; }
+  .card-detail { min-width: 0; width: 100%; max-width: 82vw; }
+}
 .codex-zoom-overlay .tcard-corner { top: 46px; }
 .codex-zoom-overlay .tcard-bottom { font-size: 14px; max-height: none; }
 .codex-zoom-overlay .tcard-footer { font-size: 13px; }
@@ -825,6 +941,9 @@ button { font-family: inherit; }
 /* 对局手牌的花色标识已由左上圆形徽章承担，旧细花色环移除（曾与品级箔光 ::after 冲突） */
 .tcard-art { position: absolute; inset: 9px; border-radius: 7px; overflow: hidden; border: 1px solid rgba(0,0,0,.4); background: #171512; z-index: 0; }
 .tcard-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* 美术缺失时的占位（行囊/图鉴大量出现，避免黑底） */
+.card-art-placeholder { position: relative; display: flex; align-items: center; justify-content: center; color: var(--ink-dim); background: linear-gradient(135deg, rgba(255,255,255,.03), rgba(0,0,0,.18)); }
+.card-art-placeholder svg { width: 70%; height: auto; display: block; }
 .tcard-top {
   position: relative; z-index: 1;
   display: flex; align-items: center; justify-content: flex-start; gap: 5px;
@@ -909,16 +1028,16 @@ button { font-family: inherit; }
 .wine-chip.suit-隐 { background: linear-gradient(170deg, #5c5478, #3a3550); }
 
 /* ---------- 移动端适配 ---------- */
-@media (max-width: 640px), (pointer: coarse) {
+@media (max-width: 640px) and (orientation: portrait) {
   html, body, #root { font-size: 15px; }
   .title-screen h1 { font-size: 40px; letter-spacing: 10px; margin-left: 10px; }
-  /* 顶栏压缩成单行：标题/墨铤/功能键同行同高，不再单独开列 */
-  .title-v2 { gap: 10px; padding-top: 8px; }
-  .title-nav { gap: 8px; padding: 6px 8px; }
-  .nav-logo { font-size: 15px; letter-spacing: 2px; }
+  /* 顶栏：Logo+墨铤+功能键一行，安全区内边距 */
+  .title-v2 { gap: 8px; padding-top: 8px; }
+  .title-nav { flex-wrap: wrap; gap: 6px 8px; padding: 6px 10px; padding-left: calc(6px + env(safe-area-inset-left)); padding-right: calc(6px + env(safe-area-inset-right)); }
+  .nav-logo { font-size: 16px; letter-spacing: 3px; }
   .ink-chip { font-size: 11px; padding: 3px 8px; }
-  .nav-btns { gap: 4px; }
-  .nav-btns button { font-size: 11px; padding: 4px 7px; letter-spacing: 0; }
+  .nav-btns { margin-left: auto; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+  .nav-btns button { flex: 1 1 auto; font-size: 11px; padding: 5px 6px; letter-spacing: 0.5px; text-align: center; min-height: 32px; border-radius: 10px; min-width: 0; }
   .scenario-list { flex-direction: column; gap: 12px; width: 100%; max-width: 380px; }
   .scenario-card { width: 100%; padding: 18px 16px; }
   .top-bar { flex-wrap: wrap; gap: 8px; padding: 8px 12px; padding-top: calc(8px + env(safe-area-inset-top)); }
@@ -928,36 +1047,137 @@ button { font-family: inherit; }
   .story-line { font-size: 16px; line-height: 2.1; }
   .scene-title { font-size: 14px; margin-bottom: 18px; }
   .choice { padding: 14px 16px; font-size: 15px; min-height: 48px; }
-  .hand { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
-  .play-card { flex: 0 0 46%; max-width: 180px; min-height: 150px; scroll-snap-align: center; }
+  /* 手牌横滑大卡：单卡主视 + 边缘露卡提示可滑；卡图降高保文字可读 */
+  .hand { display: flex; overflow-x: auto; gap: 12px; padding: 4px 14px 10px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+  .play-card { flex: 0 0 62%; max-width: 240px; min-height: 150px; scroll-snap-align: center; }
   .duel-root { padding: 12px; padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
-  .duel-stage { flex: 0 0 auto; max-height: 40vh; overflow-y: auto; }
+  .duel-stage { flex: 0 0 auto; max-height: 34vh; overflow-y: auto; }
   .clue-grid { grid-template-columns: 1fr; }
   .clue-overlay-panel { padding: 18px; max-height: 85vh; }
   .ending .story-line { font-size: 15px; }
   .ending-name { font-size: 26px; letter-spacing: 5px; }
-  /* 出征封面：按源图 16:9 比例显示，不强制拉高；两侧箭头改为缩略图条上的透明悬浮钮 */
-  .cover-stage { gap: 6px; }
+  /* 存档提示和底部提示紧凑化 */
+  .resume-box.resume-inline { gap: 8px; margin-top: 4px; }
+  .resume-box .btn-main { font-size: 12px; padding: 6px 12px; }
+  .resume-box .link-btn { font-size: 11px; }
+  .foot-tip { font-size: 10px; line-height: 1.4; }
+
+    /* 封面：画文合一——画作占更大面积(4:5)，文字叠回画上，底部渐变遮罩保可读 */
+  .cover-stage { gap: 0; flex-direction: column; }
   .cover-stage .cover-arrow { display: none; }
-  .cover-main { aspect-ratio: 16 / 9; min-height: 0; }
+  .cover-main {
+    aspect-ratio: 4 / 5; min-height: 0; flex: 1 1 auto;
+    border: none; overflow: hidden; position: relative;
+  }
+  .cover-img, .cover-img.cover-fallback {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; display: block; cursor: zoom-in;
+  }
+  /* 底部渐变遮罩：从透明到深色，让叠在画上的文字清晰可读 */
+  .cover-veil {
+    display: block;
+    background: linear-gradient(180deg,
+      rgba(23,21,18,0) 0%,
+      rgba(23,21,18,0) 30%,
+      rgba(23,21,18,.45) 50%,
+      rgba(23,21,18,.82) 68%,
+      rgba(23,21,18,.95) 100%
+    );
+  }
+  .seal-strip { top: 14px; right: -36px; font-size: 12px; letter-spacing: 6px; padding: 4px 42px; }
   .thumb-arrow {
     display: flex; align-items: center; justify-content: center;
     position: absolute; top: 50%; transform: translateY(-50%); z-index: 3;
-    width: 30px; height: 30px; border-radius: 50%;
+    width: 28px; height: 28px; border-radius: 50%;
     border: 1px solid var(--line); background: rgba(23,21,18,.55); color: var(--gold);
-    font-size: 18px; line-height: 1; cursor: pointer;
+    font-size: 16px; line-height: 1; cursor: pointer;
   }
-  .thumb-arrow.prev { left: -6px; }
-  .thumb-arrow.next { right: -6px; }
-  .cover-info { justify-content: flex-start; gap: 6px; padding: 12px 14px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-  .cover-info h1 { font-size: 22px; letter-spacing: 4px; }
-  .cover-info .sub { font-size: 12px; }
-  .cover-ends { font-size: 11px; }
-  .cover-actions { flex-wrap: wrap; gap: 8px; }
-  .cover-actions .btn-cta { flex: 1 1 100%; font-size: 13px; padding: 8px 14px; }
-  .cover-actions .tree-btn { flex: 1 1 40%; font-size: 12px; }
+  .thumb-arrow.prev { left: -4px; }
+  .thumb-arrow.next { right: -4px; }
+  /* 信息区叠回画上，底部对齐，渐变遮罩保可读 */
+  .cover-info {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    justify-content: flex-end; gap: 5px;
+    padding: 50px 18px 16px; overflow: visible;
+    border-top: none; background: none;
+  }
+  .cover-info h1 { font-size: 30px; letter-spacing: 7px; text-shadow: 0 2px 12px rgba(0,0,0,.7); }
+  .cover-info .sub { font-size: 13px; color: #e0d5c0; letter-spacing: 4px; text-shadow: 0 1px 6px rgba(0,0,0,.6); }
+  .cover-badges { gap: 5px; }
+  .badge { font-size: 11px; padding: 2px 8px; }
+  .cover-ends { font-size: 11px; text-shadow: 0 1px 4px rgba(0,0,0,.5); }
+  .cover-actions { flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  /* 官印按钮：移动端比例，保留虚线内框+小圆印质感 */
+  .cover-actions .btn-cta {
+    flex: 1 1 100%; font-size: 17px; letter-spacing: 6px;
+    padding: 13px 16px 13px 20px;
+  }
+  .cover-actions .btn-cta::before { inset: 3px; }
+  .cover-actions .btn-cta::after { top: -5px; right: -5px; width: 10px; height: 10px; border-width: 1.5px; }
+  .cover-actions .btn-cta.cta-sealed { font-size: 14px; padding: 11px 16px 11px 20px; }
+  .cover-actions .btn-cta.cta-sealed::after { top: -5px; right: -5px; width: 10px; height: 10px; }
+  .cover-actions .tree-btn { flex: 1 1 46%; font-size: 12px; min-height: 36px; letter-spacing: 1px; }
   .cover-actions .seal-hint { flex: 1 1 100%; font-size: 11px; max-width: none; }
-  .cover-thumbs { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+  /* 缩略图放大 */
+  .cover-thumb { flex: 0 0 72px; height: 42px; }
+  .cover-thumbs { padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+  /* 三选一翻牌：三卡并排小卡，省字保图 */
+  .pick-root { padding: 12px; gap: 10px; }
+  .pick-title { font-size: 18px; letter-spacing: 3px; }
+  .pick-row { gap: 8px; flex-wrap: nowrap; justify-content: center; width: 100%; }
+  .pick-row .tcard { width: 30%; min-width: 0; }
+  .pick-row .tcard .tcard-bottom { font-size: 10px; max-height: 44px; }
+  /* 市集/背包/图鉴：卡片 2 列 */
+  .shop-grid, .bag-grid { gap: 10px; }
+  .shop-grid .tcard, .bag-grid .tcard { width: 46%; }
+  .bag-grid .bag-card { width: 46%; }
+  .shop-card { width: 100%; max-width: 340px; }
+  .bag-item { width: 100%; max-width: 280px; }
+  /* 触控热区与安全区 */
+  .shop-tab { padding: 7px 12px; min-height: 36px; }
+  .toast { bottom: calc(36px + env(safe-area-inset-bottom)); }
+  .foot-tip { padding-bottom: env(safe-area-inset-bottom); }
+  .bag-panel { padding: 16px; }
+  /* 赏画模式：点封面全屏预览，点任意处合卷 */
+  .cover-zoom-overlay {
+    position: fixed; inset: 0; z-index: 80;
+    background: rgba(0,0,0,.93);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px; padding: 24px; cursor: zoom-out;
+  }
+  .cover-zoom-overlay img { max-width: 96vw; max-height: 76vh; object-fit: contain; border: 1px solid var(--line); box-shadow: 0 20px 60px rgba(0,0,0,.8); }
+  .cover-zoom-title { color: var(--gold); font-size: 16px; letter-spacing: 3px; }
+  .cover-zoom-hint { font-size: 12px; }
+}
+
+/* ---------- 横屏适配（641-1024 触屏横屏/小窗横屏）----------
+   封面走桌面式左右分栏（左文右画），但收窄字号/间距让画作最大化；
+   竖屏布局不再被横屏触屏设备误用。 */
+@media (min-width: 641px) and (max-width: 1024px) and (orientation: landscape) {
+  /* 标题页：左文右画分栏，画作最大化（已被实测通过） */
+  .title-nav { gap: 8px; padding: 6px 10px; padding-left: calc(10px + env(safe-area-inset-left)); padding-right: calc(10px + env(safe-area-inset-right)); }
+  .nav-btns button { font-size: 12px; padding: 5px 10px; letter-spacing: 1px; }
+  .cover-stage { gap: 6px; }
+  .cover-main { min-height: 0; }
+  .cover-info { padding: 14px 18px; }
+  .cover-info h1 { font-size: 28px; letter-spacing: 6px; }
+  .cover-info .sub { font-size: 12px; letter-spacing: 2px; }
+  .cover-actions .btn-cta { font-size: 15px; padding: 10px 20px; letter-spacing: 4px; }
+  .cover-thumbs { padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+  /* 阅读页/对局/翻牌：横屏高度紧张，收窄纵向留白 */
+  .story-panel { padding: 20px 22px 60px; }
+  .duel-root { padding: 10px 14px; padding-left: calc(14px + env(safe-area-inset-left)); padding-right: calc(14px + env(safe-area-inset-right)); }
+  .duel-stage { max-height: 32vh; }
+  .duel-status { gap: 12px; }
+  /* 对局手牌：桌面 grid 容器下 flex-basis 无效——改为与竖屏同款横滑，卡图降高适配 390px 屏高 */
+  .hand { display: flex; overflow-x: auto; gap: 10px; padding: 4px 10px 10px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+  .play-card { flex: 0 0 30%; max-width: 220px; min-height: 120px; scroll-snap-align: center; }
+  .play-card .card-art-compact { height: 120px; }
+  /* 翻牌三选一：3 张并排 */
+  .pick-row .tcard { width: 24%; min-width: 0; }
+  /* 弹层内容纵向滚动上限（横屏高度矮） */
+  .clue-overlay-panel, .bag-panel { max-height: 88vh; }
+  .bag-item .card-art-compact { height: 180px; }
 }
 
 /* ---------- 卡牌图鉴 ---------- */
@@ -986,7 +1206,7 @@ button { font-family: inherit; }
   border-top: 1px dashed var(--line); border-bottom: 1px dashed var(--line);
   padding: 12px 6px; margin: 0 0 16px;
 }
-.gallery-panel { max-width: 860px; }
+.gallery-panel { max-width: 1290px; }
 
 /* ---------- 本局战报 / 玩法速览 ---------- */
 .run-report { border-top: 1px dashed var(--line); border-bottom: 1px dashed var(--line); padding: 14px 0; margin: 18px 0; }
@@ -1082,3 +1302,224 @@ button { font-family: inherit; }
 /* 缩略图条悬浮切换箭头：桌面隐藏，移动端启用 */
 .cover-thumbs-wrap { position: relative; width: 100%; max-width: 1080px; }
 .thumb-arrow { display: none; }
+
+/* ============================================================
+   花色褪色（第五轮 · 用户要求：案件模式对局花色不再上色，颜色让位品级）
+   四色改用「非彩色四轴」区分：徽章几何（方/圆/六角/菱）+ 卡框形态 + 角落折线 + 文字底纹。
+   品级色（灰蓝紫金红）仍由 .rarity-* 独占 —— 花色不再参与任何上色。
+   ============================================================ */
+/* —— 主识别：徽章几何（挂在 .suit-glyph 上，覆盖其默认圆形，仅几何无颜色） —— */
+.play-card.suit-策 .suit-glyph, .tcard.suit-策 .suit-glyph, .bag-card.suit-策 .suit-glyph {
+  border-radius: 4px; /* 方印：话锋如刀，棱角分明 */
+}
+.play-card.suit-器 .suit-glyph, .tcard.suit-器 .suit-glyph, .bag-card.suit-器 .suit-glyph {
+  border-radius: 50%; /* 圆印：器物浑圆（保持默认） */
+}
+.play-card.suit-势 .suit-glyph, .tcard.suit-势 .suit-glyph, .bag-card.suit-势 .suit-glyph {
+  clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%); /* 六角官印：权势压人 */
+  border-radius: 0;
+}
+.play-card.suit-隐 .suit-glyph, .tcard.suit-隐 .suit-glyph, .bag-card.suit-隐 .suit-glyph {
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); /* 菱形：暗桩藏锋 */
+  border-radius: 0;
+}
+/* —— 副识别：卡框形态（中性线框，不与品级色相撞） —— */
+.play-card.suit-策, .tcard.suit-策, .bag-card.suit-策 { border-radius: 3px 12px 12px 12px; }  /* 左上直角 */
+.play-card.suit-势, .tcard.suit-势, .bag-card.suit-势 { box-shadow: inset 0 0 0 2px rgba(214,204,182,.22); } /* 内层双线 */
+.play-card.suit-隐, .tcard.suit-隐, .bag-card.suit-隐 { outline: 1px dashed rgba(214,204,182,.30); outline-offset: -4px; } /* 虚线藏锋 */
+/* —— 冗余：角落折线（中性墨灰，不影响品级左缘色带） —— */
+.play-card.suit-策::before, .tcard.suit-策::before, .bag-card.suit-策::before { content:""; position:absolute; top:-1px; left:-1px; border:5px solid transparent; border-top-color:#8a8271; border-left-color:#8a8271; border-radius:3px 0 0 0; }
+.play-card.suit-器::before, .tcard.suit-器::before, .bag-card.suit-器::before { content:""; position:absolute; top:-1px; right:-1px; border:5px solid transparent; border-top-color:#8a8271; border-right-color:#8a8271; border-radius:0 3px 0 0; }
+.play-card.suit-势::before, .tcard.suit-势::before, .bag-card.suit-势::before { content:""; position:absolute; bottom:-1px; left:-1px; border:5px solid transparent; border-bottom-color:#8a8271; border-left-color:#8a8271; border-radius:0 0 0 3px; }
+.play-card.suit-隐::before, .tcard.suit-隐::before, .bag-card.suit-隐::before { content:""; position:absolute; bottom:-1px; right:-1px; border:5px solid transparent; border-bottom-color:#8a8271; border-right-color:#8a8271; border-radius:0 0 3px 0; }
+/* —— 徽章底色统一中性墨（去掉品级色的光环/描边，徽章只认几何与字形） —— */
+.play-card .suit-glyph, .tcard .suit-glyph, .bag-card .suit-glyph {
+  border-color: rgba(214,204,182,.4);
+  box-shadow: none;
+  text-shadow: none;
+  color: rgba(238,229,208,.9);
+  background: radial-gradient(circle at 50% 42%, rgba(28,23,17,.85), rgba(12,10,7,.95));
+}
+
+/* —— 洞察·看破提示与破招高亮 —— */
+.opp-line.peek-line { border-left: 3px solid rgba(210,164,79,.7); padding-left: 8px; }
+.opp-line.scan-hint { color: var(--ink-dim); font-size: 12px; }
+.gambit-btn.peek-hit { box-shadow: 0 0 0 2px rgba(210,164,79,.85), 0 0 10px rgba(210,164,79,.35); transform: translateY(-1px); }
+
+/* —— 复盘·照骨镜线索角标 —— */
+.clue-core { border-color: #c9a86a !important; }
+.clue-core-tag { display:inline-block; margin-left:6px; padding:0 6px; font-size:11px; color:#17130c; background:#c9a86a; border-radius:3px; letter-spacing:1px; }
+.clue-true-tag { display:inline-block; margin-left:6px; padding:0 6px; font-size:11px; color:#c9a86a; border:1px solid #c9a86a; border-radius:3px; }
+.clue-reveal-hint { margin:6px 0 10px; font-size:12.5px; color:var(--gold); }
+
+/* —— 商店·暗柜 —— */
+.shop-hidden { grid-column: 1 / -1; margin-top: 14px; padding: 10px; border: 1px dashed rgba(210,164,79,.5); border-radius: 10px; background: rgba(20,16,10,.45); }
+.shop-hidden-title { font-size: 13px; color: var(--gold); letter-spacing: 2px; margin-bottom: 10px; }
+/* ---------- 小游戏扩展：quiz（诗联/逻辑）/ 牌九 / 行令高亮 ---------- */
+.quiz-box { display: flex; flex-direction: column; gap: 12px; }
+.quiz-prompt {
+  font-size: 16px; line-height: 1.8; color: var(--ink);
+  background: rgba(0,0,0,.15); border: 1px solid var(--line); border-left-width: 3px;
+  padding: 12px 14px; border-radius: 4px; white-space: pre-line;
+}
+.quiz-rule { margin: 4px 0 10px; }
+.quiz-rule summary { cursor: pointer; color: var(--accent); font-size: 12px; letter-spacing: 2px; }
+.quiz-rule p { font-size: 12.5px; line-height: 1.7; color: var(--ink-dim); }
+.paijiu-box { display: flex; flex-direction: column; gap: 12px; }
+.paijiu-hand { display: flex; align-items: center; gap: 10px; }
+.paijiu-tile {
+  width: 44px; height: 60px; display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--gold); border-radius: 6px; background: #1c1915;
+  font-size: 20px; font-weight: 600; color: var(--gold);
+}
+.jiuling-hand .wine-chip.jl-hint-good { border-color: var(--suit-ce); color: var(--suit-ce); background: color-mix(in srgb, var(--suit-ce) 12%, transparent); }
+.jiuling-hand .wine-chip.jl-hint-bad { border-color: var(--accent); color: var(--accent); opacity: .75; }
+.jiuling-hand .wine-chip.jl-hint-mid { opacity: .55; }
+
+/* 隐色陷阱 */
+.trap-on { color: var(--suit-yin); border: 1px dashed var(--suit-yin); padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+.trap-tag { color: var(--suit-yin); font-size: 11px; }
+
+/* 场景简介（scene.desc，标题下展示） */
+.scene-desc { font-size: 13px; color: var(--ink-dim); letter-spacing: 1px; margin: 2px 0 10px; font-style: italic; }
+
+/* 随身位（PrepModal 物/人争位） */
+.prep-sub-title { font-size: 12px; color: var(--accent); letter-spacing: 2px; margin: 8px 0 4px; }
+.prep-item.prep-checked span { color: var(--gold); }
+
+/* 随从操作栏 */
+.retinue-bar { gap: 8px; align-items: center; }
+.retinue-tag { font-size: 12px; color: var(--gold); border: 1px solid var(--gold); border-radius: 999px; padding: 2px 10px; opacity: .9; }
+
+/* 天下卡册 */
+.album-cell { position: relative; }
+.album-carry {
+  position: absolute; top: 4px; right: 4px; z-index: 2;
+  font-size: 10px; color: var(--gold); background: rgba(0,0,0,.55);
+  border: 1px solid var(--gold); border-radius: 999px; padding: 1px 6px;
+}
+
+/* 成就面板 */
+.ach-list { display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow: auto; margin-bottom: 12px; }
+.ach-item {
+  display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+  border: 1px solid var(--line); border-radius: 4px; background: rgba(0,0,0,.12);
+}
+.ach-item.on { border-color: var(--gold); background: rgba(210,164,79,.08); }
+.ach-item.hidden { opacity: .65; }
+.ach-name { font-size: 14px; color: var(--ink); min-width: 96px; font-weight: 600; }
+.ach-item.on .ach-name { color: var(--gold); }
+.ach-cond { flex: 1; font-size: 12px; color: var(--ink-dim); }
+.ach-reward { font-size: 11px; color: var(--accent); white-space: nowrap; }
+
+/* 成就分类 tab + 图标 */
+.ach-tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.ach-tab {
+  font-size: 12px; padding: 4px 12px; border: 1px solid var(--line); border-radius: 999px;
+  background: rgba(0,0,0,.12); color: var(--ink-dim); cursor: pointer;
+}
+.ach-tab.on { border-color: var(--gold); color: var(--gold); background: rgba(210,164,79,.1); }
+.ach-icon { font-size: 14px; min-width: 20px; text-align: center; }
+
+/* 结局进度条（标题页左下角） */
+.end-progress {
+  position: absolute; left: 28px; bottom: 26px; width: 300px; max-width: 40vw;
+  display: flex; flex-direction: column; gap: 6px; z-index: 3;
+}
+.end-progress-label { font-size: 12px; color: var(--ink-dim); letter-spacing: 1px; }
+.end-progress-label b { color: var(--gold); }
+.end-progress-bar {
+  position: relative; height: 8px; border-radius: 999px;
+  background: rgba(0,0,0,.4); border: 1px solid var(--line); overflow: visible;
+}
+.end-progress-fill {
+  height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, #d2a44f, #e8c47a);
+  transition: width .5s ease;
+}
+.end-progress-mile {
+  position: absolute; top: -14px; width: 22px; height: 22px; border-radius: 50%;
+  transform: translateX(-50%); border: 1px solid var(--line);
+  background: rgba(0,0,0,.55); color: transparent; font-size: 12px; line-height: 20px;
+  text-align: center; cursor: default; padding: 0; transition: all .2s;
+}
+.end-progress-mile.got {
+  background: linear-gradient(135deg, #d2a44f, #e8c47a); color: #2a2113;
+  border-color: #e8c47a; cursor: pointer; box-shadow: 0 0 10px rgba(210,164,79,.75);
+  animation: mile-pulse 1.6s ease-in-out infinite;
+}
+.end-progress-mile.got:hover { transform: translateX(-50%) scale(1.2); }
+.end-progress-mile.claimed {
+  background: #1c1915; color: var(--gold); border-color: var(--gold); cursor: default;
+  animation: none; box-shadow: none;
+}
+.end-progress-mile.locked { opacity: .55; }
+@keyframes mile-pulse {
+  0%, 100% { box-shadow: 0 0 4px rgba(210,164,79,.5); }
+  50% { box-shadow: 0 0 14px rgba(210,164,79,1); }
+}
+.ach-icon-img { width: 28px; height: 28px; border-radius: 6px; object-fit: cover; display: block; }
+
+/* 天下卡册 · 双筛选（上侧剧本横滑 × 左侧花色） */
+.album-filters { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 10px; }
+.album-filter-row { display: flex; align-items: center; gap: 8px; }
+.album-filter-label { font-size: 12px; color: var(--ink-dim); letter-spacing: 1px; min-width: 34px; }
+.album-scroll { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; max-width: 100%; }
+.album-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.album-chip {
+  font-size: 12px; padding: 4px 12px; border: 1px solid var(--line); border-radius: 999px;
+  background: rgba(0,0,0,.12); color: var(--ink-dim); cursor: pointer; white-space: nowrap;
+  transition: all .15s;
+}
+.album-chip.on { border-color: var(--gold); color: var(--gold); background: rgba(210,164,79,.1); }
+.album-chip.s-策 { color: var(--suit-ce); border-color: var(--suit-ce); }
+.album-chip.s-器 { color: var(--suit-qi); border-color: var(--suit-qi); }
+.album-chip.s-势 { color: var(--suit-shi); border-color: var(--suit-shi); }
+.album-chip.s-隐 { color: var(--suit-yin); border-color: var(--suit-yin); }
+.album-chip.s-策.on { background: rgba(0,0,0,.22); }
+.album-chip.s-器.on { background: rgba(0,0,0,.22); }
+.album-chip.s-势.on { background: rgba(0,0,0,.22); }
+.album-chip.s-隐.on { background: rgba(0,0,0,.22); }
+
+/* 出征准备 · 分区折叠 */
+.prep-sec-head {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  background: rgba(0,0,0,.14); border: 1px solid var(--line); border-radius: 4px;
+  padding: 8px 12px; cursor: pointer; color: var(--ink); font-size: 13px; letter-spacing: 1px;
+  transition: all .15s;
+}
+.prep-sec-head:hover { border-color: var(--gold); }
+.prep-sec-head.on { border-color: var(--gold); color: var(--gold); background: rgba(210,164,79,.07); }
+.prep-sec-caret { font-size: 10px; transition: transform .2s; display: inline-block; }
+.prep-sec-caret.open { transform: rotate(90deg); }
+.prep-sec-title { flex: 1; text-align: left; }
+.prep-sec-count { font-size: 11px; color: var(--accent); white-space: nowrap; }
+.prep-sec-body { padding: 10px 4px 4px; display: flex; flex-direction: column; gap: 8px; }
+
+/* 成就 · 剧本二级筛选（紧凑行） */
+.ach-tabs-sub { margin-top: -2px; padding-bottom: 2px; overflow-x: auto; flex-wrap: nowrap; }
+.ach-tabs-sub .ach-tab { white-space: nowrap; }
+
+/* 成就条目可点击 + 详情弹层 */
+.ach-item { cursor: pointer; transition: all .15s; }
+.ach-item:hover { border-color: var(--gold); background: rgba(210,164,79,.1); transform: translateY(-1px); }
+.ach-zoom-overlay { z-index: 60; }
+.ach-zoom {
+  display: flex; gap: 18px; align-items: center; max-width: 480px; width: 92%;
+  background: var(--panel); border: 1px solid var(--gold); border-radius: 8px;
+  padding: 20px; box-shadow: 0 18px 50px rgba(0,0,0,.6);
+}
+.ach-zoom-art { flex-shrink: 0; }
+.ach-zoom-img { width: 128px; height: 128px; border-radius: 10px; object-fit: cover; display: block; border: 1px solid var(--line); }
+.ach-zoom-emoji { font-size: 64px; display: block; text-align: center; width: 128px; }
+.ach-zoom-info { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.ach-zoom-info h3 { margin: 0; color: var(--gold); font-size: 18px; letter-spacing: 2px; }
+.ach-zoom-state { font-size: 12px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-dim); width: fit-content; }
+.ach-zoom-state.on { color: var(--gold); border-color: var(--gold); }
+.ach-zoom-cond { font-size: 13px; line-height: 1.7; }
+.ach-zoom-reward { color: var(--accent); font-size: 13px; }
+.ach-zoom-sc { font-size: 12px; }
+@media (max-width: 520px) {
+  .ach-zoom { flex-direction: column; text-align: center; }
+  .ach-zoom-state { margin: 0 auto; }
+}

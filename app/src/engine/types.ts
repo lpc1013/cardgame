@@ -21,7 +21,10 @@ export type ItemEffect =
   | "回气"   // 恢复 3 点气力(HP)
   | "强牌"   // 本回合下一张成术牌点数+3
   | "共鸣"   // 情绪制：共鸣+2 / 压制制：造成 3 点伤害
-  | "抽牌";  // 立即再抽 2 张手牌
+  | "抽牌"   // 立即再抽 2 张手牌
+  | "观牌"   // 压制制：揭示对手下一手（牌名+点数+花色）
+  | "观色"   // 压制制：仅揭示对手下一手花色
+  | "观点";  // 压制制：仅揭示对手下一手点数
 
 /** 人物卡被动 */
 export interface PassiveDef {
@@ -29,9 +32,19 @@ export interface PassiveDef {
   bonusPower?: number; // 默认 +1
   bonusQi?: number;    // 气力(HP)上限 +X（开局生效）
   extraDraw?: number;  // 每回合多抽 X 张
+  /** 洞察·瞥见：每 N 回合自动揭示对手下一手（压制制，信息型，不耗行动力） */
+  peekEvery?: number;
+  /** 洞察·读悉：携带后第 4 回合起显示对手出牌循环（压制制 script 记忆外置） */
+  readScript?: boolean;
+  /** 斥候（随从·刺探）：对局内可花银两看破对手下一手全牌的次数（压制制） */
+  scout?: number;
+  /** 内应（随从·收买）：对局内可花银两使对手一招作废的次数（压制制） */
+  insider?: number;
+  /** 共用次数（精级=1：斥候/内应二选一；传级=2：任选搭配）。缺省=斥候/内应各自独立 */
+  sharedTotal?: number;
 }
 
-import type { GobangPuzzle, JiulingConfig } from "./minigames";
+import type { GobangPuzzle, JiulingConfig, QuizConfig, PaijiuConfig } from "./minigames";
 
 /** 场景模式 */
 export type ScenarioMode = "case" | "story";
@@ -56,12 +69,28 @@ export interface CardDef {
   cost?: number;
   /** 物品卡：对局内效果（使用后消耗） */
   itemEffect?: ItemEffect;
+  /** 成术卡：打出后揭示对手下一手（压制制；"suit"=仅花色，"card"=全牌） */
+  reveal?: "suit" | "card";
+  /** 成术卡·情境位：对手为该花色时本张 +bonus（压制制；普通卡的功能位——读对手，加在四色克制之外） */
+  situational?: { suit: Suit; bonus: number };
+  /** 成术卡·机制位·抽牌：打出时抽 N 张（v2 压制制；零交互自动触发） */
+  drawOnPlay?: number;
+  /** 成术卡·机制位·牺牲：打出时自伤 N 点、本张 +2N（零交互；负向换强） */
+  sacrifice?: number;
+  /** 隐色陷阱卡：打出=盖放（台面下），下一轮对手出牌时自动触发——反伤(伤害弹回)/抵消(本轮作废)/蓄锋(本张牌+2)；盖位限 1 张 */
+  trap?: "反伤" | "抵消" | "蓄锋";
+  /** 物品/人物：背包持有即生效 —— 1=复盘时标出核心线索；2=复盘时标出全部真线索 */
+  clueReveal?: 1 | 2;
+  /** 物品：持有后市集卡包页出现「先验一封」 */
+  shopPeek?: boolean;
   /** 人物卡：被动 */
   passive?: PassiveDef;
   /** 资源卡：银两面额（不占卡组槽位） */
   resource?: number;
   /** 市集售价（银两）；非卖品不填 */
   price?: number;
+  /** 结局奖励卡：唯一出处=某结局解锁，获得后跨周目可携带（进行囊/卡组） */
+  endingReward?: boolean;
   /** 卡面图路径（美术接入用；亦可运行时查 cardThemes 取门类） */
   image?: string;
   /** 门类（乙·双轴方案的可视主类目；缺省按 cardThemes 查表） */
@@ -113,6 +142,8 @@ export interface DuelConfig {
   hp?: { player: number; opponent: number };
   /** 对手出牌序列（按回合索引循环取用），为 suit 或 cardId */
   script: string[];
+  /** script 变体池（常驻扰动）：开局随机选一个作为实际 script——玩家背板失效，斥候/破招价值凸显；verify 对每个变体穷举可胜性 */
+  scriptVariants?: string[][];
   /** 可用卡牌（卡池子集；经典模式直接全用） */
   deck: string[];
   /** 对手专属牌（气力压制制下 cardOf 的解析来源） */
@@ -124,6 +155,10 @@ export interface DuelConfig {
    *  压制制：蓄势（蓄力层加成下张）+ 破招（宣言敌色，押中作废敌招）。
    *  设计性死局（必败叙事）不得开启。 */
   gambit?: boolean;
+  /** 对手出牌可见性：缺省=案件模式（case）v2 压制局藏牌、其余开牌；"open" 强制明牌，"hidden" 强制藏牌 */
+  seeOpp?: "open" | "hidden";
+  /** 设计性死局（剧情杀）：玩家必败，败后走败线叙事——verify 跳过可胜性穷举（pressure 已天然放行，emotion 豁免） */
+  unwinnable?: boolean;
   winScene: string;
   loseScene: string;
   /** 可选条件败线：满足 cond 时优先于 loseScene（同局多形态败局） */
@@ -156,12 +191,16 @@ export interface ShopDef {
   /** 常驻货架（卡 id → 售价可覆写卡表 price） */
   stock: string[];
   packs?: PackDef[];
+  /** 暗柜（隐藏货架）：满足 needCard/needSilver 才陈列；price 可覆写卡表价 */
+  hiddenStock?: { id: string; price?: number; needCard?: string; needSilver?: number }[];
 }
 
 /** 场景（场景表）：叙事的最小单位 */
 export interface Scene {
   id: string;
   title?: string;
+  /** 场景简介（标题下展示，如夜市的差异化叙事） */
+  desc?: string;
   /** 正文段落，按次逐段呈现 */
   lines: string[];
   /** 选项（互斥分支；不满足 cond 的选项隐藏） */
@@ -180,14 +219,16 @@ export interface Scene {
   next2?: string;
   /** 场景化小游戏（胜/败分别跳转） */
   minigame?: {
-    type: "gobang" | "jiuling";
+    type: "gobang" | "jiuling" | "duilian" | "logic" | "paijiu";
     gobang?: GobangPuzzle;
     jiuling?: JiulingConfig;
+    quiz?: QuizConfig;
+    paijiu?: PaijiuConfig;
     winNext: string;
     loseNext: string;
   };
   /** 章节结束标记（结算画面） */
-  ending?: { name: string; rank: string; desc: string };
+  ending?: { name: string; rank: string; desc: string; /** 该结局解锁的专属奖励卡 id（唯一出处，跨周目可携带） */ reward?: string };
 }
 
 export interface Choice {
@@ -196,6 +237,12 @@ export interface Choice {
   cond?: Cond;
   effects?: Effect[];
   next: string;
+  /**
+   * 降级结局（真结局硬门槛）：选项始终可见；cond 满足 → next（真结局），
+   * cond 不满足 → altNext（与真结局最近似的非真结局）。
+   * 未定义 altNext 时保持原语义：cond 不满足 = 选项隐藏。
+   */
+  altNext?: string;
 }
 
 /** 视角（多视角剧本体验通道）：开局选定主视角，其余视角折为插叙 */

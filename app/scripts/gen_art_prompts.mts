@@ -159,13 +159,13 @@ function cardPrompt(c: any): { p: string; theme: string } {
     // A：角色立绘（古风厚涂 anime）
     return {
       theme,
-      p: `${GLOBAL_A}，角色立绘半身像：${visual}。竖版3:4，背景虚化留白，${border}区分稀有度；卡面纯净无文字无标题，四角留少量净空供叠加${emblem}与门类标签(${theme})。负向：${NEG}`,
+      p: `${GLOBAL_A}，角色立绘半身像：${visual}。竖版3:4，背景虚化留白，人物面部位于画面中央 60%×60% 安全区内，${border}区分稀有度；卡面纯净无文字无标题，四角留少量净空供叠加${emblem}与门类标签(${theme})。负向：${NEG}`,
     };
   }
   // C：成术/物品/资源（水墨融合 anime）
   return {
     theme,
-    p: `${GLOBAL_C}，卡牌主插图：${visual}（门类·${theme}）。竖版3:4构图，主体为独立器物或场景微距特写，四角大面积留白；卡面纯净无文字无标题，留少量净空供叠加${emblem}与门类标签(${theme})；稀有度仅以${border}区分。负向：${NEG}`,
+    p: `${GLOBAL_C}，卡牌主插图：${visual}（门类·${theme}）。竖版3:4构图，主体核心（人物面部/器物全貌/关键笔势）须位于画面中央 60%×60% 安全区内，四边各约12%为可遮挡出血区；卡面纯净无文字无标题，留少量净空供叠加${emblem}与门类标签(${theme})；稀有度仅以${border}区分。负向：${NEG}`,
   };
 }
 
@@ -235,7 +235,7 @@ for (const [k, sc] of CASES) {
     const okey = `${k}|${d.id}`;
     if (OPP[okey] && !charSeen.has(OPP[okey].layer)) {
       charSeen.add(OPP[okey].layer);
-      const p = `${GLOBAL_A}，角色立绘半身像：${OPP[okey].visual}。竖版3:4，背景虚化留白，画面纯净无文字无标题。负向：${NEG}`;
+      const p = `${GLOBAL_A}，角色立绘半身像：${OPP[okey].visual}。竖版3:4，背景虚化留白，人物面部位于画面中央 60%×60% 安全区内，画面纯净无文字无标题。负向：${NEG}`;
       json.characters[`opp_${d.id}`] = { name: OPP[okey].layer, theme: "宫闱", prompt: p };
       md += `**opp_${d.id}** ｜ ${OPP[okey].layer}\n\`\`\`\n${p}\n\`\`\`\n`;
     }

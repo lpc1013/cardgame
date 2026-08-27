@@ -17,5 +17,12 @@ npm-debug.log*
 # Large generated art bundles (kept locally, not in git)
 art/*.zip
 
+# Build legacy dirs left by `mv dist dist_old_xxx && vite build`
+app/dist_old_*/
+
+# Local archives & generated audit reports (not source)
+*.zip
+对抗性审计报告*.html
+
 # Optional: PNG art assets can be large; keep tracked but exclude if needed
 # app/src/assets/

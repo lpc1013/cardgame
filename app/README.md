@@ -55,6 +55,7 @@ node scripts/content.mjs import <file.xlsx> <name>   # 从 xlsx 生成 src/data/
 ```
 
 表格规范见 [`docs/SCHEMA.md`](docs/SCHEMA.md)：总表 / 场景表 / 选项表 / 卡牌表 / 线索表 / 对局表。
+模块接口 / 数据流 / 外部依赖 / 对接规范见 [`docs/INTEGRATION.md`](docs/INTEGRATION.md)。
 
 生成 `.gen.ts` 后在 `src/App.tsx` 的 `SCENARIOS` 数组里加一行 import + 注册即可上架。
 
@@ -65,15 +66,20 @@ src/
   engine/
     types.ts     # 剧本数据 Schema（六类实体）
     runtime.ts   # 叙事运行时（旗标/数值/线索/条件）
-    duel.ts      # 双规则对局引擎
-    save.ts      # 存档 / 结局图鉴 / 剧情树记录
+    duel.ts      # 双规则对局引擎（含博弈：虚张/读牌/蓄势/破招）
+    minigames.ts # 场景化小游戏（棋局残局 / 宴上行令 / 骰宝）
+    save.ts      # 存档 / 结局图鉴 / 剧情树记录 / 帝国元进度 / 全局卡注册表
     sfx.ts       # 程序化音效（WebAudio）
-  data/          # 剧本数据（13 部）
-  components/    # 剧情树视图
-  App.tsx        # 主界面（标题/阅读/对局/复盘/结局）
-content/         # xlsx 剧本模板
-docs/SCHEMA.md   # 表格规范
-scripts/content.mjs  # Excel ⇄ 数据 管线
+  data/          # 剧本数据（13 部）+ cardThemes(门类) + empireShop(帝国商市)
+  components/    # 剧情树视图（TreeView）
+  App.tsx        # 主界面（标题/阅读/对局/复盘/结局）+ 各面板组件
+  app.css        # 全局样式（含 PWA 主题变量）
+content/         # xlsx 剧本模板（内容管线产物）
+docs/SCHEMA.md   # 表格规范（Excel ⇄ 数据）
+scripts/
+  content.mjs            # Excel ⇄ 数据 管线
+  gen_art_prompts.mts    # 美术提示词生成（甲·去字化 + 乙·双轴门类）
+  verify.mts             # 回归验证套件（build 前置门禁）
 ```
 
 ## 验证方式
@@ -85,5 +91,20 @@ node --experimental-strip-types <脚本>
 ```
 
 已验证项：`npm run verify`（已接入 build）按真实 UI 合同穷举全部对局——可胜局断言可胜、
-设计性必败局（8 处败线演出）断言不可胜；裸卡组四色覆盖检查；场景跳转可达、
-复盘判定门控、存档恢复（v3）、结局图鉴与剧情树闭环、PWA 离线资源、浏览器端到端通玩。
+设计性必败局（8 处败线演出）断言不可胜；情绪制出牌后反馈文案非空断言（防「清 lastResult」
+类回归）；裸卡组四色覆盖检查；场景跳转可达、复盘判定门控、存档恢复（v3）、结局图鉴与
+剧情树闭环、PWA 离线资源、浏览器端到端通玩。
+
+## 近期修复记录（2026-08-25）
+
+- **存档加载失效（P0）**：`save.ts` 存档校验字段与运行态字段对齐（bag/deck/boosts），「继续上次」恢复可用
+- **情绪制出牌反馈文案丢失（P1）**：`duel.ts` `revealEmotion` 不再清空 `lastResult`，出牌反馈可见
+- **「回驿馆」进入情绪制决斗卡死（P1）**：`DuelView` 仅压制制查对手卡（情绪制 script 为花色字符串），修复白屏
+- **情绪制「强牌」道具零效果（P1）**：`playEmotion` 兑现 buffPower → 额外共鸣
+- **行令小游戏必输局（P2）**：`qinhuai.ts` 手牌补备牌，64 序列穷举必输清零
+- **抽牌道具空库变死卡（P2）**：`applyItemEffect` 空库先洗回弃牌堆
+- **剧情树布局（P2）**：`TreeView` 重做——固定 cell 间距（84×56）节点距离恒定、跨级边自动折返禁止长线、viewBox 默认整树缩至 1/5 紧凑观览、左键拖拽平移 + 滚轮缩放（原生 passive:false）、无滑动条、还原按钮
+- **卡牌角标弃用**：删除卡面「凡/良/精/传/孤品」文字角标（改卡色可视化），保留四色「策/器/势/隐」花色标识
+- **线索只显示已解锁**：结案复盘仅呈现前文已触发的线索，并明示当前已解锁条数
+- **图鉴/行囊详情弹层**：点卡弹出大卡 + 右侧「由来/作用/卡面」详情框；点外部空白返回上一层（修复误回封面的冒泡 bug）
+

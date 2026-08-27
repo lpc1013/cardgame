@@ -19,6 +19,8 @@ export interface RunState {
   lineIndex: number;      // 当前场景已读段落
   visited: string[];      // 场景历史
   boosts: string[];       // 本局生效的帝国开局加成 id（出征时消耗）
+  retinue: string[];      // 本局随从（斥候/内应人物卡，进 deck 场外生效，占用随身位）
+  usedCards: string[];    // 本剧所有进过 deck 的卡（对局开始时并入）——剧本级成就判定（弱卡点名）依据
 }
 
 export function initState(sc: Scenario, viewpointId?: string): RunState {
@@ -43,6 +45,8 @@ export function initState(sc: Scenario, viewpointId?: string): RunState {
     lineIndex: 0,
     visited: [],
     boosts: [],
+    retinue: [],
+    usedCards: [],
   };
 }
 
@@ -111,5 +115,6 @@ export function findScene(sc: Scenario, id: string): Scene {
 }
 
 export function visibleChoices(scene: Scene, st: RunState): Choice[] {
-  return (scene.choices ?? []).filter((c) => checkCond(c.cond, st));
+  // 有 altNext 的选项（真结局硬门槛降级）恒显示——cond 不满足时点击落入降级结局
+  return (scene.choices ?? []).filter((c) => checkCond(c.cond, st) || !!c.altNext);
 }

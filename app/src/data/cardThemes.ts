@@ -40,6 +40,7 @@ export const cardThemes: Record<string, string> = {
   i_zhu: "工造",
   i_shu: "琴棋",
   i_yinpiao: "商贾",
+  i_jiupiao: "商贾",
   r_li_sanj: "江湖",
   r_zhang: "科举",
   r_zhou: "商贾",
@@ -180,7 +181,7 @@ export const cardThemes: Record<string, string> = {
   h_chi: "宫闱",
   h_huan: "宫闱",
   // 孤城汛期（jianfeng）
-  j_shi: "边军",
+  jf_shi: "边军",
   j_duan: "边军",
   j_quan: "边军",
   j_hong: "边军",

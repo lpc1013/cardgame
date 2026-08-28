@@ -40,4 +40,18 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    rolldownOptions: {
+      output: {
+        // C-6 分包：主 JS 1.3MB 单 chunk → 按依赖域拆分，PWA 缓存粒度变细（改 UI 不动数据 chunk）
+        codeSplitting: {
+          groups: [
+            { name: 'vendor', test: /node_modules[\\/]/ },
+            { name: 'scenario-data', test: /src[\\/]data[\\/]/ },
+            { name: 'engine-core', test: /src[\\/]engine[\\/]/ },
+          ],
+        },
+      },
+    },
+  },
 })

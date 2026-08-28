@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>选择承接审计报告 · 帝成观止 · 2026-08-27</title>
+<style>
+  :root { --ink:#2b2b2b; --sub:#6b6b6b; --line:#e3e0d8; --bg:#faf9f6; --card:#fff;
+    --p0:#c0392b; --p0bg:#fdecea; --p1:#b9770e; --p1bg:#fdf3e0; --p2:#1f6fb2; --p2bg:#e8f1fa;
+    --ok:#1e8449; --okbg:#e9f7ef; --tag:#7d7468; }
+  * { box-sizing:border-box; }
+  body { font-family:"PingFang SC","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--ink); margin:0; padding:24px; line-height:1.65; }
+  .wrap { max-width:960px; margin:0 auto; }
+  h1 { font-size:26px; margin:0 0 4px; }
+  .sub { color:var(--sub); font-size:13px; margin-bottom:20px; }
+  h2 { font-size:19px; margin:34px 0 10px; padding-bottom:6px; border-bottom:2px solid var(--line); }
+  h3 { font-size:15px; margin:22px 0 8px; }
+  .summary { display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 6px; }
+  .sum-card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 16px; min-width:120px; }
+  .sum-card b { display:block; font-size:22px; }
+  .sum-card span { font-size:12px; color:var(--sub); }
+  .bar { height:10px; border-radius:5px; overflow:hidden; display:flex; margin:10px 0 4px; }
+  .bar i { display:block; height:100%; }
+  .legend { font-size:12px; color:var(--sub); margin-bottom:18px; }
+  .node { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin:8px 0; }
+  .node .hd { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .node .id { font-family:Consolas,monospace; font-size:13px; background:#f0ede5; border-radius:4px; padding:1px 6px; }
+  .node .ttl { font-weight:700; }
+  .pill { font-size:11px; padding:1px 8px; border-radius:99px; font-weight:600; }
+  .pill.p0 { background:var(--p0bg); color:var(--p0); }
+  .pill.p1 { background:var(--p1bg); color:var(--p1); }
+  .pill.p2 { background:var(--p2bg); color:var(--p2); }
+  .pill.ok { background:var(--okbg); color:var(--ok); }
+  .pill.keep { background:#f0ede5; color:var(--tag); }
+  .node .opt { font-size:13px; color:var(--sub); margin-top:6px; padding-left:4px; border-left:3px solid var(--line); }
+  .node .fx { font-family:Consolas,monospace; font-size:12px; background:#f7f5ef; border-radius:4px; padding:0 5px; }
+  .node .fix { font-size:13px; margin-top:6px; }
+  .node .fix b { color:var(--p1); }
+  .table { width:100%; border-collapse:collapse; font-size:13px; margin:8px 0; }
+  .table th, .table td { border:1px solid var(--line); padding:6px 9px; text-align:left; vertical-align:top; }
+  .table th { background:#f0ede5; font-weight:600; white-space:nowrap; }
+  .foot { color:var(--sub); font-size:12px; margin-top:36px; padding-top:12px; border-top:1px solid var(--line); }
+  .red { color:var(--p0); font-weight:700; }
+  .amber { color:var(--p1); font-weight:700; }
+</style>
+</head>
+<body><div class="wrap">
+
+<h1>选择承接审计报告</h1>
+<div class="sub">帝成观止 · 全 13 部剧本 choices 选择 → 后续剧情承接审计 · 2026-08-27 · 基线 verify 0 失败 0 警告</div>
+
+<div class="summary">
+  <div class="sum-card"><b>428</b><span>场景总数</span></div>
+  <div class="sum-card"><b>110</b><span>含选项节点</span></div>
+  <div class="sum-card"><b>0</b><span>零承接节点（A级）</span></div>
+  <div class="sum-card"><b>8</b><span class="red">P0 死数值</span></div>
+  <div class="sum-card"><b>26</b><span class="amber">P1 文本无回响</span></div>
+  <div class="sum-card"><b>~20</b><span>P2 走马灯集中</span></div>
+</div>
+<div class="bar">
+  <i style="width:0%;background:var(--p0)"></i><i style="width:20%;background:var(--p1)"></i><i style="width:15%;background:var(--p2)"></i><i style="width:65%;background:var(--ok)"></i>
+</div>
+<div class="legend">■ P0 死数值 8（2%） ■ P1 文本无回响 26（24%） ■ P2 走马灯集中 20（18%） ■ 承接良好 56（51%）</div>
+
+<h2>结论先行</h2>
+<p>引擎层面的承接机制（cond 分流 / effects / altNext / verdict 复盘）是完备的——<b>没有任何"选啥都一样"的摆设节点</b>。问题集中在<b>「数值让步节点」的文本回响缺失</b>：34 个节点为数值系统让步而设，选项只增减面板数值，<b>后续对话与事件文本不随选择变化</b>，玩家要到结局/成就结算才看到后果，中间全程无感——这正是"生硬、冰冷的剧情跳跃"的来源。</p>
+<p>案件 5 部（fuma/qiuwei/sichou/xie/qinhuai）选择天然分流（调查→线索→verdict 闭环），<b>无此问题</b>。</p>
+
+<h2>审计维度说明</h2>
+<table class="table">
+<tr><th>级别</th><th>判定</th><th>数量</th></tr>
+<tr><td><span class="pill p0">P0</span></td><td>死数值：选项增减某数值，但全剧本 + 成就系统均无任何消费点（含 statAtLeast/statAtMost）→ 玩家的代价/收益完全不可见</td><td>8（全在 changhen）</td></tr>
+<tr><td><span class="pill p1">P1</span></td><td>文本无回响：所有选项 next 相同 + effects 仅数值增量。数值有消费（结局门槛/成就），但后续场景文本不随选择变化，游玩中无感知</td><td>26</td></tr>
+<tr><td><span class="pill p2">P2</span></td><td>走马灯集中：选择 set 的 flag 只在结局前回忆场景被 cond 引用一次，中途零回响（结局开关型 flag 除外，回响强度足够）</td><td>约 20</td></tr>
+<tr><td><span class="pill ok">OK</span></td><td>承接良好：分流文本差异 / flag 快速回响 / 结局开关 / 访问控制（done_*）</td><td>56+</td></tr>
+</table>
+
+<h2>P0 · 死数值 —— changhen「人生长恨」天年（shouming）8 节点</h2>
+<p>「天年」= 寿命隐喻：操劳折寿、宽仁延年。8 个节点反复增减，但<b>全剧本 0 消费</b>——不出现在任何 cond/结局门槛/成就里。玩家选"瞒病强撑"扣 5 天年、选"坦然称病"加 3 天年，最终结局完全不受影响，权衡无意义。</p>
+
+<div class="node"><div class="hd"><span class="id">wuzhang</span><span class="ttl">五丈原</span><span class="pill p0">P0</span></div>
+<div class="opt">▸ 削司马懿兵权 → junchen-20, shouming+5 ｜ ▸ 托孤之义相托 → junchen+10 ｜ ▸ 令二臣盟誓 → junchen+5（三选项同 next ch_xiangping，flag 结局开关 OK）</div>
+<div class="fix"><b>修法：</b>① 天年结局门槛——final/epilogue 按天年分流（天年低 → 更早油尽灯枯的文本/结局）；② fever/yaoyu 场景加入"身子"回响行。</div></div>
+
+<div class="node"><div class="hd"><span class="id">ch_chaohui</span><span class="ttl">朝会</span><span class="pill p0">P0</span></div>
+<div class="opt">▸ 瞒病强撑 → junchen+5, shouming-5 ｜ ▸ 坦然称病 → shouming+3, junchen-3（同 next fever）</div>
+<div class="fix"><b>修法：</b>fever「热」场景文本随选择变体——瞒病则写"咳声咽回腹中，谁都没听见"；称病则写"病势反而轻了"。同时纳入天年消费链。</div></div>
+
+<div class="node"><div class="hd"><span class="id">ch_beifa</span><span class="ttl">北伐</span><span class="pill p0">P0</span></div>
+<div class="opt">▸ 急催 → junchen+5, shouming-5 ｜ ▸ 缓图 → shouming+4（同 next chubiao）</div>
+<div class="fix"><b>修法：</b>chubiao「出师表」文本变体：急催线写"师出无名、军心浮动"，缓图线写"以守养命"。</div></div>
+
+<div class="node"><div class="hd"><span class="id">ch_jieting</span><span class="ttl">街亭</span><span class="pill p0">P0</span></div>
+<div class="opt">▸ 重赏张郃 → junchen+5, shouming-3 ｜ ▸ 追查败因 → shouming+3, junchen-3（同 next ch_chencang）</div>
+<div class="fix"><b>修法：</b>ch_chencang 文本变体：重赏线"军功可期"，追查线"用人二字沉甸甸"。</div></div>
+
+<div class="node"><div class="hd"><span class="id">ch_chencang</span><span class="ttl">陈仓</span><span class="pill p0">P0</span></div>
+<div class="opt">▸ 发援兵 → junchen+5, shouming-5 ｜ ▸ 传诏嘉勉 → shouming+4, junchen-3（同 next duel_intro）</div>
+<div class="fix"><b>修法：</b>duel_intro 文本变体 + 天年消费链。</div></div>
+
+<div class="node"><div class="hd"><span class="id">ch_gongshi</span><span class="ttl">宫室</span><span class="pill p0">P0</span></div>
+<div class="opt">▸ 罢役 → shouming+5, junchen-3 ｜ ▸ 续修 → junchen+3, shouming-5（同 next ch_xingbian）</div>
+<div class="fix"><b>修法：</b>ch_xingbian 文本变体：罢役线写"宫室停工，民力得养"。</div></div>
+
+<div class="node"><div class="hd"><span class="id">ch_xingbian</span><span class="ttl">星变</span><span class="pill p0">P0</span></div>
+<div class="opt">▸ 修德 → shouming+6, junchen-4 ｜ ▸ 斥之 → junchen+5, shouming-5（同 next wuzhang）</div>
+<div class="fix"><b>修法：</b>wuzhang 文本变体：修德线写"自省",斥之线写"朕命在天"。</div></div>
+
+<div class="node"><div class="hd"><span class="id">ch_xiangping</span><span class="ttl">襄平</span><span class="pill p0">P0</span></div>
+<div class="opt">▸ 遣司马懿 → junchen+6, shouming-4 ｜ ▸ 遣毋丘俭 → junchen-4, shouming+4（同 next ch_kaixuan）</div>
+<div class="fix"><b>修法：</b>ch_kaixuan 文本变体 + 天年消费链。</div></div>
+
+<h2>P1 · 文本无回响 26 节点（数值有消费、剧情文本不变）</h2>
+<p>共性：选项只动数值，后续场景文本完全相同。数值消费点存在（结局门槛 / 成就 statAtLeast），但<b>游玩过程中唯一可见的是面板数字变化</b>——选择感断裂。修法统一：<b>目标场景按选择加文本回响变体</b>（断粮选"烧"→ 后文写军纪高涨；选"夺"→ 写百姓怨声）。</p>
+
+<h3>shumian「十面埋伏」11 节点</h3>
+<div class="node"><div class="hd"><span class="id">hx_duanliang</span><span class="ttl">断粮 · 釜底抽薪</span><span class="pill p1">P1</span></div>
+<div class="opt">烧（junji+10,renji-8）/ 夺（junji+5,renji+5）/ 只烧军粮（junji-3,renji+8）→ hx_fire</div>
+<div class="fix"><b>修法：</b>hx_fire「烧粮之夜」文本变体：三线分别写军纪、怨声、民望。</div></div>
+<div class="node"><div class="hd"><span class="id">hx_beishui</span><span class="ttl">背水 · 一役</span><span class="pill p1">P1</span></div>
+<div class="opt">背水列阵（junji+10,renji-8）/ 留伏兵（junji+5,renji+5）→ hx_river</div>
+<div class="fix"><b>修法：</b>hx_river「河岸」文本变体。</div></div>
+<div class="node"><div class="hd"><span class="id">hx_dianbing</span><span class="ttl">点兵 · 多多益善</span><span class="pill p1">P1</span></div>
+<div class="opt">多多益善 / 精挑壮勇 / 上书调兵 → hx_roll</div>
+<div class="fix"><b>修法：</b>hx_roll「帐前点将」文本变体。</div></div>
+<div class="node"><div class="hd"><span class="id">hx_lishi_dead</span><span class="ttl">郦生 · 鼎</span><span class="pill p1">P1</span></div>
+<div class="opt">受诏击齐（junji+8,renji-5）/ 上表请罪（junji-5,renji+8）/ 沉默 → hx_qingwang</div>
+<div class="fix"><b>修法：</b>hx_qingwang 文本变体（是否背负"害死郦生"的阴影）。</div></div>
+<div class="node"><div class="hd"><span class="id">hx_lishi_alive</span><span class="ttl">郦生 · 说成</span><span class="pill p1">P1</span></div>
+<div class="opt">敬酒（renji+8）/ 整军（junji+8）/ 不语 → hx_qingwang</div>
+<div class="fix"><b>修法：</b>同上，hx_qingwang 文本变体。</div></div>
+<div class="node"><div class="hd"><span class="id">hz_zhou</span><span class="ttl">孤城 · 半碗粥</span><span class="pill p1">P1</span></div>
+<div class="opt">开仓（diye-5,renji+10）/ 先兵（diye+8,renji-5）/ 杀马（diye+5,renji+5）→ hz_food</div>
+<div class="fix"><b>修法：</b>hz_food「三百石」文本变体。</div></div>
+<div class="node"><div class="hd"><span class="id">hz_cefan</span><span class="ttl">策反 · 说齐</span><span class="pill p1">P1</span></div>
+<div class="opt">遣郦生（diye+10,renji+5）/ 加急去信（diye+3,renji+8）/ 双管齐下（diye+8,renji-3）→ hz_lishi_news</div>
+<div class="fix"><b>修法：</b>hz_lishi_news「齐地·郦生」文本变体。</div></div>
+<div class="node"><div class="hd"><span class="id">hz_tuoxiang_lose</span><span class="ttl">败后 · 拖</span><span class="pill p1">P1</span></div>
+<div class="opt">弃车保帅 / 拼死断后 / 坚壁清野 → a2_doubt</div>
+<div class="fix"><b>修法：</b>a2_doubt 文本变体。</div></div>
+<div class="node"><div class="hd"><span class="id">a2_wound_old / a2_wound_new</span><span class="ttl">旧伤 / 新伤</span><span class="pill p1">P1</span></div>
+<div class="opt">强撑巡营（junji+8,renji-3）/ 卧床静养（renji+5,diye-3）→ a2_qiwang</div>
+<div class="fix"><b>修法：</b>a2_qiwang「假齐王」文本变体（巡营线：带伤上殿；静养线：病榻听报）。</div></div>
+<div class="node"><div class="hd"><span class="id">a2_urge</span><span class="ttl">帐中 · 急催</span><span class="pill p1">P1</span></div>
+<div class="opt">再催（diye+3,junji+3）/ 忍住（renji+5）→ a2_final</div>
+<div class="fix"><b>修法：</b>a2_final「收束」文本变体。</div></div>
+
+<h3>jianfeng「剑锋之上」7 节点</h3>
+<div class="node"><div class="hd"><span class="id">c_tunliu</span><span class="ttl">屯留</span><span class="pill p1">P1</span></div>
+<div class="opt">发兵讨（weiwang+8,liangxin-8）/ 遣使招抚（liangxin+8,weiwang-5）/ 按兵不动 → c_changanjun</div>
+<div class="fix"><b>修法：</b>c_changanjun 文本变体。</div></div>
+<div class="node"><div class="hd"><span class="id">c_changanjun</span><span class="ttl">长安君</span><span class="pill p1">P1</span></div>
+<div class="opt">尽诛其党 / 罪止成蟜 → dian</div>
+<div class="fix"><b>修法：</b>dian 文本变体。</div></div>
+<div class="node"><div class="hd"><span class="id">d_chelie</span><span class="ttl">车裂</span><span class="pill p1">P1</span></div>
+<div class="opt">迁太后于雍 / 罪止其身 → d_maojiao</div>
+<div class="fix"><b>修法：</b>d_maojiao 文本变体。</div></div>
+<div class="node"><div class="hd"><span class="id">d_maojiao</span><span class="ttl">茅焦</span><span class="pill p1">P1</span></div>
+<div class="opt">从谏 / 拒谏 → b_zhuke</div>
+<div class="fix"><b>修法：</b>b_zhuke 文本变体。</div></div>
+<div class="node"><div class="hd"><span class="id">b_zhuke</span><span class="ttl">逐客议</span><span class="pill p1">P1</span></div>
+<div class="opt">逐客 / 召李斯庭对 → b_kesheng</div>
+<div class="fix"><b>修法：</b>b_kesheng 文本变体。</div></div>
+<div class="node"><div class="hd"><span class="id">bf_panchen</span><span class="ttl">叛臣</span><span class="pill p1">P1</span></div>
+<div class="opt">枭首 / 留命 → city_intro</div>
+<div class="fix"><b>修法：</b>city_intro 文本变体。</div></div>
+<div class="node"><div class="hd"><span class="id">ts_suojian</span><span class="ttl">屠城所见</span><span class="pill p1">P1</span></div>
+<div class="opt">严令止杀 / 兵不厌诈 → flood_intro</div>
+<div class="fix"><b>修法：</b>flood_intro 文本变体。</div></div>
+
+<h3>diaolan「雕栏玉彻」5 节点</h3>
+<div class="node"><div class="hd"><span class="id">dl_mingdan</span><span class="ttl">名单</span><span class="pill p1">P1</span></div>
+<div class="opt">照签 / 扣压 / 留中 → chess</div></div>
+<div class="node"><div class="hd"><span class="id">dl_jiushang</span><span class="ttl">旧伤</span><span class="pill p1">P1</span></div>
+<div class="opt">叫太医 / 硬撑 → planning</div></div>
+<div class="node"><div class="hd"><span class="id">dl_fengsui</span><span class="ttl">烽燧</span><span class="pill p1">P1</span></div>
+<div class="opt">亲征 / 倚藩镇 / 守内 → dl_banshi</div></div>
+<div class="node"><div class="hd"><span class="id">dl_sanzhang</span><span class="ttl">三张面孔</span><span class="pill p1">P1</span></div>
+<div class="opt">倚朝臣 / 靠宦官 / 亲藩镇 → dl_huanbian</div></div>
+<div class="node"><div class="hd"><span class="id">dl_huanbian</span><span class="ttl">换边</span><span class="pill p1">P1</span></div>
+<div class="opt">制衡 / 从一而终 / 抽身 → dl_xishi</div></div>
+<p class="fix" style="margin-top:8px"><b>统一修法：</b>目标场景（chess/planning/dl_banshi/dl_huanbian/dl_xishi）按 quanli/renmai 高低加文本回响行。</p>
+
+<h3>xingxing「星星之火」2 节点 + touming「投名状」2 节点</h3>
+<div class="node"><div class="hd"><span class="id">xx_zhengdun</span><span class="ttl">整顿 · 能打仗</span><span class="pill p1">P1</span></div>
+<div class="opt">支持军法官 / 随朱军长 / 随杨先生 → xx_zhengxun</div></div>
+<div class="node"><div class="hd"><span class="id">xx_lide</span><span class="ttl">争论 · 李德</span><span class="pill p1">P1</span></div>
+<div class="opt">支持李德 / 支持杨先生 / 两边都听 → xx_city_intro</div></div>
+<div class="node"><div class="hd"><span class="id">hall_laugh / hall_laugh_1y</span><span class="ttl">军中无戏言</span><span class="pill p1">P1</span></div>
+<div class="opt">咬死压码（junxin+10）/ 退半步（xinyong+10）→ deal</div></div>
+<p class="fix" style="margin-top:8px"><b>统一修法：</b>目标场景（xx_zhengxun / xx_city_intro / deal）加文本回响变体。</p>
+
+<h2>P2 · 走马灯集中爆发（建议优化，非硬伤）</h2>
+<p>设计模式：中途选择只被结局前「走马灯」回忆场景 cond 引用一次——回忆汇流是高级设计，但<b>中间零回响造成断裂感</b>。建议对早期关键选择在中间章节加 1-2 处散点回响。</p>
+<table class="table">
+<tr><th>剧本</th><th>选择节点</th><th>flag</th><th>唯一回响点</th><th>建议</th></tr>
+<tr><td>touming</td><td>start 承诺三选</td><td>promise_2y/1y/silent</td><td>ch3_canon_variants 走马灯</td><td>ch2 议事/受降场景加一句"当年之约"回响</td></tr>
+<tr><td>touming</td><td>camp 计划三选</td><td>plan_decisive/steady/loner</td><td>同上</td><td>ch2 战报场景提"你的打法"</td></tr>
+<tr><td>touming</td><td>ch2_letter 受降三选</td><td>surrender_honor/betray/refuse</td><td>同上</td><td>ch3 进城场景加回响</td></tr>
+<tr><td>touming</td><td>ch3_start 催粮三选</td><td>go_self/sandi/letter</td><td>同上</td><td>催粮结果场景差异化</td></tr>
+<tr><td>xingxing</td><td>kaike / huiyi 四选</td><td>watch/help/heard/sat</td><td>xing_lamp 走马灯</td><td>junzhuang 前加"先生看你一眼"类回响</td></tr>
+<tr><td>changhen</td><td>wuzhang 托孤三选</td><td>cut_sima/trust_sima/oath_sima</td><td>epilogue 走马灯</td><td>ch_xiangping/ch_kaixuan 加回响</td></tr>
+<tr><td>jieyu</td><td>yq_bridge/yq_dawn/p2_mercy 仁慈</td><td>mercy_shown/slain</td><td>p5_prison 走马灯</td><td>p3/p4 战场场景加"刀下留人"回响（可选）</td></tr>
+<tr><td>changjiang</td><td>q_win 棋局让子</td><td>qipan_yield</td><td>r_yiqi 走马灯</td><td>中间加回响（可选）</td></tr>
+</table>
+
+<h2>承接良好 · 不动（摘要）</h2>
+<ul>
+<li><b>案件 5 部</b>：调查-线索-verdict 闭环，选择天然分流 ✓</li>
+<li><b>done_* 访问控制</b>（market_gate/hub）："去过了"选项消失，合理 ✓</li>
+<li><b>结局开关 flag</b>：shumian lishi_dead/lishi_alive/qing_wang/jiao_bing/xinren_path、diaolan poison_burned（duel 败线）、changjiang qipan_yield 等——回响在结局/败线，强度足够 ✓</li>
+<li><b>shumian trust_hold/trust_doubt</b>：a2_intro → a2_escape 快速回响（隔 1 场景）✓</li>
+</ul>
+
+<h2>引擎方案（开工选型）</h2>
+<table class="table">
+<tr><th>方案</th><th>做法</th><th>成本</th><th>评价</th></tr>
+<tr><td><b>A · Scene 文本变体机制（推荐）</b></td><td>types.ts 的 Scene 加 <span class="fx">variantLines?: { cond?: Cond; lines: string[] }[]</span>；runtime/App.tsx 进场景时按 cond 匹配覆盖 lines；verify 校验合法性。34 个目标场景逐个补回响文本</td><td>引擎 3 文件 + 数据 34 处</td><td>一劳永逸，后续所有回响都靠它；不增加场景数；与现有 cond/effects 体系同构</td></tr>
+<tr><td>B · 纯分流改造</td><td>同 next 节点改独立 next 场景（选项各自场景）</td><td>+70 场景</td><td>文本最自由但场景爆炸，且无法表达多选择组合影响</td></tr>
+<tr><td>C · 静态改写</td><td>直接在目标场景 lines 里写死选择结果文本</td><td>数据 34 处</td><td>无法组合多个前置选择，场景被多个节点影响时失效</td></tr>
+</table>
+
+<h2>修改清单 · 合计</h2>
+<table class="table">
+<tr><th>优先级</th><th>内容</th><th>数量</th></tr>
+<tr><td><span class="pill p0">P0</span></td><td>changhen 天年消费链：结局门槛 + fever/yaoyu 文本回响（8 节点）</td><td>1 部</td></tr>
+<tr><td><span class="pill p1">P1</span></td><td>引擎加 variantLines 机制 + 34 个纯数值节点目标场景补回响文本（shumian 11 / jianfeng 7 / diaolan 5 / changhen 7 / xingxing 2 / touming 2）</td><td>34 节点</td></tr>
+<tr><td><span class="pill p2">P2</span></td><td>走马灯型中间散点回响（touming/xingxing/changhen 优先，jieyu/changjiang 可选）</td><td>约 20 flag</td></tr>
+<tr><td><span class="pill keep">不动</span></td><td>案件调查 / done_* / 结局开关 flag</td><td>—</td></tr>
+</table>
+<p><b>建议开工顺序：</b>① 引擎 variantLines 机制（verify 全绿）→ ② P0 天年消费链 → ③ P1 34 节点回响文本 → ④ P2 散点回响 → ⑤ verify + tsc + build + 3000 端口实测。</p>
+
+<div class="foot">审计脚本：scripts/audit_choices.mts（可复用，静态扫描全剧本 choices 承接，分级 A/B/C/D/E/F/G）｜ 基线：verify 0 失败 0 警告｜待总柴审核后开工</div>
+</div></body></html>

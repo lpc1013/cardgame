@@ -15,15 +15,15 @@ export const touming: Scenario = {
     { key: "xinyong", name: "信用", init: 50 },
   ],
   cards: [
-    { id: "t_wen", name: "缓言", suit: "策", power: 2, text: "把话说得滴水不漏。", lore: "乱世里，话就是命。" },
+    { id: "t_wen", name: "缓言", suit: "策", power: 2, situational: { suit: "势", bonus: 2 }, text: "把话说得滴水不漏——他势压过来，你更要以柔化刚。", lore: "乱世里，话就是命。" }, // C-4 机制位扩编
     { id: "t_kuang", name: "放狂", suit: "隐", power: 4, text: "把胸中那口血气压出来。", lore: "八百人对三万人，不狂一点，谁跟你走？" },
-    { id: "t_li", name: "算账", suit: "器", power: 3, text: "把兵马钱粮算给他们听。", lore: "庙堂之上，疯话要靠数目字来撑。" },
+    { id: "t_li", name: "算账", suit: "器", power: 3, drawOnPlay: 1, text: "把兵马钱粮算给他们听——账目一开，话就多了（抽 1 张）。", lore: "庙堂之上，疯话要靠数目字来撑。" }, // C-4 机制位扩编
     { id: "t_qing", name: "动情", suit: "策", power: 3, text: "提兄弟，提家乡，提死人。", lore: "活人靠赏银，死人靠记性。" },
     { id: "t_zhen", name: "结阵", suit: "器", power: 3, text: "亲兵结环阵，枪锋向外。", lore: "柴字营的结阵，是从尸山血海里滚出来的。" },
     { id: "t_tu", name: "突围", suit: "器", power: 4, text: "凿穿一点，纵马夺路。", lore: "亲兵只剩二十骑。每一骑，都是拿命换来的路。" },
     { id: "t_zhen2", name: "背靠背结阵", suit: "器", power: 4, text: "残骑结成环阵，枪锋向外，滚着走。", lore: "柴字营最后的阵形——背对着背，谁也不必看身后。" },
-    { id: "t_dun", name: "据守", suit: "势", power: 2, text: "依托地形，且战且退。", lore: "绊马索后必有弓手。跑，是跑不掉的。" },
-    { id: "t_hou", name: "断后", suit: "隐", power: 3, text: "让弟兄先走，我来挡箭。", lore: "「快走！」——他喊完这两个字，就被十几支长枪贯穿了身子。" },
+    { id: "t_dun", name: "据守", suit: "势", power: 2, drawOnPlay: 1, text: "依托地形，且战且退——多守一刻，便多看清一分路数（抽 1 张）。", lore: "绊马索后必有弓手。跑，是跑不掉的。" }, // C-4 机制位扩编
+    { id: "t_hou", name: "断后", suit: "隐", power: 3, sacrifice: 1, text: "让弟兄先走，我来挡箭（自伤 1，本张 +2）。", lore: "「快走！」——他喊完这两个字，就被十几支长枪贯穿了身子。" }, // C-4 机制位扩编
       { id: "t_yuye", name: "雨夜请缨", suit: "势", power: 3, text: "雨夜请缨，叩门三响。", lore: "雨水沿檐成线，门里灯一晃。" },
     { id: "t_liangjia", name: "梁家铺子", suit: "器", power: 3, text: "梁家铺子，灯笼挂到三更。", lore: "门板半卸，柜上货没名。" },
     { id: "t_shaoming", name: "投名血状", suit: "隐", power: 3, text: "投名血状，按手为誓。", lore: "血印盖在名字上，名字就改了。" },
@@ -48,7 +48,9 @@ export const touming: Scenario = {
       opponent: { name: "老者", desc: "为国举士的老臣，茶壶里煮的是帝王心术。" },
       goal: 5,
       script: ["策", "势", "策", "策", "势", "策", "策"],
-      deck: ["t_wen", "t_kuang", "t_li", "t_qing", "t_yuye", "t_haohan", "t_zhenwei"],
+      // A-1 番外钥匙卡：t_ciji（辞疾请辞·策3）/t_yinji（引路灯笼·策2）为 power≤3 弱卡，补入茶局可用牌组——
+      // 既补 script 策位花色缺口，又保证携带≥need(2) 胜局可解锁番外「梁家铺子」（touming 全剧本原无任何钥匙卡可达）
+      deck: ["t_wen", "t_kuang", "t_li", "t_qing", "t_yuye", "t_haohan", "t_zhenwei", "t_ciji", "t_yinji"],
       winScene: "ch2_tea_win",
       loseScene: "ch2_tea_lose",
     },
@@ -136,12 +138,12 @@ export const touming: Scenario = {
       choices: [
         {
           text: "咬死不改口，再压一码：「一年半。一年半之内，攻下苏州。」",
-          effects: [{ stat: { junxin: 10 } }],
+          effects: [{ stat: { junxin: 10 } }, { setFlag: "press_half_year" }],
           next: "deal",
         },
         {
           text: "退半步：「两年。两年之内，若不下苏州，提头来见。」",
-          effects: [{ stat: { xinyong: 10 } }],
+          effects: [{ stat: { xinyong: 10 } }, { setFlag: "yield_two_years" }],
           next: "deal",
         },
       ],
@@ -174,12 +176,12 @@ export const touming: Scenario = {
       choices: [
         {
           text: "咬死不改口，再压一码：「十个月。十个月之内，攻下苏州。」",
-          effects: [{ stat: { junxin: 10 } }],
+          effects: [{ stat: { junxin: 10 } }, { setFlag: "press_ten_month" }],
           next: "deal",
         },
         {
           text: "退半步把刀递过去：「那就还按两年立状。若不下苏州，提头来见。」",
-          effects: [{ stat: { xinyong: 10 } }],
+          effects: [{ stat: { xinyong: 10 } }, { setFlag: "yield_two_years" }],
           next: "deal",
         },
       ],
@@ -194,6 +196,12 @@ export const touming: Scenario = {
   "三千八百人，没有粮，没有械——只有一个承诺，和一场没下完的雨。",
   "我在雨里走了很久。身后的火，始终没有烧旺起来。"
 ],
+      variantLines: [
+        { cond: { flag: "press_half_year" }, lines: ["「一年半。」你对自己说。", "三千八百人，一个承诺，一场没下完的雨——日子从今天起，按天算。"] },
+        { cond: { flag: "press_ten_month" }, lines: ["「十个月。」你数着雨珠。", "三百天。一天，都不能多。"] },
+        { cond: { flag: "yield_two_years" }, lines: ["「两年。」你退了一步——可那一步，是往深渊里退的。", "提头来见。这四个字，从今天起，压在你的肩上。"] },
+        { cond: { flag: "silent" }, lines: ["军令状上的名字，是二弟的。", "你欠他的，从这一夜起，开始计息。"] },
+      ],
       next: "camp",
     },
     {
@@ -209,6 +217,11 @@ export const touming: Scenario = {
   "三弟凑过来看了一眼，又退回去：「苏州守将的帅府？那是城心——进了城，就是进了虎口。」",
   "二弟不说话，只看着我。"
 ],
+      variantLines: [
+        { cond: { flag: "promise_2y" }, lines: ["二弟忽然开口：「大哥，两年之约——我记着呢。」", "你看了他一眼，没接话。帐外的雨，又密了一层。"] },
+        { cond: { flag: "promise_1y" }, lines: ["二弟忽然开口：「大哥，一年。」", "他说完，自己也笑了——笑得有点苦。"] },
+        { cond: { flag: "silent" }, lines: ["二弟在灯下，把军令状又看了一遍。名字是他的。", "他什么也没说。可你把那张纸上的每一个字，都记了下来。"] },
+      ],
       choices: [
         {
           text: "采纳二弟之策：奇兵直捣苏州守将帅府。",
@@ -239,6 +252,11 @@ export const touming: Scenario = {
   "苏州城头的守军大约不会想到，这座江南最富庶的城，即将迎来它此生最长的一个围城。",
   "我把地图折好，贴身收着。风灯的火，在夜里跳了跳。"
 ],
+      variantLines: [
+        { cond: { flag: "plan_decisive" }, lines: ["奇兵的路线，你描了又描。", "二弟说：大哥，这一注押得大。你说：大的注，才配得上大的城。"] },
+        { cond: { flag: "plan_steady" }, lines: ["练兵的三个月，粮一天比一天紧。", "夜里点灯，你把地图翻出来，又放回去——稳，是要拿日子换的。"] },
+        { cond: { flag: "plan_loner" }, lines: ["那张地图，你一个人看了整夜。", "天亮时，你在图的角落，用指甲划了一道——那是只有你自己知道的第三条路。"] },
+      ],
       next: "ch2_start",
     },
     // ================== 第二章 · 围城 ==================
@@ -459,6 +477,11 @@ export const touming: Scenario = {
   "帐中的茶，还冒着热气。",
   "茶汤的颜色，和紫禁城那杯，一模一样。"
 ],
+      variantLines: [
+        { cond: { flag: "go_self" }, lines: ["「备马」那两个字，是你自己喊的。", "马背上的雨，浇了三天三夜。到帅帐时，靴子里的水倒出来能养鱼——可粮道，你已经走完了大半。"] },
+        { cond: { flag: "go_sandi" }, lines: ["三弟走的那天，斗笠往下一压，扎进了雨幕。", "你站在渡口，看着他的背影越来越小——那顶斗笠，后来你找了很久。"] },
+        { cond: { flag: "go_letter" }, lines: ["官驿的回信，比人先到：所询各节，均无窒碍。", "八个字，写得很平。你捏着那封信，忽然想：平的话，往往藏不平的事。"] },
+      ],
       duel: "d_li_yuan",
     },
     {

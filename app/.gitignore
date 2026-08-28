@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# 构建残留（审计 C-4：防 dist_old_* 堆积污染 lint）
+dist_old*
+_tmp_dist_old*
+dist_old_buildtmp*

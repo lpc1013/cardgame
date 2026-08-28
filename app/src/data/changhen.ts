@@ -16,11 +16,11 @@ export const changhen: Scenario = {
     { key: "junchen", name: "君臣之分", init: 50 },
   ],
   cards: [
-    { id: "h_rang", name: "让棋一子", suit: "策", power: 2, text: "赢棋的帝王很多，会输棋的帝王很少。", lore: "「爱卿又让了我一局了。」——老狐狸俯身低头，你看不见他的脸。" },
+    { id: "h_rang", name: "让棋一子", suit: "策", power: 2, sacrifice: 1, text: "赢棋的帝王很多，会输棋的帝王很少——让一子，示敌以弱（自伤 1，本张 +2）。", lore: "「爱卿又让了我一局了。」——老狐狸俯身低头，你看不见他的脸。" }, // C-4 机制位扩编
     { id: "h_shi", name: "敲打", suit: "策", power: 4, text: "嫡子违法的把柄，拍在棋盘上。", lore: "恩威并施，乃驭人之道。但敲打，着实耗费精力。" },
-    { id: "h_yong", name: "恩宠有加", suit: "势", power: 3, text: "加九锡，赐几杖，抬起来用。", lore: "要用他，先喂他。喂到天下人都看见君臣和睦。" },
-    { id: "h_fang", name: "外放夺权", suit: "隐", power: 3, text: "调离中枢，去边关打仗——离朝堂越远越好。", lore: "没有他，统一要等到何年？可有了他……" },
-    { id: "h_chi", name: "急宣回京", suit: "器", power: 3, text: "金牌令箭，便宜行事。", lore: "「如果他不听号令，你可便宜行事。」" },
+    { id: "h_yong", name: "恩宠有加", suit: "势", power: 3, situational: { suit: "器", bonus: 2 }, text: "加九锡，赐几杖，抬起来用——他有器物之功，我自加倍厚待。", lore: "要用他，先喂他。喂到天下人都看见君臣和睦。" }, // C-4 机制位扩编
+    { id: "h_fang", name: "外放夺权", suit: "隐", power: 3, situational: { suit: "势", bonus: 2 }, text: "调离中枢，去边关打仗——他势大一分，你便外放一着。", lore: "没有他，统一要等到何年？可有了他……" }, // C-4 机制位扩编
+    { id: "h_chi", name: "急宣回京", suit: "器", power: 3, drawOnPlay: 1, text: "金牌令箭，便宜行事——八百里快马，一路带回新消息（抽 1 张）。", lore: "「如果他不听号令，你可便宜行事。」" }, // C-4 机制位扩编
     { id: "h_huan", name: "以情留之", suit: "隐", power: 3, text: "先帝托孤之语，一句一句说给他听。", lore: "父亲的手，也是这样冷下去的。" },
       { id: "h_jiange", name: "建章宫阙", suit: "势", power: 3, text: "宫阙巍峨，压得住人心。", lore: "雪落重檐，帝王的肩也沉。" },
     { id: "h_taiwei", name: "太尉兵符", suit: "器", power: 3, text: "兵符合一，虎符在手。", lore: "两半铜虎，分则不安。" },
@@ -46,7 +46,8 @@ export const changhen: Scenario = {
       opponent: { name: "司马懿", desc: "俯身低首的老者。你看不见他的脸，他看得见你所有的底牌。" },
       goal: 5,
       script: ["策", "势", "策", "策", "策", "势", "策"],
-      deck: ["h_rang", "h_shi", "h_yong", "h_fang"],
+      // A-1 番外钥匙卡：h_zaici/h_lingjun/h_qiuzhuang（power2 弱卡）下发进对局可用牌组，胜局可解锁番外「棋枰私话」
+      deck: ["h_rang", "h_shi", "h_yong", "h_fang", "h_zaici", "h_lingjun", "h_qiuzhuang"],
       winScene: "sima_win",
       loseScene: "sima_lose",
     },
@@ -103,6 +104,10 @@ export const changhen: Scenario = {
   "黑暗的尽头，好像有一棵很大的树，树影里站着一个人，背着身，看不清脸。\r"
 ],
       effects: [{ stat: { shouming: -10 } }],
+      variantLines: [
+        { cond: { flag: "hide_ill" }, lines: ["病势压了三日，一朝全涌上来。喉咙里那口腥甜，比上回更重。", "榻前的铜盆，接了一夜。"] },
+        { cond: { flag: "show_ill" }, lines: ["退了朝，病反而轻了些。压着的东西拿开了，人也松快半寸。", "可太医搭完脉，手一抖——他什么都没说，你什么都明白。"] },
+      ],
       next: "ch_beifa",
     },
     {
@@ -125,6 +130,10 @@ export const changhen: Scenario = {
   "\r",
   "烛火跳了一下。我把那页《出师表》，压在了案头最常看见的地方。\r"
 ],
+      variantLines: [
+        { cond: { flag: "press_war" }, lines: ["诏书已发：三日内，大军出函谷。", "灯花爆了一下。这盏灯，大约熬不过这个秋天了。"] },
+        { cond: { flag: "slow_war" }, lines: ["诏书已发：北伐，缓行。", "案头那页《出师表》，又压回了原处。"] },
+      ],
       next: "ch_jieting",
     },
     {
@@ -147,6 +156,10 @@ export const changhen: Scenario = {
   "\r",
   "他俯着身，等我的下一手。我盯着棋盘上那条断开的龙，忽然觉得，它像我。\r"
 ],
+      variantLines: [
+        { cond: { flag: "rescue_chencang" }, lines: ["发援的诏书，比救兵先到。", "西线的粮道，又薄了一寸。"] },
+        { cond: { flag: "trust_haozhao" }, lines: ["「卿守到几时，朕便信到几时」——这道诏书传遍了三军。", "郝昭在城头，冲着洛阳方向，磕了三个头。"] },
+      ],
       duel: "d_sima",
     },
     {
@@ -236,6 +249,11 @@ export const changhen: Scenario = {
   "药罐搬空了。廊下风来，枇杷树的叶子，哗哗地响了一整夜。\r"
 ],
       effects: [{ stat: { shouming: -10 } }],
+      variantLines: [
+        { cond: { statAtLeast: { shouming: 25 } }, lines: ["药罐搬空了。你扶着门框，站了一炷香——比昨天，多站了半炷。", "廊下的风带着药味。枇杷树的叶子，哗哗地响。"] },
+        { cond: { statAtLeast: { shouming: 10 } }, lines: ["药罐搬空了。你望着那棵亭亭如盖的树，忽然想：还能再看几个春天？"] },
+        { lines: ["药罐搬空了。可廊下的风一起，你连门框都扶不稳。", "这棵枇杷树，大约等不到下一个秋天了。"] },
+      ],
       next: "ch_gongshi",
     },
     {
@@ -262,6 +280,10 @@ export const changhen: Scenario = {
   "\r",
   "密探的背影消失在宫门外。金牌令箭的冰凉，还留在掌心里。\r"
 ],
+      variantLines: [
+        { cond: { flag: "cultivate_virtue" }, lines: ["减膳的诏书下了三日。太史令又上表：荧惑稍退。", "你不置可否。天心且不管，先把该做的做了。"] },
+        { cond: { flag: "defy_omen" }, lines: ["「朕命在天」四个字，第二日传遍朝堂。", "高堂隆伏地不起。你让人把他架了出去。"] },
+      ],
       choices: [
         {
           text: "趁司马懿回京述职，削其兵权，改以宗室掌军。",
@@ -311,6 +333,11 @@ export const changhen: Scenario = {
   "\r",
   "殿外，枇杷树的叶子，落了一地。\r"
 ],
+      variantLines: [
+        { cond: { statAtLeast: { shouming: 25 } }, lines: ["「再等等。」你忽然说。", "没人知道你在等什么。北方，还是下一个春天。"] },
+        { cond: { statAtLeast: { shouming: 10 } }, lines: ["「面朝北」三个字，是你自己说完的。", "说完，你竟还笑了一下——父亲当年，大约也是这么说的。"] },
+        { lines: ["话断在气里。「面朝北」三个字，只说了两个半。", "殿外，枇杷树的叶子落了一地——来年，大约不会再抽新枝了。"] },
+      ],
       next: "epilogue",
     },
     {
@@ -323,6 +350,10 @@ export const changhen: Scenario = {
   "\r",
   "也没人记下，高陵的方向，正对着北方。\r"
 ],
+      variantLines: [
+        { cond: { statAtLeast: { shouming: 20 } }, lines: ["史官另记一笔：帝崩前夜，那棵枇杷树，开了今年的第一朵花。", "没人看见。它自己开的。"] },
+        { lines: ["史官没记的事很多。帝崩那日，枇杷树落尽了叶——来年春天，再没有抽过新枝。"] },
+      ],
       choices: [
         {
           text: "（若你削了司马懿的兵权）—— 十年后，庙堂之上再无姓司马的权臣。",
@@ -487,6 +518,7 @@ export const changhen: Scenario = {
           "text": "瞒——强撑上朝，病势咽回腹中。",
           "hint": "威仪 · 折天年",
           "effects": [
+            { "setFlag": "hide_ill" },
             {
               "stat": {
                 "junchen": 5,
@@ -500,6 +532,7 @@ export const changhen: Scenario = {
           "text": "示——坦然称病，朝务暂付三公。",
           "hint": "露怯 · 省着活",
           "effects": [
+            { "setFlag": "show_ill" },
             {
               "stat": {
                 "shouming": 3,
@@ -532,6 +565,7 @@ export const changhen: Scenario = {
           "text": "急催——趁蜀国新丧，天赐良机。",
           "hint": "抢时机 · 耗灯油",
           "effects": [
+            { "setFlag": "press_war" },
             {
               "stat": {
                 "junchen": 5,
@@ -545,6 +579,7 @@ export const changhen: Scenario = {
           "text": "缓图——以守养命，待时而动。",
           "hint": "把日子往后拖",
           "effects": [
+            { "setFlag": "slow_war" },
             {
               "stat": {
                 "shouming": 4
@@ -578,6 +613,7 @@ export const changhen: Scenario = {
           "text": "重赏张郃——军功可期，士气可振。",
           "hint": "赏功 · 立军威",
           "effects": [
+            { "setFlag": "reward_zhanghe" },
             {
               "stat": {
                 "junchen": 5,
@@ -591,6 +627,7 @@ export const changhen: Scenario = {
           "text": "追查败因——深究己方用人。",
           "hint": "自省 · 防微杜渐",
           "effects": [
+            { "setFlag": "audit_defeat" },
             {
               "stat": {
                 "shouming": 3,
@@ -622,11 +659,16 @@ export const changhen: Scenario = {
   "\r",
   "我提笔，写了一道与发兵无关的诏书——「郝昭守孤城，朕信卿能守。卿守到几时，朕便信到几时。」\r"
 ],
+      variantLines: [
+        { cond: { flag: "reward_zhanghe" }, lines: ["张郃的赏格，三日内就到了西线。军报附注：将士欢呼，士气可用。", "你放下军报，又咳了半夜。"] },
+        { cond: { flag: "audit_defeat" }, lines: ["派去追查败因的御史，昨夜出了洛阳。", "有人骂你苛待功臣。你没回话，只在舆图上「街亭」二字旁边，用朱笔画了一个圈。"] },
+      ],
       choices: [
         {
           "text": "发援兵——不惜代价救陈仓。",
           "hint": "救急 · 耗粮耗日",
           "effects": [
+            { "setFlag": "rescue_chencang" },
             {
               "stat": {
                 "junchen": 5,
@@ -640,6 +682,7 @@ export const changhen: Scenario = {
           "text": "传诏嘉勉——卿守孤城，朕信卿。",
           "hint": "信人 · 郝昭果守下",
           "effects": [
+            { "setFlag": "trust_haozhao" },
             {
               "stat": {
                 "shouming": 4,
@@ -676,6 +719,7 @@ export const changhen: Scenario = {
           "text": "罢役——民力为国之本。",
           "hint": "恤民 · 臣下失望于志",
           "effects": [
+            { "setFlag": "stop_palace" },
             {
               "stat": {
                 "shouming": 5,
@@ -689,6 +733,7 @@ export const changhen: Scenario = {
           "text": "续修——帝王自有体统。",
           "hint": "威仪 · 大工役耗天年",
           "effects": [
+            { "setFlag": "keep_palace" },
             {
               "stat": {
                 "junchen": 3,
@@ -720,11 +765,16 @@ export const changhen: Scenario = {
   "\r",
   "这道诏书，写的是禳灾，还是不服——天下人都会知道。\r"
 ],
+      variantLines: [
+        { cond: { flag: "stop_palace" }, lines: ["太极殿停工那日，洛阳城外的新坟，少了一座。", "工部的人来请旨。你只说了两个字：先缓缓。"] },
+        { cond: { flag: "keep_palace" }, lines: ["金瓦一车一车运进洛阳。", "宫墙的影子又长了一截——压在那些役夫的脊背上。"] },
+      ],
       choices: [
         {
           "text": "修德——减膳撤乐，以禳天灾。",
           "hint": "信天命 · 示弱",
           "effects": [
+            { "setFlag": "cultivate_virtue" },
             {
               "stat": {
                 "shouming": 6,
@@ -738,6 +788,7 @@ export const changhen: Scenario = {
           "text": "斥之——朕命在天，何禳之有。",
           "hint": "强硬 · 天年真的折",
           "effects": [
+            { "setFlag": "defy_omen" },
             {
               "stat": {
                 "junchen": 5,
@@ -769,11 +820,17 @@ export const changhen: Scenario = {
   "\r",
   "用，还是不用——这道诏书，是朕替这大魏下的最后一盘大棋。\r"
 ],
+      variantLines: [
+        { cond: { flag: "cut_sima" }, lines: ["削兵的诏书，比你自己先到襄平。", "司马懿接诏时，神色如常——可那道诏书，从那天起，就成了你们之间的一堵墙。"] },
+        { cond: { flag: "trust_sima" }, lines: ["托孤的话，你还压在心底。", "此刻望着舆图上辽东那片地，你忽然想：这句话，是托付，也是赌注。"] },
+        { cond: { flag: "oath_sima" }, lines: ["金匮里的誓书，是你亲手封的。", "襄平的舆图摊开时，你想起那夜两双跪着的手——赌注，已经下了。"] },
+      ],
       choices: [
         {
           "text": "遣司马懿——百战老将，兵权给足。",
           "hint": "能胜 · 懿声望日隆",
           "effects": [
+            { "setFlag": "send_sima" },
             {
               "stat": {
                 "junchen": 6,
@@ -787,6 +844,7 @@ export const changhen: Scenario = {
           "text": "遣毋丘俭——宗室旧将，稳妥。",
           "hint": "防懿 · 或久攻不克",
           "effects": [
+            { "setFlag": "send_wuqiu" },
             {
               "stat": {
                 "junchen": -4,
@@ -802,24 +860,28 @@ export const changhen: Scenario = {
       id: "ch_kaixuan",
       title: "凯旋",
       lines: [
-  "司马懿回来了。\r",
+  "辽东平了。\r",
   "\r",
-  "辽东平了。公孙渊的头颅，装在一只木匣里，先行送到了洛阳。我没有打开看。\r",
+  "公孙渊的头颅，装在一只木匣里，先行送到了洛阳。我没有打开看。\r",
   "\r",
   "凯旋那日，洛阳城外，百官跪迎。我看见那支军队——旌旗蔽日，甲胄森然，行进之间，纹丝不乱。\r",
   "\r",
-  "那是大魏的军队。可领军的人，姓司马。\r",
+  "那是大魏的军队。\r",
   "\r",
   "我站在城楼上，看着那支队伍由远而近。风很大，吹得我的袍角猎猎作响。\r",
   "\r",
-  "司马懿在城楼下马，跪拜，山呼万岁。他的头，俯得很低。\r",
+  "领军的人在城楼下马，跪拜，山呼万岁。他的头，俯得很低。\r",
   "\r",
-  "我看着他的背。当年棋局上，他也是这样俯着身——我始终没看清过他的脸。\r",
+  "我看着那个背影。风很大，城楼上的旗，猎猎地响。\r",
   "\r",
   "那支军队在他身后，整整齐齐，一动不动。\r",
   "\r",
   "城楼下，万岁声一浪高过一浪。我扶着垛口，站了很久。\r"
 ],
+      variantLines: [
+        { cond: { flag: "send_sima" }, lines: ["领军的人，姓司马。他跪下去的那一瞬，比当年棋局上，俯得更深。", "你忽然想：这盘棋，是你自己请他下的。"] },
+        { cond: { flag: "send_wuqiu" }, lines: ["领军的人，是毋丘俭。捷报比司马懿迟了整整四十日——那四十日，是用你的日子换的。", "他跪得直，谢恩的声音也直。你笑了笑：直的人，跪不住这江山。"] },
+      ],
       next: "final",
     },
   ],

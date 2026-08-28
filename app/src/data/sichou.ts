@@ -18,6 +18,7 @@ export const sichou: Scenario = {
   stats: [
     { key: "shengjuan", name: "圣眷", init: 50 },
     { key: "minxin", name: "民命", init: 50 },
+    { key: "revisit_left", name: "重访余次", init: 2 },
   ],
   cards: [
     // ---------- 洞察 · 看破类（第五轮新增） ----------
@@ -171,7 +172,7 @@ export const sichou: Scenario = {
   "",
   "——但拉线之前，你还有一整天的空。苏杭的市集，白日不打烊。"
 ],
-      effects: [{ unlockClue: "t4" }],
+      effects: [{ gainSilver: 10 }, { unlockClue: "t4" }],
       next: "market_gate",
     },
     // ================= 市集枢纽 =================
@@ -348,8 +349,23 @@ export const sichou: Scenario = {
         { text: "【怀瑾坊】账房对册——钱是怎么样流的", cond: { notFlag: "done_zhang" }, effects: [{ setFlag: "done_zhang" }], next: "zhang" },
         { text: "【提审山本一郎】海上——货是怎么样出的（对局）", cond: { notFlag: "done_yam" }, effects: [{ setFlag: "done_yam" }], next: "yam_intro" },
         { text: "【刑部大牢】对坐周书年——罪是怎么样认的（对局）", cond: { notFlag: "done_zhou" }, effects: [{ setFlag: "done_zhou" }], next: "zhou_intro" },
+        { text: "【重访证人】重访大牢与织造局，重查霜降暗锦与子夜内侍。", hint: "兜底 · 重新打开可能错过的关键线索（限 2 次）", cond: { statAtLeast: { revisit_left: 1 } }, effects: [{ stat: { revisit_left: -1 } }, { unlockClue: "t12" }, { unlockClue: "t13" }], next: "rv_sichou" },
         { text: "◆ 封笔定案（至少勘得五条线索）", cond: { cluesAtLeast: 5 }, next: "verdict" },
       ],
+    },
+    {
+      id: "rv_sichou",
+      title: "重访 · 大牢与织造局",
+      lines: [
+  "你把两件事又走了一遍：织造局的霜降暗锦，大牢里周书年被褥夹层的那角桑皮纸。",
+  "",
+  "拆检的锦面在灯下流光——极细的金线织在锦底，是帝王私用暗纹。",
+  "",
+  "子夜的黑衣内侍，还会来吗。你坐在大牢外的檐下，等了一夜。",
+  "",
+  "天亮时，你把两样东西并排放进卷宗。"
+],
+      next: "hub",
     },
     // ---------- 河堤 ----------
     {

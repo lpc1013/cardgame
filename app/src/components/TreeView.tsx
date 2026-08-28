@@ -117,6 +117,11 @@ function computeTree(sc: Scenario, seenIds: Set<string>) {
 
 interface ViewBox { x: number; y: number; w: number; h: number }
 
+/** 原生触屏手势状态：单指平移 / 双指捏合缩放 */
+type TouchState =
+  | { mode: "pan"; startX: number; startY: number; lastX: number; lastY: number; moved: boolean }
+  | { mode: "pinch"; d0: number; vb0: ViewBox; cx0: number; cy0: number };
+
 export function TreeView({ sc, onClose }: { sc: Scenario; onClose: () => void }) {
   const tree = useMemo(() => computeTree(sc, new Set(getTree()[sc.id] ?? [])), [sc.id]);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -163,7 +168,32 @@ export function TreeView({ sc, onClose }: { sc: Scenario; onClose: () => void })
   const reset = () => setVb(fitVb());
 
   const dragRef = useRef<{ x: number; y: number; vb: ViewBox } | null>(null);
+  const touchRef = useRef<TouchState | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const detailScene = detailId ? sc.scenes.find((s) => s.id === detailId) ?? null : null;
+  const detailSeen = detailId ? tree.nodes.some((n) => n.scene.id === detailId && n.seen) : false;
+  const detailPreview = detailScene ? detailScene.lines.join("").slice(0, 100) : "";
+  const [legendOpen, setLegendOpen] = useState(false);
+
+  /** 屏幕坐标命中场景节点：命中→打开详情；未命中→关闭详情 */
+  const openDetailAt = (clientX: number, clientY: number) => {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect || rect.width <= 0 || rect.height <= 0) return;
+    const cur = vbRef.current;
+    const px = cur.x + ((clientX - rect.left) / rect.width) * cur.w;
+    const py = cur.y + ((clientY - rect.top) / rect.height) * cur.h;
+    const target = tree.nodes.find((n) => {
+      const r = (n.scene.ending ? NODE_R_ENDING : NODE_R) + 6;
+      const dx = toX(n) - px, dy = toY(n) - py;
+      return dx * dx + dy * dy <= r * r;
+    });
+    setDetailId(target ? target.scene.id : null);
+  };
+  const openDetailAtRef = useRef(openDetailAt);
+  openDetailAtRef.current = openDetailAt;
+
   const onPointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType !== "mouse" && e.pointerType !== "pen") return; // 触屏走原生 touch 手势
     if (e.button !== 0) return;
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
     dragRef.current = { x: e.clientX, y: e.clientY, vb: { ...vbRef.current } };
@@ -178,6 +208,13 @@ export function TreeView({ sc, onClose }: { sc: Scenario; onClose: () => void })
   };
   const onPointerUp = (e: React.PointerEvent) => {
     (e.currentTarget as Element).releasePointerCapture?.(e.pointerId);
+    if (e.pointerType === "mouse" || e.pointerType === "pen") {
+      const d = dragRef.current;
+      // 位移 < 4px 视为点击：打开/切换/关闭节点详情
+      if (d && Math.abs(e.clientX - d.x) < 4 && Math.abs(e.clientY - d.y) < 4) {
+        openDetailAt(e.clientX, e.clientY);
+      }
+    }
     dragRef.current = null;
   };
 
@@ -202,16 +239,88 @@ export function TreeView({ sc, onClose }: { sc: Scenario; onClose: () => void })
     return () => el.removeEventListener("wheel", onWheel);
   }, [clampVb, contentW, contentH]);
 
+  // —— 触屏手势（U-6）：单指平移 / 双指捏合缩放 / 轻点节点看详情 ——
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length >= 2) {
+        const t0 = e.touches[0]!;
+        const t1 = e.touches[1]!;
+        const d0 = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY) || 1;
+        const rect = svgRef.current?.getBoundingClientRect();
+        const cur = vbRef.current;
+        let cx0 = cur.x + cur.w / 2;
+        let cy0 = cur.y + cur.h / 2;
+        if (rect && rect.width > 0 && rect.height > 0) {
+          cx0 = cur.x + (((t0.clientX + t1.clientX) / 2 - rect.left) / rect.width) * cur.w;
+          cy0 = cur.y + (((t0.clientY + t1.clientY) / 2 - rect.top) / rect.height) * cur.h;
+        }
+        touchRef.current = { mode: "pinch", d0, vb0: { ...cur }, cx0, cy0 };
+      } else if (e.touches.length === 1) {
+        const t = e.touches[0]!;
+        touchRef.current = { mode: "pan", startX: t.clientX, startY: t.clientY, lastX: t.clientX, lastY: t.clientY, moved: false };
+      }
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      const st = touchRef.current;
+      if (!st) return;
+      if (st.mode === "pinch" && e.touches.length >= 2) {
+        e.preventDefault();
+        const t0 = e.touches[0]!;
+        const t1 = e.touches[1]!;
+        const d1 = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY) || 1;
+        const w = st.vb0.w * (d1 / st.d0);
+        if (w / contentW > MAX_ZOOM || w / contentW < MIN_ZOOM) return;
+        const h = w * (contentH / contentW);
+        const nx = st.cx0 - (st.cx0 - st.vb0.x) * (w / st.vb0.w);
+        const ny = st.cy0 - (st.cy0 - st.vb0.y) * (h / st.vb0.h);
+        setVb(clampVb({ x: nx, y: ny, w, h }));
+      } else if (st.mode === "pan" && e.touches.length === 1) {
+        e.preventDefault();
+        const t = e.touches[0]!;
+        const rect = svgRef.current?.getBoundingClientRect();
+        if (!rect || rect.width <= 0 || rect.height <= 0) return;
+        const cur = vbRef.current;
+        if (Math.abs(t.clientX - st.startX) + Math.abs(t.clientY - st.startY) > 8) st.moved = true;
+        const sx = cur.w / rect.width, sy = cur.h / rect.height;
+        setVb(clampVb({ x: cur.x - (t.clientX - st.lastX) * sx, y: cur.y - (t.clientY - st.lastY) * sy, w: cur.w, h: cur.h }));
+        st.lastX = t.clientX;
+        st.lastY = t.clientY;
+      }
+    };
+    const onTouchEnd = (e: TouchEvent) => {
+      const st = touchRef.current;
+      if (e.touches.length === 0) {
+        if (st && st.mode === "pan" && !st.moved) openDetailAtRef.current(st.startX, st.startY);
+        touchRef.current = null;
+      } else if (e.touches.length === 1 && st?.mode === "pinch") {
+        const t = e.touches[0]!;
+        touchRef.current = { mode: "pan", startX: t.clientX, startY: t.clientY, lastX: t.clientX, lastY: t.clientY, moved: false };
+      }
+    };
+    el.addEventListener("touchstart", onTouchStart, { passive: false });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd);
+    el.addEventListener("touchcancel", onTouchEnd);
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchEnd);
+    };
+  }, [clampVb, contentW, contentH]);
+
   return (
     <div className="tree-overlay" onClick={onClose}>
-      <div className="tree-panel" onClick={(e) => e.stopPropagation()}>
+      <div className="tree-panel" style={{ position: "relative" }} onClick={(e) => e.stopPropagation()}>
         <div className="tree-header">
           <h3>{sc.title} · 剧情树</h3>
           <span className="muted">已探索 {seenCount}/{tree.nodes.length} 节 · {endings.filter(n=>n.seen).length}/{endings.length} 个结局</span>
           <button className="btn-main tree-reset" onClick={reset}>还原</button>
           <button className="btn-main" onClick={onClose}>合上</button>
         </div>
-        <div className="tree-pan-hint muted">拖拽平移 · 滚轮缩放</div>
+        <div className="tree-pan-hint muted">拖拽/单指平移 · 滚轮/双指缩放 · 轻点节点看详情</div>
         <div className="tree-scroll" ref={containerRef}>
           <svg
             ref={svgRef}
@@ -256,11 +365,15 @@ export function TreeView({ sc, onClose }: { sc: Scenario; onClose: () => void })
               const x = toX(n), y = toY(n);
               return (
                 <g key={n.scene.id}>
+                  <title>{n.scene.title ?? n.scene.id}</title>
                   <circle
                     cx={x} cy={y} r={r}
                     fill={n.seen ? (isEnding ? "#c9a86a" : "#b3452c") : "#26221d"}
                     stroke={n.seen ? "#c9a86a" : "#3a352d"} strokeWidth="2"
                   />
+                  {n.seen && isEnding && (
+                    <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fontSize={NODE_R_ENDING - 4} fill="#2b2314" pointerEvents="none">★</text>
+                  )}
                   {n.seen && (
                     <text x={x} y={y + r + 16} textAnchor="middle" fontSize={15} fill="#d8d0c0">
                       {(n.scene.title ?? n.scene.id).slice(0, 6)}
@@ -271,9 +384,56 @@ export function TreeView({ sc, onClose }: { sc: Scenario; onClose: () => void })
             })}
           </svg>
         </div>
-        <p className="muted tree-legend">
-          ◆ 金色=已见结局 · 红点=已见场景 · 空心=未探索 — 深色虚线=跨折转/回环
-        </p>
+        {detailScene && (
+          <div
+            className="tree-detail"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: "absolute", top: 54, right: 16, zIndex: 5,
+              maxWidth: 340, maxHeight: "calc(100% - 72px)", overflowY: "auto",
+              background: "rgba(20,17,14,.94)", border: "1px solid var(--line)",
+              borderLeft: "3px solid var(--gold)", boxShadow: "0 10px 30px rgba(0,0,0,.55)",
+              padding: "12px 14px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+              <h4 style={{ margin: 0, color: "var(--gold)", fontSize: 15, letterSpacing: 1, flex: 1 }}>
+                {detailScene.title ?? detailScene.id}
+              </h4>
+              <button className="btn-main" style={{ padding: "2px 10px", fontSize: 12, flexShrink: 0 }} onClick={() => setDetailId(null)}>关闭</button>
+            </div>
+            <div className="detail-line" style={{ fontSize: 12 }}>ID：{detailScene.id}</div>
+            <div className="detail-line" style={{ fontSize: 12 }}>
+              {detailScene.ending ? (
+                <span style={{ color: "var(--gold)" }}>★ 结局 · {detailScene.ending.name}（{detailScene.ending.rank}）</span>
+              ) : (
+                <span>普通场景</span>
+              )}
+              <span> · {detailSeen ? "已见" : "未探索"}</span>
+            </div>
+            <p className="muted" style={{ margin: "8px 0 0", fontSize: 12.5, lineHeight: 1.8 }}>
+              {detailPreview || "（无正文）"}{detailPreview.length >= 100 ? "…" : ""}
+            </p>
+          </div>
+        )}
+        <div className="tree-legend" style={{ margin: "10px 0 0", textAlign: "center" }}>
+          <button
+            className="tree-legend-toggle"
+            onClick={() => setLegendOpen((v) => !v)}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              color: "var(--ink-dim)", fontSize: 12, letterSpacing: 1, padding: "2px 10px",
+            }}
+          >
+            {legendOpen ? "图例 ▾" : "图例 ▸"}
+          </button>
+          {legendOpen && (
+            <p className="muted" style={{ fontSize: 12, margin: "4px 0 0", lineHeight: 1.8 }}>
+              ◆ 金色★=已见结局 · 红点=已见场景 · 空心=未探索 — 深色虚线=跨折转/回环
+              <br />轻点节点查看场景详情 · 触屏双指捏合缩放
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

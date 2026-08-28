@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback, useRef, type ReactNode } from "react";
 import type { Scenario, CardDef, Suit } from "./engine/types";
-import { initState, findScene, visibleChoices, applyEffects, registerScenarios, checkCond, type RunState } from "./engine/runtime";
+import { initState, findScene, visibleChoices, applyEffects, registerScenarios, checkCond, resolveSceneLines, type RunState } from "./engine/runtime";
 import { initDuel, revealEmotion, playEmotion, playPressure, endTurn, readEmotion, chargeUp, breakMove, cardCost, duelSpend, DEFAULT_GOAL, type DuelState, type DuelBoosts } from "./engine/duel";
 import {
   saveGame, loadGame, clearSave, unlockEnding, getGallery, recordTreeVisit, getTree, recordCardsSeen, getCardSeen,
@@ -56,25 +56,45 @@ const _END_ART = import.meta.glob("./assets/endings/*.{png,jpg,jpeg}", { eager: 
 /** 成就图标：assets/achievements/ach_<id>.{jpg,png}（无图时 UI 用 emoji 兜底） */
 const _ACH_ART = import.meta.glob("./assets/achievements/*.{png,jpg,jpeg}", { eager: true, import: "default" }) as Record<string, string>;
 const achArt = (id: string) => _ACH_ART[`./assets/achievements/ach_${id}.jpg`] ?? _ACH_ART[`./assets/achievements/ach_${id}.png`];
-/** 按 id 查图：遍历全部 key 匹配 `/<id>.<ext>` 结尾（兼容 cards 五子目录/portraits/scenes 前缀命名等任意目录层级） */
-function _artUrl(map: Record<string, string>, id: string): string | undefined {
-  for (const ext of [".jpg", ".jpeg", ".png"]) {
-    const hit = Object.entries(map).find(([k]) => k.endsWith(`/${id}${ext}`));
-    if (hit) return hit[1];
+/** 按 id 查图（C-3）：模块加载时预构建 id→url 索引（兼容 cards 五子目录/portraits/scenes 前缀命名等任意目录层级），
+ *  _artUrl 直接 Map.get，避免每次渲染都线性扫描 Object.entries()。
+ *  后缀优先级与旧逻辑一致：.jpg > .jpeg > .png > .webp（同一 id 多后缀时取先命中的）。 */
+function buildArtIndex(map: Record<string, string>): Map<string, string> {
+  const idx = new Map<string, string>();
+  for (const ext of [".jpg", ".jpeg", ".png", ".webp"]) {
+    for (const key of Object.keys(map)) {
+      if (key.endsWith(ext)) {
+        const id = key.slice(key.lastIndexOf("/") + 1, key.length - ext.length);
+        if (!idx.has(id)) idx.set(id, map[key]!);
+      }
+    }
   }
-  return undefined;
+  return idx;
+}
+const _CARD_ART_IDX = buildArtIndex(_CARD_ART);
+const _PORTRAIT_ART_IDX = buildArtIndex(_PORTRAIT_ART);
+const _SCENE_ART_IDX = buildArtIndex(_SCENE_ART);
+const _COVER_ART_IDX = buildArtIndex(_COVER_ART);
+const _END_ART_IDX = buildArtIndex(_END_ART);
+function _artUrl(idx: Map<string, string>, id: string): string | undefined {
+  return idx.get(id);
 }
 function cardArt(id: string): string | undefined {
-  return _artUrl(_CARD_ART, id) ?? _artUrl(_PORTRAIT_ART, id);
+  return _artUrl(_CARD_ART_IDX, id) ?? _artUrl(_PORTRAIT_ART_IDX, id);
 }
 function sceneArt(scenarioId: string, id: string): string | undefined {
   // 优先「剧本前缀」命名（跨剧本场景 id 会重名，如 start）；兼容旧的 scn_* 全局唯一命名
-  return _artUrl(_SCENE_ART, `${scenarioId}_${id}`) ?? _artUrl(_SCENE_ART, id);
+  return _artUrl(_SCENE_ART_IDX, `${scenarioId}_${id}`) ?? _artUrl(_SCENE_ART_IDX, id);
 }
 /** 结局插画：src/assets/endings/end_<剧本id>_<结局场景id>.{jpg,png} */
 function endArt(scenarioId: string, sceneId: string): string | undefined {
-  return _artUrl(_END_ART, `end_${scenarioId}_${sceneId}`);
+  return _artUrl(_END_ART_IDX, `end_${scenarioId}_${sceneId}`);
 }
+
+/** 主声望类 stat 键（W-4 和议之书「威望有损」扣减目标）：剧本 stats 定义命中其一即扣 3（范围 2~5） */
+const PRESTIGE_STAT_KEYS = ["chaoting", "shengjuan", "shengyuan", "shenwang", "weiwang", "junwei", "junGong", "diye", "junji", "junxin", "quanli", "junchen"];
+/** 情绪制气力上限（B-2 成就按模式分流：emotion 局耗 qi 而非 hpPlayer；与 duel.ts 回气钳制/QiBar 显示一致） */
+const EMOTION_QI_MAX = 10;
 
 // 四类非汉字纹章（策=锦囊 / 器=方孔钱 / 势=官印 / 隐=蒙眼密纹），currentColor 由 .s-* 上色
 const SUIT_GLYPH: Record<string, ReactNode> = {
@@ -110,7 +130,7 @@ const RESTRAIN_UI: Record<string, string> = { 策: "势", 势: "器", 器: "隐"
 
 /** 剧本封面（出征轮播大图） */
 function coverOf(id: string): string | undefined {
-  return _artUrl(_COVER_ART, "cover_" + id);
+  return _artUrl(_COVER_ART_IDX, "cover_" + id);
 }
 
 /** 链式解锁：首案自由；前案任一结局解锁即开下一案；已有进度/破封特批不受限 */
@@ -252,10 +272,15 @@ function SuitGlyph({ suit }: { suit: string }) {
 
 /** 花纹槽：压在卡图上缘的头部横带 —— 左花色圈标、中卡名、右小分类 */
 function CardBand({ c, extra }: { c: CardDef; extra?: ReactNode }) {
+  // C-5 层徽：非成术卡在手牌/行囊横带上挂小层徽（物品方孔钱 / 人物剪影 / 资源银锭），与图鉴角标同语言
+  const layer = c.layer ?? "成术";
   return (
     <div className="card-band">
       <BandSeal suit={c.suit} />
       <span className="band-name">{c.name}</span>
+      {layer !== "成术" && LAYER_MARK[layer] && (
+        <span className={`fix-layer-seal fix-layer-seal-band l-${layer}`} title={`${layer}卡`}>{LAYER_MARK[layer]}</span>
+      )}
       {extra}
       <ThemeTag id={c.id} suit={c.suit} />
     </div>
@@ -264,14 +289,16 @@ function CardBand({ c, extra }: { c: CardDef; extra?: ReactNode }) {
 
 function CardArt({ id, name, compact }: { id: string; name: string; compact?: boolean }) {
   const src = cardArt(id);
-  if (!src) return <CardArtPlaceholder name={name} compact={!!compact} />;
+  // U-9：加载失败（有 src 但 404/解码失败）不再 display:none 留半空白，回落占位图
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) return <CardArtPlaceholder name={name} compact={!!compact} />;
   return (
     <img
       className={compact ? "card-art card-art-compact" : "card-art"}
       src={src}
       alt={name}
       loading="lazy"
-      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+      onError={() => setFailed(true)}
     />
   );
 }
@@ -291,25 +318,26 @@ function CardArtPlaceholder({ name, compact }: { name: string; compact: boolean 
 }
 
 /** 竖向实体卡：底层卡图 + 上卡名 + 下介绍，底色随稀有度（图鉴/背包/市集/翻牌/开包共用） */
-function TCard({ c, unknown, onClick, corner, footer }: {
+function TCard({ c, unknown, onClick, corner, footer, cardCls }: {
   c: CardDef; unknown?: boolean; onClick?: () => void;
-  corner?: ReactNode; footer?: ReactNode;
+  corner?: ReactNode; footer?: ReactNode; cardCls?: string;
 }) {
   const src = cardArt(c.id);
-  const cls = `tcard rarity-${c.rarity ?? "凡"} ${c.suit ? `suit-${c.suit}` : ""} ${unknown ? "card-unknown" : ""} ${onClick ? "clickable" : ""}`;
+  const cls = `tcard rarity-${c.rarity ?? "凡"} ${c.suit ? `suit-${c.suit}` : ""} ${unknown ? "card-unknown" : ""} ${onClick ? "clickable" : ""} ${cardCls ?? ""}`;
   return (
     <div className={cls} onClick={onClick}>
       <div className="tcard-art">{!unknown && src ? <img src={src} alt={c.name} loading="lazy" /> : null}</div>
       {c.suit && <SuitGlyph suit={c.suit} />}
       {corner && <span className="tcard-corner">{corner}</span>}
       {!unknown && (() => {
-        // C-3/C-5：右上角 = 「层语言」位——成术显点数（金），物品/人物显层徽，资源显银锭+面额
+        // C-3/C-5：右上角 = 「层语言」位——成术显点数（fix-corner-power），物品/人物显层徽（fix-layer-seal），资源显银锭+面额。
+        // 左上角已由 .suit-glyph（花色圆章）与 .tcard-corner（在组等角标）占据，故角标置于右上，与左上级别对角呼应。
         const layer = c.layer ?? "成术";
-        if (layer === "资源") return <span className="layer-mark l-资源" title={`资源 · ${c.resource ?? 0} 两（不占卡组槽）`}>{LAYER_MARK["资源"]}<b>{c.resource}</b></span>;
-        if (layer === "物品") return <span className="layer-mark l-物品" title="物品 · 一次性道具">{LAYER_MARK["物品"]}</span>;
-        if (layer === "人物") return <span className="layer-mark l-人物" title="人物 · 携带被动">{LAYER_MARK["人物"]}</span>;
+        if (layer === "资源") return <span className="fix-layer-seal l-资源" title={`资源 · ${c.resource ?? 0} 两（不占卡组槽）`}>{LAYER_MARK["资源"]}<b>{c.resource}</b></span>;
+        if (layer === "物品") return <span className="fix-layer-seal l-物品" title="物品 · 一次性道具">{LAYER_MARK["物品"]}</span>;
+        if (layer === "人物") return <span className="fix-layer-seal l-人物" title="人物 · 携带被动">{LAYER_MARK["人物"]}</span>;
         return typeof c.power === "number"
-          ? <span className="tcard-power" title={`点数 ${c.power}${c.cost ? ` · 费 ${c.cost}` : ""}`}>{c.power}</span>
+          ? <span className="fix-corner-power" title={`点数 ${c.power}${c.cost ? ` · 费 ${c.cost}` : ""}`}>{c.power}</span>
           : null;
       })()}
       <div className="tcard-top">
@@ -378,9 +406,18 @@ export default function App() {
           // 和议之书：非 jieyu 剧本下一场战争对局免战（敌酋见银退兵），直接进胜线；奖励归零由结算侧处理
           if (cur.boosts.includes("b_peace") && cfg.mode === "pressure" && sc.id !== "jieyu") {
             cur.boosts = cur.boosts.filter((b) => b !== "b_peace");
-            setToast("敌酋见银退兵——和议成了，仗没打。");
-            gotoFrom(cur, cfg.winScene);
-            return;
+            if (cfg.unwinnable) {
+              // B-3：设计性死局（剧情杀）是叙事必需——和议之书在此无效，但照样消耗
+              setToast("项羽收了银子也不肯退兵——这仗躲不过。");
+            } else {
+              // W-4：和议生效——主声望类 stat 扣 3（无匹配键则跳过），该局奖励归零（对局结算路径天然跳过 + 胜线结局奖励标记归零）
+              const pStat = sc.stats?.find((s) => PRESTIGE_STAT_KEYS.includes(s.key));
+              if (pStat) cur.stats[pStat.key] = (cur.stats[pStat.key] ?? 0) - 3;
+              cur.flags.add("b_peace_skip_" + cfg.winScene);
+              setToast("敌酋见银退兵——和议成了，仗没打。（威望有损 · 该局奖励归零）");
+              gotoFrom(cur, cfg.winScene);
+              return;
+            }
           }
           const loadout = sc.cardSystem ? cur.deck : cfg.deck;
           const d = initDuel(cfg, loadout, allCardsFor(sc, cur.deck), duelBoostsOf(cur.boosts));
@@ -397,6 +434,9 @@ export default function App() {
       if (sc.verdict && id === sc.verdict.scene) { setPhase("verdict"); return; }
       setPhase(target.ending ? "ending" : "story");
     },
+    // B-3/W-4 和议分支新增 gotoFrom 调用：gotoFrom 与 enterSceneOf 互相引用（gotoFrom deps 含 enterSceneOf），
+    // deps 数组不可互引（TS7022/TS2448）。二者均只依赖 sc，sc 变化即同步重建，闭包不陈旧；oxlint 的
+    // exhaustive-deps 提示此处可安全忽略。
     [sc]
   );
 
@@ -405,13 +445,17 @@ export default function App() {
     (base: RunState, id: string, opts?: { autoRead?: boolean; holdView?: boolean }) => {
       if (!sc) return;
       const target = findScene(sc, id);
+      // W-3：推进前存下当前相位（上一幕），供标题页「退回上一幕」恢复（每周目限 1 次）
+      prevSceneRef.current = { scenarioId: sc.id, sceneId: base.sceneId, lineIndex: base.lineIndex };
+      try { sessionStorage.setItem("dicun_prev_v1", JSON.stringify(prevSceneRef.current)); } catch { /* 隐私模式等场景忽略 */ }
       recordTreeVisit(sc.id, id);
       const next: RunState = {
         ...base, sceneId: id,
-        lineIndex: opts?.autoRead ? Math.max(0, target.lines.length - 1) : 0,
+        lineIndex: 0,
         visited: [...base.visited, base.sceneId],
       };
       applyEffects(target.effects, next);
+      next.lineIndex = opts?.autoRead ? Math.max(0, resolveSceneLines(target, next).length - 1) : 0;
       noteCards(sc, next.bag);
       setSt(next);
       if (!opts?.holdView) enterSceneOf(next, id);
@@ -424,6 +468,9 @@ export default function App() {
   // 最新 RunState 镜像（供延迟回调读取已推进状态）
   const stRef = useRef<RunState | null>(null);
   stRef.current = st;
+
+  // W-3：退回上一幕安全垫——gotoFrom 推进前记录当前 sceneId+lineIndex（内存 ref + sessionStorage 双写，键名规范 dicun_prev_v1）
+  const prevSceneRef = useRef<{ scenarioId: string; sceneId: string; lineIndex: number } | null>(null);
 
   // 成就解锁统一入口：记录 + toast + 称号授予（奖励含「称号」时）
   const grantAch = (id: string, owned: Set<string>) => {
@@ -446,13 +493,17 @@ export default function App() {
         const rarityOf = (id: string) => allCardsFor(sc, st.deck).find((c) => c.id === id)?.rarity;
         const suitOf = (id: string) => allCardsFor(sc, st.deck).find((c) => c.id === id)?.suit;
         const layerOf = (id: string) => allCardsFor(sc, st.deck).find((c) => c.id === id)?.layer;
+        // B-2：情绪制全程消耗 qi 而非 hpPlayer（hpPlayer/hpMax 恒等于开局值，会让「毫发无伤」恒真）——
+        // 按模式分流：emotion 用 qi / 上限常量 10（与 duel.ts 回气钳制、QiBar 一致）；pressure 用 hpPlayer/hpMax
+        const achHpPlayer = duel.mode === "emotion" ? duel.qi : duel.hpPlayer;
+        const achHpMax = duel.mode === "emotion" ? EMOTION_QI_MAX : duel.hpMax;
         const got = checkDuelAchievements({
           deck: st.deck,
           rarityOf,
           suitOf,
           layerOf,
-          hpPlayer: duel.hpPlayer,
-          hpMax: duel.hpMax,
+          hpPlayer: achHpPlayer,
+          hpMax: achHpMax,
           round: duel.round,
           retinueCount: st.retinue?.length ?? 0,
           duelId: duel.cfg.id,
@@ -475,14 +526,19 @@ export default function App() {
       // 战争局失败：记录（解锁「岁币之约」购买）；劫与烬（北京保卫战）为唯一战争剧本，虽败亦不求和，但记录仍用于商市解锁判定
       if (duel.finished === "lose" && sc.id === "jieyu") recordWarLoss(sc.id);
       // 番外解锁：携带本剧本番外钥匙卡（≥need 张）赢下对局 → 解锁（幂等）
-      if (duel.finished === "win") {
-        const b = bonusOfScenario(sc.id);
-        if (b) {
+      const b = bonusOfScenario(sc.id);
+      if (b) {
+        // A-1 diaolan 死局兜底：若本剧本所有对局均设计为不可胜（unwinnable），无胜路可走——
+        // 败线结局达成同样解锁番外（不再要求钥匙卡数量，死局没得赢，番外就该败线后看）。
+        const noWinRoute = sc.duels.length > 0 && sc.duels.every((d) => d.unwinnable);
+        if (duel.finished === "win") {
           const deckIds = new Set(duel.cfg.deck);
           const hits = b.keyCards.filter((k) => deckIds.has(k)).length;
-          if (hits >= b.need) {
+          if (noWinRoute || hits >= b.need) {
             if (unlockBonus(b.id)) setToast(`番外解锁：「${b.title}」——去卡册详情展阅。`);
           }
+        } else if (noWinRoute && duel.finished === "lose") {
+          if (unlockBonus(b.id)) setToast(`番外解锁：「${b.title}」——去卡册详情展阅。`);
         }
       }
       const target = duel.finished === "win"
@@ -539,6 +595,8 @@ export default function App() {
 
   const start = (scenario: Scenario, prep?: PrepChoice, viewpointId?: string) => {
     setSc(scenario);
+    // W-3：新周目重置「退回上一幕」使用配额
+    try { sessionStorage.removeItem("dicun_prev_used_v1"); } catch { /* ignore */ }
     const s = initState(scenario, viewpointId);
     if (prep?.boosts.length) {
       s.boosts = consumeBoosts(prep.boosts);
@@ -580,7 +638,7 @@ export default function App() {
   const advance = () => {
     if (!sc || !st) return;
     const scene = findScene(sc, st.sceneId);
-    if (st.lineIndex < scene.lines.length - 1) {
+    if (st.lineIndex < resolveSceneLines(scene, st).length - 1) {
       sfx.page();
       setSt({ ...st, lineIndex: st.lineIndex + 1 });
     } else if (scene.next && !scene.choices?.length && !scene.cardPick && !scene.shop) {
@@ -628,25 +686,29 @@ export default function App() {
     if (phase === "ending" && sc && st) {
       const s = findScene(sc, st.sceneId);
       if (s.ending) {
-        unlockEnding({ scenarioId: sc.id, endingName: s.ending.name, rank: s.ending.rank });
-        // 结局奖励卡：唯一出处，获得后记图鉴 + 注册全局（跨周目可携带）
-        if (s.ending.reward) noteCards(sc, [s.ending.reward]);
-        // 结局成就
-        const owned = new Set(getAchievements());
-        const all = getGallery();
-        const endsOf = (sid: string) => all.filter((g) => g.scenarioId === sid).length;
-        const caseIds = ["fuma", "qiuwei", "sichou", "xie", "qinhuai"];
-        const storyIds = ["jieyu", "shumian", "changjiang", "diaolan", "changhen", "jianfeng", "xingxing", "touming"];
-        const got = checkEndingAchievements({
-          scenarioId: sc.id,
-          endingName: s.ending.name,
-          usedCards: st.usedCards ?? [],
-          silver: st.silver,
-          stats: st.stats ?? {},
-          caseEndsDone: caseIds.filter((cid) => endsOf(cid) > 0).length,
-          storyEndsDone: storyIds.filter((sid) => endsOf(sid) > 0).length,
-        }, owned);
-        for (const id of got) grantAch(id, owned);
+        // W-4：和议之书跳战的那局胜线结局——奖励归零（图鉴/墨铤/结局卡/结局成就全跳过），仅走叙事
+        const peaceSkipped = st.flags.has("b_peace_skip_" + st.sceneId);
+        if (!peaceSkipped) {
+          unlockEnding({ scenarioId: sc.id, endingName: s.ending.name, rank: s.ending.rank });
+          // 结局奖励卡：唯一出处，获得后记图鉴 + 注册全局（跨周目可携带）
+          if (s.ending.reward) noteCards(sc, [s.ending.reward]);
+          // 结局成就
+          const owned = new Set(getAchievements());
+          const all = getGallery();
+          const endsOf = (sid: string) => all.filter((g) => g.scenarioId === sid).length;
+          const caseIds = ["fuma", "qiuwei", "sichou", "xie", "qinhuai"];
+          const storyIds = ["jieyu", "shumian", "changjiang", "diaolan", "changhen", "jianfeng", "xingxing", "touming"];
+          const got = checkEndingAchievements({
+            scenarioId: sc.id,
+            endingName: s.ending.name,
+            usedCards: st.usedCards ?? [],
+            silver: st.silver,
+            stats: st.stats ?? {},
+            caseEndsDone: caseIds.filter((cid) => endsOf(cid) > 0).length,
+            storyEndsDone: storyIds.filter((sid) => endsOf(sid) > 0).length,
+          }, owned);
+          for (const id of got) grantAch(id, owned);
+        }
         sfx.ending();
         clearSave();
       }
@@ -663,7 +725,7 @@ export default function App() {
     if (phase !== "story" || showClues || showBag) return;
     if (!sc || !st) return;
     const scene = findScene(sc, st.sceneId);
-    const atEnd = st.lineIndex >= scene.lines.length - 1;
+    const atEnd = st.lineIndex >= resolveSceneLines(scene, st).length - 1;
     if (e.code === "Space" || e.code === "Enter") {
       e.preventDefault();
       advance();
@@ -690,6 +752,12 @@ export default function App() {
   const resume = () => {
     const save = loadGame();
     if (!save) { setTitleTick((t) => t + 1); return; }
+    // C-6：高版本存档（更新版本生成，字段/玩法未知）——拒绝载入且不清档，玩家可自行处理
+    if ((save as { future?: boolean }).future) {
+      setToast("此存档来自更新版本，已拒绝载入");
+      setTitleTick((t) => t + 1);
+      return;
+    }
     const scenario = SCENARIOS.find((s) => s.id === save.scenarioId);
     if (!scenario || !scenario.scenes.some((s) => s.id === save.state.sceneId)) {
       clearSave();
@@ -708,8 +776,12 @@ export default function App() {
     state.retinue = state.retinue ?? [];
     setSt(state);
     if (save.duel) {
-      const cfg = scenario.duels.find((d) => d.id === save.duel!.cfgId);
-      if (cfg) {
+      const baseCfg = scenario.duels.find((d) => d.id === save.duel!.cfgId);
+      if (baseCfg) {
+        // B-1：带变体对局读档——用存档里的 variantScript 回填剧本基础 cfg.script，
+        // 防止回档后 opponent 出牌序被剧本默认 script 偷换（字段不存在则走原 cfg）
+        const savedVariant = (save.duel!.data as unknown as { variantScript?: string[] }).variantScript;
+        const cfg = savedVariant?.length ? { ...baseCfg, script: savedVariant } : baseCfg;
         // 旧档兼容：博弈字段（charge/foresuit/opponentTrue/bluffed/trap）+ 随从字段（scoutLeft/insiderLeft/...）缺省补全（展开后兜底写回）
         const d = { ...save.duel.data, cfg, charge: save.duel.data.charge ?? 0, foresuit: save.duel.data.foresuit ?? null, opponentTrue: save.duel.data.opponentTrue ?? null, bluffed: save.duel.data.bluffed ?? false, trap: save.duel.data.trap ?? null, scoutLeft: save.duel.data.scoutLeft ?? 0, insiderLeft: save.duel.data.insiderLeft ?? 0, sharedUsed: save.duel.data.sharedUsed ?? 0, sharedTotal: save.duel.data.sharedTotal ?? 0, insiderActive: save.duel.data.insiderActive ?? false, retinueNames: save.duel.data.retinueNames ?? [] };
         if (d.mode === "emotion" && !d.opponentShown && !d.finished) revealEmotion(d);
@@ -733,6 +805,30 @@ export default function App() {
     if (scene.cardPick) { setPickScene(scene.id); setPhase("pick"); return; }
     if (scene.shop) { setPhase("shop"); return; }
     setPhase(scene.ending ? "ending" : scenario.verdict && scene.id === scenario.verdict.scene ? "verdict" : "story");
+  };
+
+  // W-3：退回上一幕——读 sessionStorage（内存 ref 兜底）恢复上一场景相位，每周目限 1 次，恢复后清存储
+  const restorePrev = () => {
+    try {
+      const raw = sessionStorage.getItem("dicun_prev_v1");
+      const prev = raw ? (JSON.parse(raw) as { scenarioId?: string; sceneId: string; lineIndex: number }) : prevSceneRef.current;
+      if (!prev || !prev.sceneId) { setToast("没有可退回的上一幕。"); return; }
+      if (sessionStorage.getItem("dicun_prev_used_v1") === "1") { setToast("本局已用过「退回上一幕」。（每周目限 1 次）"); return; }
+      const scenario = SCENARIOS.find((s) => s.id === prev.scenarioId);
+      if (!scenario || !scenario.scenes.some((s) => s.id === prev.sceneId)) { setToast("退回位置已失效。"); return; }
+      sessionStorage.setItem("dicun_prev_used_v1", "1");
+      sessionStorage.removeItem("dicun_prev_v1");
+      setSc(scenario);
+      const s = initState(scenario);
+      const target = findScene(scenario, prev.sceneId);
+      s.sceneId = prev.sceneId;
+      s.lineIndex = Math.max(0, Math.min(prev.lineIndex, resolveSceneLines(target, s).length - 1));
+      setSt(s);
+      setPhase("story");
+      setToast("已退回上一幕。");
+    } catch {
+      setToast("退回上一幕失败。");
+    }
   };
 
   // ---------- 标题页（封面轮播 + 顶栏商市/行囊/图鉴/规则/设置） ----------
@@ -784,6 +880,8 @@ export default function App() {
             <button className="link-btn" onClick={() => { clearSave(); setTitleTick((t) => t + 1); }}>放弃存档</button>
           </div>
         )}
+        {/* W-3：退回上一幕安全垫——低调入口，每周目限 1 次 */}
+        <button className="link-btn fix-prev-ghost" onClick={() => { sfx.choice(); restorePrev(); }}>退回上一幕</button>
         <div className="cover-stage">
           <button className="cover-arrow" aria-label="上一个" onClick={() => { sfx.choice(); setCoverIdx((coverIdx + SCENARIOS.length - 1) % SCENARIOS.length); }}>‹</button>
           <div className={`cover-main ${unlocked ? "" : "sealed"}`}>
@@ -996,7 +1094,7 @@ export default function App() {
           <h2>结案陈词 · 拣选线索（{picked.length}/{v.mustPick}）</h2>
           <p className="muted">呈上御案的线索，将决定此案能否经得起百官诘难。</p>
           <p className="verdict-hint">只从前文已解锁的线索中拣选（当前已解锁 {st.clues.length} 条；未走过、未触发的线索不予展示）。</p>
-          {clueReveal >= 1 && <p className="clue-reveal-hint">〔照骨镜〕镜光直照案眼——核心线索上已亮起「案眼」印记。</p>}
+          {clueReveal >= 1 && <p className="clue-reveal-hint">〔照骨镜〕镜光直照案眼——核心线索上已亮起<span className="fix-term-tip" title="案眼：结案陈词必备的核心线索，拣选时不可遗漏">「案眼」</span>印记。</p>}
           <div className="clue-grid">
             {st.clues.map((cid) => {
               const c = sc.clues?.find((x) => x.id === cid);
@@ -1008,7 +1106,7 @@ export default function App() {
                 <div key={cid} className={`clue-card ${on ? "on" : ""} ${isCore ? "clue-core" : ""}`} onClick={() =>
                   setPicked((p) => (p.includes(cid) ? p.filter((x) => x !== cid) : p.length < v.mustPick ? [...p, cid] : p))
                 }>
-                  <div className="clue-name">{c.name} {isCore && <span className="clue-core-tag">案眼</span>}{isTrue && <span className="clue-true-tag">真</span>}</div>
+                  <div className="clue-name">{c.name} {isCore && <span className="clue-core-tag" title="案眼：结案陈词必备的核心线索，拣选时不可遗漏">案眼</span>}{isTrue && <span className="clue-true-tag">真</span>}</div>
                   <div className="clue-desc">{c.desc}</div>
                 </div>
               );
@@ -1062,7 +1160,7 @@ export default function App() {
           {endImg && <img className="ending-art" src={endImg} alt={scene.ending.name} />}
           <div className="ending-rank">{scene.ending.rank}</div>
           <h2 className="ending-name">{scene.ending.name}</h2>
-          {scene.lines.map((l, i) => (
+          {resolveSceneLines(scene, st).map((l, i) => (
             <p key={i} className="story-line show">{l}</p>
           ))}
           <p className="muted">{scene.ending.desc}</p>
@@ -1097,10 +1195,10 @@ export default function App() {
       <div className="story-panel" onClick={advance} ref={panelRef}>
         {scene.title && <div className="scene-title">{scene.title}</div>}
         {scene.desc && <p className="scene-desc">{scene.desc}</p>}
-        {scene.lines.slice(0, st.lineIndex + 1).map((l, i) => (
+        {resolveSceneLines(scene, st).slice(0, st.lineIndex + 1).map((l, i) => (
           <p key={i} className={`story-line ${i === st.lineIndex ? "show" : ""}`}>{l}</p>
         ))}
-        {st.lineIndex >= scene.lines.length - 1 && choices.length > 0 && (
+        {st.lineIndex >= resolveSceneLines(scene, st).length - 1 && choices.length > 0 && (
           <div className="choices" onClick={(e) => e.stopPropagation()}>
             {choices.map((c, i) => (
               <button key={c.next + i} className="choice" onClick={() => choose(i)}>
@@ -1110,7 +1208,7 @@ export default function App() {
             ))}
           </div>
         )}
-        {st.lineIndex >= scene.lines.length - 1 && choices.length === 0 && scene.next && (
+        {st.lineIndex >= resolveSceneLines(scene, st).length - 1 && choices.length === 0 && scene.next && (
           <div className="continue-tip">▼ 继续（点击画面 / 空格）</div>
         )}
       </div>
@@ -1172,16 +1270,37 @@ function BagView({ sc, st, onClose, onMutate, toast, readOnly }: {
 }) {
   const limit = sc.deckLimit ?? 12;
   const def = (id: string) => sc.cards.find((c) => c.id === id) ?? getGlobalCard(id);
+  // M-2：编组反馈闭环——入组角标 150ms scale pulse；卡组满时目标卡 shake 抖动 + toast
+  const [pulseId, setPulseId] = useState<string | null>(null);
+  const [shakeId, setShakeId] = useState<string | null>(null);
+  const pulseTimer = useRef<number | null>(null);
+  const shakeTimer = useRef<number | null>(null);
+  useEffect(() => () => {
+    if (pulseTimer.current) window.clearTimeout(pulseTimer.current);
+    if (shakeTimer.current) window.clearTimeout(shakeTimer.current);
+  }, []);
   const toggleDeck = (id: string) => {
     if (readOnly) return;
     const next = { ...st, deck: [...st.deck], bag: [...st.bag] };
     if (next.deck.includes(id)) {
       next.deck = next.deck.filter((c) => c !== id);
-    } else if (next.deck.length < limit) {
-      next.deck.push(id);
-    } else { toast(`卡组已满（${limit} 张）`); return; }
+      sfx.card();
+      onMutate(next);
+      return;
+    }
+    if (next.deck.length >= limit) {
+      setShakeId(id);
+      if (shakeTimer.current) window.clearTimeout(shakeTimer.current);
+      shakeTimer.current = window.setTimeout(() => setShakeId(null), 450);
+      toast(`卡组已满（${limit} 张）`);
+      return;
+    }
+    next.deck.push(id);
     sfx.card();
     onMutate(next);
+    setPulseId(id);
+    if (pulseTimer.current) window.clearTimeout(pulseTimer.current);
+    pulseTimer.current = window.setTimeout(() => setPulseId(null), 150);
   };
   const layerName = (id: string) => def(id)?.layer ?? "成术";
   const groups: { key: string; label: string }[] = [
@@ -1207,8 +1326,9 @@ function BagView({ sc, st, onClose, onMutate, toast, readOnly }: {
                     <TCard
                       key={id}
                       c={c}
+                      cardCls={shakeId === id ? "fix-shake" : undefined}
                       onClick={() => toggleDeck(id)}
-                      corner={on ? <span className="deck-tag">在组</span> : undefined}
+                      corner={on ? <span className={`deck-tag${pulseId === id ? " fix-pulse" : ""}`}>在组</span> : undefined}
                       footer={
                         <>
                           {c.power !== undefined && <span className="pc-power">点 {c.power} · 费 {c.cost ?? cardCost(c)}</span>}
@@ -1460,6 +1580,9 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager }: {
 
   const gambit = !!duel.cfg.gambit;
   const v2 = duel.rules === "v2";
+  /** W-2：言力预算（情绪制）——另一 agent 注入 DuelState.yanli/yanliMax；字段不存在（undefined）则隐藏不报错 */
+  const duelExtra = duel as DuelState & { yanli?: number; yanliMax?: number };
+  const yanliShown = duelExtra.yanli !== undefined && duelExtra.yanliMax !== undefined;
   /** 本回合敌方招式（script 循环）；v2 博弈局展示层藏牌，引擎结算仍用真招 */
   const oppIdOf = (d: DuelState) => d.cfg.script[d.round % d.cfg.script.length] ?? d.cfg.script[0]!;
 
@@ -1569,6 +1692,11 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager }: {
   /** 押注窗口：仅开局未出手时可押；选过「不押」后不再追问 */
   const [wagerDismissed, setWagerDismissed] = useState(false);
   const wagerOpen = gambit && !duel.finished && !wagerDismissed && wager === 0 && duel.round === 0 && !duel.lastResult;
+  /** W-6：押注档位随身家浮动——10%/25%/50%，取整到 5 两；不足 5 两的档位 disabled（保持「不押」入口） */
+  const wagerTiers: { pct: number; n: number; ok: boolean }[] = [0.1, 0.25, 0.5].map((pct) => {
+    const n = Math.floor((silver * pct) / 5) * 5;
+    return { pct, n, ok: n >= 5 };
+  });
 
   return (
     <div className="duel-root">
@@ -1579,9 +1707,10 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager }: {
         {wagerOpen && silver > 0 && (
           <div className="wager-bar">
             <span className="st-label">押注此局？胜得两倍，败失本金</span>
-            {[10, 20, 50].map((n) => (
-              <button key={n} className="wager-btn" disabled={silver < n} onClick={() => { sfx.coin(); onWager(n); toast(`押下 ${n} 两——此局胜则入账 ${n * 2} 两`); }}>{n} 两{silver < n && "（不足）"}</button>
+            {wagerTiers.map(({ pct, n, ok }) => (
+              <button key={pct} className="wager-btn" disabled={!ok} onClick={() => { sfx.coin(); onWager(n); toast(`押下 ${n} 两——此局胜则入账 ${n * 2} 两`); }}>{n} 两{!ok && "（不足）"}</button>
             ))}
+            <span className="fix-wager-note muted">档位随身家浮动</span>
             <button className="wager-btn skip" onClick={() => { sfx.choice(); setWagerDismissed(true); }}>不押</button>
           </div>
         )}
@@ -1599,6 +1728,7 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager }: {
             </span>
             <span><span className="st-label">防备</span>{duel.guard}</span>
             <span><span className="st-label">气力</span><QiBar cur={duel.qi} max={10} /></span>
+            {yanliShown && <span><span className="st-label">言力</span>{duelExtra.yanli}/{duelExtra.yanliMax}</span>}
           </>
         ) : (
           <>
@@ -1663,7 +1793,7 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager }: {
         )}
         {scanOn && duel.round >= 4 && duel.mode === "pressure" && (
           <p className="opp-line scan-hint">
-            〔耳报〕他的路数你已摸透：{duel.cfg.script.map((id) => cardOf(id).suit).join("→")}——眼下这一手是「{cardOf(oppIdOf(duel)).suit}」。
+            <span className="fix-term-tip" title="耳报：携带「读悉」被动的人物卡，第 4 回合起读透对手出牌循环">〔耳报〕</span>他的路数你已摸透：{duel.cfg.script.map((id) => cardOf(id).suit).join("→")}——眼下这一手是「{cardOf(oppIdOf(duel)).suit}」。
           </p>
         )}
         {v2 && duel.mode === "pressure" && gambit && !oppHidden && (
@@ -2049,7 +2179,7 @@ function CardZoomView({ sc, c, seen, onClose }: { sc: Scenario; c: CardDef; seen
   return (
     <div className="clue-overlay card-zoom-overlay" onClick={(e) => { e.stopPropagation(); onClose(); }}>
       <div className="card-zoom-body" onClick={(e) => e.stopPropagation()}>
-        <TCard c={c} unknown={!seen} />
+        <TCard c={c} unknown={!seen} cardCls="fix-zoom-collapsed" />
         <div className="card-detail">
           <h3 className="card-detail-name">{c.name}</h3>
           <div className="card-detail-tags">
@@ -2148,6 +2278,10 @@ function AlbumPanel({ onClose }: { onClose: () => void }) {
   const [zoom, setZoom] = useState<{ sc: Scenario; c: CardDef; seen: boolean } | null>(null);
   const [suitF, setSuitF] = useState<"全部" | Suit>("全部");
   const [scF, setScF] = useState<string>("全部");
+  // M-1b：只看缺卡——过滤掉已见卡，聚焦收集缺口
+  const [missingOnly, setMissingOnly] = useState(false);
+  // M-1 卡册懒展开：组头可点击折叠（剧本 id 集合），默认全展开保 UX
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   let total = 0, got = 0;
   for (const s of SCENARIOS) {
     for (const c of s.cards) {
@@ -2158,13 +2292,14 @@ function AlbumPanel({ onClose }: { onClose: () => void }) {
   }
   const carryable = (c: CardDef, seen: boolean) =>
     seen && ((c.layer ?? "成术") === "物品" || !!c.endingReward || ((c.passive?.scout ?? 0) > 0 || (c.passive?.insider ?? 0) > 0));
-  // 筛选：上侧剧本 × 左侧花色（AND）
+  // M-1b 筛选：花色行（第一行常驻）× 剧本下拉 × 只看缺卡（AND）
   const shownSc = scF === "全部" ? SCENARIOS : SCENARIOS.filter((s) => s.id === scF);
   const matchSuit = (c: CardDef) => suitF === "全部" || c.suit === suitF;
+  const matchSeen = (s: Scenario, c: CardDef) => !missingOnly || !(seenMap[s.id] ?? []).includes(c.id);
   let shownTotal = 0, shownGot = 0;
   for (const s of shownSc) {
     for (const c of s.cards) {
-      if ((c.layer ?? "成术") === "资源" || !matchSuit(c)) continue;
+      if ((c.layer ?? "成术") === "资源" || !matchSuit(c) || !matchSeen(s, c)) continue;
       shownTotal++;
       if ((seenMap[s.id] ?? []).includes(c.id)) shownGot++;
     }
@@ -2174,45 +2309,58 @@ function AlbumPanel({ onClose }: { onClose: () => void }) {
       <div className="bag-panel gallery-panel" onClick={(ev) => ev.stopPropagation()}>
         <h3>天下卡册 · 全册 {got}/{total} <span className="muted">（当前 {shownGot}/{shownTotal}）</span></h3>
         <p className="muted">未见=？？？ · 已见=亮起 · 「可携带」=入行囊/卡组（物品与结局奖励卡、随从）</p>
-        <div className="album-filters">
-          <div className="album-filter-row">
-            <span className="album-filter-label">剧本</span>
-            <div className="album-scroll">
-              <button className={`album-chip ${scF === "全部" ? "on" : ""}`} onClick={() => { sfx.choice(); setScF("全部"); }}>全部</button>
-              {SCENARIOS.map((s) => (
-                <button key={s.id} className={`album-chip ${scF === s.id ? "on" : ""}`} onClick={() => { sfx.choice(); setScF(s.id); }}>{s.title}</button>
-              ))}
-            </div>
-          </div>
-          <div className="album-filter-row">
+        <div className="album-filters fix-album-filters">
+          {/* M-1b：花色升为第一行常驻（5 chip）；chip 选中态统一填充色板底 + 深色字（fix-chip-solid 由 CSS 接管） */}
+          <div className="album-filter-row fix-album-row-suit">
             <span className="album-filter-label">花色</span>
             <div className="album-chips">
               {(["全部", "策", "器", "势", "隐"] as const).map((s) => (
-                <button key={s} className={`album-chip ${suitF === s ? "on" : ""} ${s !== "全部" ? `s-${s}` : ""}`} onClick={() => { sfx.choice(); setSuitF(s); }}>{s === "全部" ? "全部" : s}</button>
+                <button key={s} className={`album-chip ${suitF === s ? "on fix-chip-solid" : ""} ${s !== "全部" ? `s-${s}` : ""}`} onClick={() => { sfx.choice(); setSuitF(s); }}>{s === "全部" ? "全部" : s}</button>
               ))}
             </div>
+          </div>
+          {/* M-1b：剧本筛选降为下拉选择器（取代 13 chip 横滑溢出） */}
+          <div className="album-filter-row fix-album-row-sc">
+            <span className="album-filter-label">剧本</span>
+            <select className="album-select fix-album-select" value={scF} onChange={(e) => { sfx.choice(); setScF(e.target.value); }}>
+              <option value="全部">全部剧本</option>
+              {SCENARIOS.map((s) => (
+                <option key={s.id} value={s.id}>{s.title}</option>
+              ))}
+            </select>
+            <label className="album-missing fix-album-missing">
+              <input type="checkbox" checked={missingOnly} onChange={() => { sfx.choice(); setMissingOnly(!missingOnly); }} />
+              只看缺卡
+            </label>
           </div>
         </div>
         {shownSc.map((s) => {
           const seen = new Set(seenMap[s.id] ?? []);
-          const cols = s.cards.filter((c) => (c.layer ?? "成术") !== "资源" && matchSuit(c));
+          const cols = s.cards.filter((c) => (c.layer ?? "成术") !== "资源" && matchSuit(c) && matchSeen(s, c));
           if (!cols.length) return null;
           const gotN = cols.filter((c) => seen.has(c.id)).length;
+          const folded = collapsed.has(s.id);
           return (
             <div key={s.id} className="bag-group">
-              <div className="bag-group-title">{s.title}<span className="muted">（{gotN}/{cols.length}）</span></div>
-              <div className="bag-grid">
-                {cols.map((c) => {
-                  const isSeen = seen.has(c.id);
-                  const carry = carryable(c, isSeen);
-                  return (
-                    <div key={c.id} className="album-cell">
-                      <TCard c={c} unknown={!isSeen} onClick={() => { sfx.choice(); setZoom({ sc: s, c, seen: isSeen }); }} />
-                      {carry && <span className="album-carry" title="可携带出战">可携带</span>}
-                    </div>
-                  );
-                })}
+              <div className="bag-group-title" onClick={() => { sfx.choice(); setCollapsed((prev) => { const n = new Set(prev); if (n.has(s.id)) n.delete(s.id); else n.add(s.id); return n; }); }}>
+                {/* M-1：折叠态 chevron——展开朝下（rotate(-90°)），折叠朝右 */}
+                <span className={`fix-group-fold${folded ? " folded" : ""}`} aria-hidden="true">▸</span>
+                {s.title}<span className="muted">（{gotN}/{cols.length}）</span>
               </div>
+              {!folded && (
+                <div className="bag-grid">
+                  {cols.map((c) => {
+                    const isSeen = seen.has(c.id);
+                    const carry = carryable(c, isSeen);
+                    return (
+                      <div key={c.id} className="album-cell">
+                        <TCard c={c} unknown={!isSeen} onClick={() => { sfx.choice(); setZoom({ sc: s, c, seen: isSeen }); }} />
+                        {carry && <span className="album-carry" title="可携带出战">可携带</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           );
         })}
@@ -2550,10 +2698,10 @@ function GalleryPanel({ gallery, onClose, onCardGallery }: {
 function SettingsPanel({ onClose, onCleared }: { onClose: () => void; onCleared: () => void }) {
   const [snd, setSnd] = useState(sfxEnabled());
   const [armed, setArmed] = useState(false);
-  // L-5：确认层 1.5s 冷启动——惊慌误触率对半的经典防御
-  const [wait, setWait] = useState(2);
+  // L-5：确认层 1.5s 冷启动——惊慌误触率对半的经典防御（500ms×3 档）
+  const [wait, setWait] = useState(3);
   useEffect(() => {
-    if (!armed) { setWait(2); return; }
+    if (!armed) { setWait(3); return; }
     const id = setInterval(() => setWait((w) => (w > 0 ? w - 1 : 0)), 500);
     return () => clearInterval(id);
   }, [armed]);
@@ -2570,11 +2718,12 @@ function SettingsPanel({ onClose, onCleared }: { onClose: () => void; onCleared:
           {armed ? (
             <span className="settings-confirm">
               确定放弃全部进度？此操作不可恢复。
-              <button className="btn-main" onClick={() => setArmed(false)}>反悔（留档）</button>
-              <button className="danger-final" disabled={wait > 0} onClick={() => { onCleared(); onClose(); }}>{wait > 0 ? `${wait === 1 ? "最后想一秒" : "再想一会儿"}` : "确定放弃"}</button>
+              {/* L-5：「反悔」放大为主按钮；「确定放弃」缩为文字链且延迟 1.5s 可点 */}
+              <button className="btn-main fix-undo-main" onClick={() => setArmed(false)}>反悔 · 留档</button>
+              <button className="link-btn danger-final fix-abort-link" disabled={wait > 0} onClick={() => { onCleared(); onClose(); }}>{wait > 0 ? `${wait === 1 ? "最后想一秒" : "再想一会儿"}` : "确定放弃"}</button>
             </span>
           ) : (
-            <button className="danger-ghost" onClick={() => setArmed(true)}>放弃存档</button>
+            <button className="danger-ghost fix-danger-ghost" onClick={() => setArmed(true)}>放弃存档</button>
           )}
         </div>
         <p className="muted">帝成观止 · 剧本引擎 × 卡牌系统 v2 × 四色相克（策克势·势克器·器克隐·隐克策）</p>
@@ -2603,19 +2752,40 @@ function PrepModal({ sc, onCancel, onGo }: {
     setBoosts((xs) => xs.includes(id) ? xs.filter((x) => x !== id) : [...xs, id]);
   };
   // 随身位物/人争位（合并 state 保证原子读最新值，防闭包竞态超格）
+  // PrepModal 满员高亮：满员时不再默默 return——就地高亮已入槽可替换卡片 + 提示文案
+  const [replaceHint, setReplaceHint] = useState(false);
+  const replaceTimer = useRef<number | null>(null);
+  const triggerReplaceHint = () => {
+    setReplaceHint(true);
+    if (replaceTimer.current) window.clearTimeout(replaceTimer.current);
+    replaceTimer.current = window.setTimeout(() => setReplaceHint(false), 2500);
+  };
+  useEffect(() => () => { if (replaceTimer.current) window.clearTimeout(replaceTimer.current); }, []);
+  const slotsRef = useRef(slots);
+  useEffect(() => { slotsRef.current = slots; }, [slots]);
   const toggleCarry = (id: string) => {
-    setSlots((s) => {
-      if (s.carry.includes(id)) return { ...s, carry: s.carry.filter((x) => x !== id) };
-      if (s.carry.length + s.retinue.length >= slotCap) return s;
-      return { ...s, carry: [...s.carry, id] };
-    });
+    if (slotsRef.current.carry.includes(id)) {
+      setReplaceHint(false);
+      setSlots((s) => ({ ...s, carry: s.carry.filter((x) => x !== id) }));
+      return;
+    }
+    if (slotsRef.current.carry.length + slotsRef.current.retinue.length >= slotCap) {
+      triggerReplaceHint();
+      return;
+    }
+    setSlots((s) => ({ ...s, carry: [...s.carry, id] }));
   };
   const toggleRetinue = (id: string) => {
-    setSlots((s) => {
-      if (s.retinue.includes(id)) return { ...s, retinue: s.retinue.filter((x) => x !== id) };
-      if (s.retinue.length + s.carry.length >= slotCap) return s;
-      return { ...s, retinue: [...s.retinue, id] };
-    });
+    if (slotsRef.current.retinue.includes(id)) {
+      setReplaceHint(false);
+      setSlots((s) => ({ ...s, retinue: s.retinue.filter((x) => x !== id) }));
+      return;
+    }
+    if (slotsRef.current.retinue.length + slotsRef.current.carry.length >= slotCap) {
+      triggerReplaceHint();
+      return;
+    }
+    setSlots((s) => ({ ...s, retinue: [...s.retinue, id] }));
   };
   const toggleBonus = (id: string) => {
     setDeckBonus((xs) => xs.includes(id) ? xs.filter((x) => x !== id) : [...xs, id]);
@@ -2704,15 +2874,16 @@ function PrepModal({ sc, onCancel, onGo }: {
             <div className="prep-slots-title">随身位 <b>{slotsUsed}/{slotCap}</b></div>
             <div className="prep-slot-grid">
               {slotItems.map((c) => (
-                <button key={c.id} type="button" className={`prep-slot filled ${c.layer === "人物" ? "person" : "item"}`} style={{ borderColor: RARITY_COLOR[c.rarity ?? "凡"] }} onClick={() => { sfx.choice(); (c.layer === "人物" ? toggleRetinue : toggleCarry)(c.id); }}>
+                <button key={c.id} type="button" className={`prep-slot filled ${c.layer === "人物" ? "person" : "item"} ${replaceHint ? "fix-slot-replace" : ""}`} style={{ borderColor: RARITY_COLOR[c.rarity ?? "凡"] }} title="点击取出，腾出位置" onClick={() => { sfx.choice(); (c.layer === "人物" ? toggleRetinue : toggleCarry)(c.id); }}>
                   {cardArt(c.id) ? <img src={cardArt(c.id)} alt={c.name} /> : <span className="prep-card-fallback">{c.name.slice(0, 1)}</span>}
-                  <span className="prep-slot-tag">{c.layer === "人物" ? "随从" : "器物"} · 点取</span>
+                  <span className="prep-slot-tag">{c.layer === "人物" ? "随从" : "器物"} · 点击取出</span>
                 </button>
               ))}
               {Array.from({ length: Math.max(0, slotCap - slotItems.length) }).map((_, i) => (
                 <div key={`empty-${i}`} className="prep-slot empty">空</div>
               ))}
             </div>
+            {replaceHint && <p className="fix-prep-full-hint">随身位已满——点选已入槽的卡片即可取出，腾出位置。</p>}
             <p className="muted">物品与人物共争这 {slotCap} 格；奖励卡不占位。</p>
           </div>
         </div>

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>《帝成观止》审计建议处置计划 · 审批稿 · 2026-08-28</title>
+<style>
+  :root{
+    --bg:#171512; --panel:#211d18; --panel2:#2a251f; --line:#3a342c;
+    --ink:#e8e2d5; --muted:#a89e8c; --accent:#c9a86a;
+    --red:#d96b5b; --orange:#dfa14f; --yellow:#d8c05a; --green:#8fb973; --blue:#7ba3c9;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:"Source Han Serif SC","Noto Serif SC",serif,"Microsoft YaHei";line-height:1.75;padding:40px 20px}
+  .wrap{max-width:1100px;margin:0 auto}
+  header{border-bottom:2px solid var(--line);padding-bottom:24px;margin-bottom:32px}
+  h1{font-size:29px;letter-spacing:2px;font-weight:700}
+  .sub{color:var(--muted);margin-top:8px;font-size:14px}
+  h2{font-size:21px;margin:44px 0 16px;padding-left:12px;border-left:4px solid var(--accent)}
+  h3{font-size:16px;margin:22px 0 10px;color:var(--accent)}
+  p{margin:10px 0}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:var(--accent);font-weight:600;white-space:nowrap}
+  tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+  .badge{display:inline-block;padding:1px 9px;border-radius:99px;font-size:12px;border:1px solid;margin-right:6px;line-height:1.6}
+  .b-done{color:var(--green);border-color:var(--green)}
+  .b-todo{color:var(--orange);border-color:var(--orange)}
+  .b-dec{color:var(--red);border-color:var(--red)}
+  .b-batch{color:var(--yellow);border-color:var(--yellow)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:16px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+  .metric{text-align:center}
+  .metric .num{font-size:26px;font-weight:700;display:block;color:var(--ink)}
+  .metric .lbl{font-size:12px;color:var(--muted)}
+  ul{padding-left:22px;margin:8px 0}
+  li{margin:5px 0}
+  code{font-family:Consolas,monospace;background:var(--panel2);padding:1px 6px;border-radius:4px;font-size:.92em;color:#d8cba8}
+  .find{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:6px;padding:14px 18px;margin:14px 0}
+  .find.dec{border-left-color:var(--red)}
+  .find.opin{border-left-color:var(--blue)}
+  .find .t{font-weight:700;margin-bottom:6px}
+  .good li::marker{content:"✓ ";color:var(--green)}
+  .todo li::marker{content:"▸ ";color:var(--orange)}
+  footer{margin-top:48px;border-top:1px solid var(--line);padding-top:18px;color:var(--muted);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>审计建议处置计划 · 审批稿</h1>
+  <div class="sub">输入：6 份对抗性审计报告（2026-08-27，HEAD 76dab31）　·　核对基线：当前工作区 HEAD 5639c34 + 220 个未提交文件（+2035/−346 行）　·　2026-08-28　·　方式：逐条建议对照代码实证盘点，verify 复跑 0 失败 0 警告</div>
+</header>
+
+<div class="grid metric">
+  <div class="card"><span class="num">~50</span><span class="lbl">报告建议总数（6 篇）</span></div>
+  <div class="card"><span class="num">30</span><span class="lbl">已落地（工作区待提交）</span></div>
+  <div class="card"><span class="num">7</span><span class="lbl">需你拍板的决策点</span></div>
+  <div class="card"><span class="num">0/0</span><span class="lbl">verify 失败/警告（复跑全绿）</span></div>
+</div>
+
+<p><strong>核心结论：</strong>审计后已有一批修复在工作区落地（未提交），覆盖全部 P0、全部 P1 与大部分 P2。本稿先给「已修复清单」防止重复劳动，再给「待办计划」分四批，最后列 7 个需要你拍板的决策点。</p>
+
+<h2>一 · 已修复清单（工作区已落地，待你验收后提交）</h2>
+<p>以下逐条经代码实证核对，均已实现。修完的这批 verify 复跑 <strong>0 失败 0 警告</strong>。</p>
+
+<h3>1.1 剧情断链（P0/P1）</h3>
+<table>
+<tr><th style="width:90px">来源</th><th style="width:220px">条目</th><th>落地情况（代码位置）</th></tr>
+<tr><td><span class="badge b-done">S-1</span></td><td>驸马案「残破草纸」x9 无解锁入口</td><td>「卷宗溯源」effects 补 <code>unlockClue:"x9"</code>（<code>fuma.ts:179</code>），A 线真结局链已通</td></tr>
+<tr><td><span class="badge b-done">S-2</span></td><td>verify 只校验「总量」不校验「个体」</td><td>verify §4 新增 coreClue/true 线索可达性强断言，防同类静默断链</td></tr>
+<tr><td><span class="badge b-done">A-2</span></td><td>压制制穷举不可胜无条件放行</td><td>双向断言：普通局不可胜→fail；标 unwinnable 却可胜→fail（<code>verify.mts:459-486</code>）</td></tr>
+<tr><td><span class="badge b-done">W-5</span></td><td>死局开 gambit 无护栏</td><td><code>unwinnable && gambit → fail</code>（<code>verify.mts:445</code>）</td></tr>
+</table>
+
+<h3>1.2 数值与正确性（P1/P2）</h3>
+<table>
+<tr><th style="width:90px">来源</th><th style="width:220px">条目</th><th>落地情况（代码位置）</th></tr>
+<tr><td><span class="badge b-done">A-3</span></td><td>TOTAL_ENDS=76 与实有 80 漂移</td><td>改动态汇总 <code>setTotalEnds/getTotalEnds</code>（<code>save.ts:254-256</code>），消灭手工同步点</td></tr>
+<tr><td><span class="badge b-done">B-1</span></td><td>带变体对局读档后牌序被重置</td><td>选中变体写入 <code>variantScript</code> 随存档持久化，resume 优先回填（<code>duel.ts:102-109</code> + <code>App.tsx:783</code>）</td></tr>
+<tr><td><span class="badge b-done">B-2</span></td><td>「毫发无伤」情绪制恒真</td><td>按模式分流 hp/qi（<code>App.tsx:500-505</code>，emotion 取 qi + 上限 10）</td></tr>
+<tr><td><span class="badge b-done">B-3</span></td><td>和议之书可跳过剧情杀</td><td>追加 <code>!cfg.unwinnable</code>；死局专属文案「项羽收了银子也不肯退兵」但照样消耗（<code>App.tsx:407-421</code>）</td></tr>
+<tr><td><span class="badge b-done">W-4</span></td><td>和议之书「威望有损」未实现</td><td>同处修复：主声望 stat 扣 3 + 奖励归零标记（B-3/W-4 一处代码一起解决）</td></tr>
+<tr><td><span class="badge b-done">B-4</span></td><td>牌九「天杠/地杠」永假死代码</td><td>改为可达顶点牌：天杠=双六(12)、地杠=双幺(2)，次序 对子&gt;天杠&gt;地杠&gt;点数 不变（<code>minigames.ts:250-253</code>）</td></tr>
+<tr><td><span class="badge b-done">B-5</span></td><td>棋局 answer 数值写错不可检测</td><td>boards 快照每步多一子推断正解并与 answer 对账（<code>verify.mts:347-391</code>）</td></tr>
+<tr><td><span class="badge b-done">C-2</span></td><td>陷阱回合吞掉已购情报</td><td>陷阱按「盖放消耗」处理，seeNext 不清空（<code>duel.ts:489</code>）</td></tr>
+<tr><td><span class="badge b-done">C-6</span></td><td>高版本存档直接删除</td><td>改为原样保留 + <code>future</code> 标记，UI 提示升级（<code>save.ts:63-71</code>）</td></tr>
+</table>
+
+<h3>1.3 玩法与界面（P1/P2/P3）</h3>
+<table>
+<tr><th style="width:90px">来源</th><th style="width:220px">条目</th><th>落地情况（代码位置）</th></tr>
+<tr><td><span class="badge b-done">W-1</span></td><td>赌坊出千稳定正期望无节流</td><td>递增查获率 <code>0.2 + n×0.05</code> 封顶 1，抓到输双倍；文案同步（<code>App.tsx:2067-2073</code>）</td></tr>
+<tr><td><span class="badge b-done">W-3</span></td><td>存档单槽覆写 × 败不可再战 × 误触</td><td>「退回上一幕」：内存 ref + sessionStorage 双写，每周目限 1 次（<code>App.tsx:448-473, 810</code>）</td></tr>
+<tr><td><span class="badge b-done">S-4</span></td><td>线索 90% 单点入口容错为零</td><td>五案全部补「重访证人」选项（<code>revisit_left</code> 限 2 次，fuma/qiuwei/sichou/xie/qinhuai）</td></tr>
+<tr><td><span class="badge b-done">U-2</span></td><td>势色不达 AA / 小字号 / 禁缩放</td><td>势色提亮 <code>#c96b57</code>（4.97:1），accent 同步；index.html 移除 <code>user-scalable=no</code></td></tr>
+<tr><td><span class="badge b-done">U-5</span></td><td>成就图标 11MB 体积倒挂</td><td>90 张压缩瘦身（示例 117KB→1.9KB）</td></tr>
+<tr><td><span class="badge b-done">U-6</span></td><td>TreeView 只认键鼠</td><td>补 pinch 双指缩放模式（<code>TreeView.tsx</code>）</td></tr>
+<tr><td><span class="badge b-done">U-7</span></td><td>emoji 与去字化打架</td><td>🎁🔓🏅🔒 已清理为 SVG 纹章</td></tr>
+<tr><td><span class="badge b-done">U-8</span></td><td>刘海屏上缘未设防</td><td><code>.top-bar</code> 补 <code>env(safe-area-inset-top)</code>（<code>app.css:1227</code>）</td></tr>
+<tr><td><span class="badge b-done">U-9</span></td><td>卡图加载失败静默黑洞</td><td>onError 切 failed 态回退占位（<code>App.tsx:301</code>）</td></tr>
+</table>
+
+<h3>1.4 卡牌/树/图鉴/按钮（P1/P2/P3）</h3>
+<table>
+<tr><th style="width:90px">来源</th><th style="width:220px">条目</th><th>落地情况（代码位置）</th></tr>
+<tr><td><span class="badge b-done">A-1</span></td><td>番外 8 景整体不可达</td><td><strong>已实质解决</strong>：各 classic 剧本固定 deck 内置 3 张钥匙卡（≥ need=2，玩家零操作即可达成）+ 全死局剧本败线兜底解锁（<code>App.tsx:530-543</code>）；touming 一条待复核（见待办 3）</td></tr>
+<tr><td><span class="badge b-done">M-1</span></td><td>卡册 266 卡无虚拟化</td><td>组头点击折叠懒展开（<code>App.tsx:2283</code>）</td></tr>
+<tr><td><span class="badge b-done">M-2</span></td><td>编组无动效无撤销</td><td>角标 pulse 150ms + 满组 shake（<code>app.css:1761-1768</code>）</td></tr>
+<tr><td><span class="badge b-done">树</span></td><td>树节点纯展示无交互</td><td>补节点点击 + detail 场景预览面板（<code>TreeView.tsx</code>，借图谱 detail 改造）</td></tr>
+<tr><td><span class="badge b-done">L-1</span></td><td>gambit/商市/里程碑小目标</td><td>三处尺寸治理（<code>app.css:74, 1656</code>）</td></tr>
+<tr><td><span class="badge b-done">L-2</span></td><td>:focus 为零 / :active 2 处</td><td><code>:focus-visible</code> 全局兜底 + <code>.btn:active</code> 按下反馈</td></tr>
+<tr><td><span class="badge b-done">L-3</span></td><td>19 种按钮变体无 token</td><td>收敛 <code>.btn</code> + <code>--primary/--ghost/--danger/--tab</code> 四修饰符，旧类别名保留</td></tr>
+<tr><td><span class="badge b-done">L-4</span></td><td>顶栏 7 连横排混排</td><td>移动端收「书斋」聚合入口（<code>App.tsx:852</code>）</td></tr>
+<tr><td><span class="badge b-done">C-3</span></td><td>_artUrl 线性扫描</td><td>预构建 <code>_CARD_ART_IDX</code> Map（<code>App.tsx:60-91</code>）</td></tr>
+<tr><td><span class="badge b-done">C-5</span></td><td>Excel 管线静默降级</td><td>未支持列硬报错（<code>content.mjs:150</code>）</td></tr>
+<tr><td><span class="badge b-done">S-6</span></td><td>\r 控制符残留 4 部 1200 处</td><td>已清洗（4 部实测 0 残留）</td></tr>
+</table>
+
+<h2>二 · 待办计划（分四批）</h2>
+
+<h3>批次 A · 验收收尾（半天）——把已修批次转正</h3>
+<ul class="todo">
+  <li><strong>A-1 提交前置链路</strong>：tsc -b + vite build 全绿确认（verify 已绿），提交 220 个文件为一个「审计修复批次」commit</li>
+  <li><strong>A-2 冒烟</strong>：preload 存档 → 番外解锁链（携钥匙卡胜→解锁→卡册展阅）、和议之书死局文案、树 detail 点击、退回上一幕</li>
+  <li><strong>A-3 番外复核</strong>：8 个番外逐一确认解锁可达——重点 touming（固定 deck 为空、无 cardSystem，需确认其钥匙卡进入路径）；顺带核算「富商」成就 100/200 两在递增查获率下是否仍可达</li>
+  <li><strong>A-4 仓库卫生</strong>：删 <code>dist_old_225701 / dist_old_230845</code>（~890MB 级，加入 .gitignore）；git 待决删除提交；根 README 修正（已删目录描述）</li>
+</ul>
+
+<h3>批次 B · 玩家可见 P2（1~2 天）</h3>
+<ul class="todo">
+  <li><strong>B-1 L-5 危险操作防御</strong>：「放弃存档」第一层改描边 danger 幽灵按钮；确认层反悔放大为主按钮、确定放弃缩为文字链 + 延迟 1.5s 可点</li>
+  <li><strong>B-2 U-3 对局渐进披露</strong>：非 gambit 局隐藏破招列（保持并文档化）；动作按钮 hover tooltip；「耳报/案眼/青眼」等术语首现气泡注释</li>
+  <li><strong>B-3 PrepModal 反馈闭环</strong>：满员时就地高亮可替换对象 + prep-slot 补 :hover「点击取出」</li>
+  <li><strong>B-4 X-2 z-index 表</strong>：overlay 基线 40 / 叠 overlay 60 / toast 恒 80，文档化落注释</li>
+  <li><strong>B-5 三个小排版</strong>：X-1 pick 字号回调 ≥11px（决策页不该是全站最小字）；M-3 ZoomView 折叠态大卡钳 34vh；树 640px 断点补 tree-* 适配规则</li>
+</ul>
+
+<h3>批次 C · 内容决策（需拍板后才开工）</h3>
+<ul class="todo">
+  <li><strong>C-1 S-3 跨视角互文</strong>：README/官网话术收敛「多视角各自成章」（零成本立即做）+ changjiang 棋枰轻旗标（内容，可选）</li>
+  <li><strong>C-2 W-2 情绪制预算</strong>：三方案选一（言力上限 / 收益递减 / 免费观察小动作），先 verify 模拟再动数据</li>
+  <li><strong>C-3 卡牌 C-4 机制位扩编</strong>：功能位密度 10%→~20%（每案 3~4 张），需新卡新图，产能依赖</li>
+  <li><strong>C-4 卡牌视觉批次</strong>：C-1 安全区条款入生成提示词、C-2 文字区双向治理（tcard 自适应 + pc-text max-height + cost-tag 12px）、C-3 数值角标（power 左上/cost 右上，纯 CSS）、C-5 gu 层徽（方孔钱/人形/银锭 SVG）</li>
+</ul>
+
+<h3>批次 D · 长期卫生（穿插进行）</h3>
+<ul class="todo">
+  <li><strong>D-1 C-1 随从共用次数分桶</strong>：duelSpend 仅共享型随从吃 sharedUsed，凡级独立计数</li>
+  <li><strong>D-2 W-6 押注档位浮动</strong>：按 silver 10%/25%/50%</li>
+  <li><strong>D-3 W-7 案件经济保底</strong>：货架按剧本 silver 分档上架（纯数据，优先于加银两事件）</li>
+  <li><strong>D-4 S-5 虚实对照表</strong>：一页「史实 vs 虚构」文档（发布前必做，星火篇红线单独过一遍）</li>
+  <li><strong>D-5 S-8 惊雷 hint</strong>：「至少保留一日缓冲」直译入选项</li>
+  <li><strong>D-6 C-6 长期项</strong>：PWA maxEntries 调大；主 JS 895KB 按剧本动态分包</li>
+  <li><strong>D-7 STORY_VISUAL 合并</strong>：按方案 B——树升级「玩法图层」图标角标（对局/翻牌/小游戏），detail 面板已复用，左→右 DAG 泳道留 docs 工具继续迭代</li>
+</ul>
+
+<h2>三 · 我的独立判断（含两处报告间冲突裁决）</h2>
+
+<div class="find dec">
+  <div class="t">裁决 1 · 卡图比例：卡牌篇 C-1 vs 玩法篇 U-4 口径冲突</div>
+  <p>卡牌专项 C-1 建议「统一 3:4 并重裁 2:3 残留」；玩法美术 U-4 建议「下一批统一回 2:3，或容器放宽，<strong>存量不必返工</strong>」。两篇打架。</p>
+  <p><strong>我的裁决</strong>：主流容器已是 3:4（tcard 184×245），统一 3:4 方向对；但存量 2:3 图仅零星 3 张（b_qiqi/b_heji/b_piwei），AI 图中心裁切有砍构图风险，收益低于风险——<strong>生成端强制 3:4 + 安全区条款，存量 2:3 不重裁、object-fit 兜底</strong>，与 U-4 一致。C-1 安全区条款进 PROMPTS.md 顺带做。</p>
+</div>
+
+<div class="find dec">
+  <div class="t">裁决 2 · B-4 牌九：报告给二选一，已落地「诚实化」变体</div>
+  <p>报告选项①真实牌九骨域（玩法更深）vs ②删死分支诚实化。已实现的是②的变体（天杠=双六、地杠=双幺，保持 对子&gt;天杠&gt;地杠 的教学承诺）。<strong>建议不再追①</strong>：牌九是「败不可再战」的一次性小游戏，深度提升 ROI 低，且 32 张真骨牌的教学成本会反噬。</p>
+</div>
+
+<div class="find opin">
+  <div class="t">补充风险 1 · W-1 赌坊修复后「富商」成就路径需复核</div>
+  <p>报告明确 100/200 两成就的合法路径「几乎必然经过赌坊」。递增查获率落地后，出千净期望随次数收敛，需要核算前 N 手内能否攒出 100/200 两——若不可达，<code>富商</code>成就将变成不可能的成就，需同步调门槛或给其他银两来源。已并入批次 A-3 复核项。</p>
+</div>
+
+<div class="find opin">
+  <div class="t">补充风险 2 · S-3 轻旗标不要为凑数硬塞</div>
+  <p>报告建议「补 2–3 个 mercy_shown 式轻旗标」。我的判断：mercy_shown 之所以成立是因为「同一件事双视角各有版本」的叙事设计在先；硬凑的旗标只是展示层装饰。<strong>只做 changjiang 棋枰「让他的棋」一个</strong>（原文已有对应叙事支点），shumian 两线保持平行即可，话术收敛先行。</p>
+</div>
+
+<div class="find opin">
+  <div class="t">补充观点 3 · A-1 现状优于报告建议，无需追加方案①</div>
+  <p>报告推荐「initialDeck 下发 2~3 张钥匙卡」。实际落地是<strong>固定 deck 直接内置 3 张</strong>（≥ need=2）——玩家零编组操作、100% 随胜局达成，比 initialDeck 更彻底（不挤占可编组位）。唯一欠账是 touming 的解锁路径，批次 A-3 复核即可，不另开内容工程。</p>
+</div>
+
+<div class="find opin">
+  <div class="t">补充观点 4 · 提交纪律</div>
+  <p>220 文件 +2035 行是审计后最大单批改动，横跨 26 个源码/数据文件。建议 <strong>commit 前强制 tsc -b + vite build + verify 三绿</strong>（verify 已绿），commit message 标注「audit-2026-08-27 修复批次」，后续批次 B/C/D 各自独立 commit，方便回溯与 revert。</p>
+</div>
+
+<h2>四 · 待你拍板的决策点</h2>
+<table>
+<tr><th style="width:70px">编号</th><th style="width:260px">决策</th><th>我的建议</th></tr>
+<tr><td><span class="badge b-dec">D1</span></td><td>批次 A~D 全部批准，还是逐批审批？</td><td>A+B 无争议直接批；C 拆开逐项看；D 穿插随做随提交</td></tr>
+<tr><td><span class="badge b-dec">D2</span></td><td>S-3 跨视角轻旗标是否开工？</td><td>话术收敛必做；changjiang 轻旗标做（一个，有叙事支点）；其余不凑数</td></tr>
+<tr><td><span class="badge b-dec">D3</span></td><td>W-2 情绪制预算选哪方案？</td><td>推荐「观察类免费小动作」（改动最小、不推翻现有解法，verify 回归成本低）</td></tr>
+<tr><td><span class="badge b-dec">D4</span></td><td>卡牌 C-4 机制位扩编是否开工？</td><td>涉及新卡新图产能，若当前图产能吃紧可延后；纯数据先行版只调池分布不扩卡</td></tr>
+<tr><td><span class="badge b-dec">D5</span></td><td>卡图比例裁决（3:4 统一 + 存量 2:3 不返工）是否认可？</td><td>认可即并入批次 C-4</td></tr>
+<tr><td><span class="badge b-dec">D6</span></td><td>「富商」成就若复核不可达，调门槛还是补银两来源？</td><td>倾向补来源（保底银两事件，D-3 同源），不动成就门槛</td></tr>
+<tr><td><span class="badge b-dec">D7</span></td><td>STORY_VISUAL 合并是否按方案 B 立项？</td><td>方案 B 立项，但放批次 D 长期，不抢当前主线</td></tr>
+</table>
+
+<footer>
+  方法备注：全部「已修复」条目均以 grep/脚本对当前工作区（HEAD 5639c34 + 未提交改动）实证核对，非凭报告文本转述；verify.mts 复跑 0 失败 0 警告；番外钥匙卡可达性以 Node 脚本扫描 8 部数据文件确认（固定 deck 内置 3 张 ≥ need=2）。本稿只陈述 2026-08-28 工作区事实。
+</footer>
+
+</div>
+</body>
+</html>

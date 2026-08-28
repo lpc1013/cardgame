@@ -18,6 +18,7 @@ export const fuma: Scenario = {
   stats: [
     { key: "chaoting", name: "朝望", init: 50 },
     { key: "daoyi", name: "道义", init: 50 },
+    { key: "revisit_left", name: "重访余次", init: 2 },
   ],
   cards: [
     // ---------- 成术卡（对局四色：策/器/势/隐） ----------
@@ -154,7 +155,7 @@ export const fuma: Scenario = {
   "我合上卷宗。三个人的口供都对得上。",
   "但三个人的口供都像背诵。"
 ],
-      effects: [{ unlockClue: "x4" }, { unlockClue: "x7" }],
+      effects: [{ gainSilver: 10 }, { unlockClue: "x4" }, { unlockClue: "x7" }],
       next: "witness",
     },
     {
@@ -270,8 +271,23 @@ export const fuma: Scenario = {
       choices: [
         { text: "【夜市】买卡、开包、编组，顺便……赌坊也可以坐坐。", hint: "市集", cond: { notFlag: "done_market" }, effects: [{ setFlag: "done_market" }], next: "market" },
         { text: "【文萃堂】灯下有位老者摆了盘残局——「应三手，彩头三十两。」", hint: "棋局残局 · 赢得彩头", cond: { notFlag: "done_wenchat" }, effects: [{ setFlag: "done_wenchat" }], next: "wenchat" },
+        { text: "【重访证人】再访案发前夜的目击者，重捋口供。", hint: "兜底 · 重新打开可能错过的关键线索（限 2 次）", cond: { statAtLeast: { revisit_left: 1 } }, effects: [{ stat: { revisit_left: -1 } }, { unlockClue: "x3" }, { unlockClue: "x7" }], next: "rv_fuma" },
         { text: "◆ 回府歇息。明日复勘如意酒家。", effects: [], next: "search_gate" },
       ],
+    },
+    {
+      id: "rv_fuma",
+      title: "重访 · 如意酒家",
+      lines: [
+  "你趁夜回到如意酒家。封条还贴着，檐下的灯笼早灭了。",
+  "",
+  "你让文书重新过了一遍证物：死者衣襟夹层里的玉珏与碎银，刀柄无掌纹的短匕。",
+  "",
+  "旧物件不会改口。改口的，从来都是人。",
+  "",
+  "灯下再辨，那半枚玉珏的断口，又齐整了几分。"
+],
+      next: "market_gate",
     },
     {
       id: "wenchat",

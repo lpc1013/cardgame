@@ -19,6 +19,7 @@ export const qiuwei: Scenario = {
   stats: [
     { key: "chaoting", name: "朝望", init: 50 },
     { key: "shijian", name: "时限", init: 3 },
+    { key: "revisit_left", name: "重访余次", init: 2 },
   ],
   cards: [
     // ---------- 洞察 · 看破类（第五轮新增） ----------
@@ -135,6 +136,7 @@ export const qiuwei: Scenario = {
   "",
   "案头一盏灯，映着四张各怀心事的脸。你起身：第一站，贡院誊卷库房。"
 ],
+      effects: [{ gainSilver: 10 }],
       next: "market_gate",
     },
     {
@@ -159,8 +161,23 @@ export const qiuwei: Scenario = {
         { text: "【士子书摊】买几本文集——顺便，听听骂声。", hint: "剧情市集 · 落第者的货摊", cond: { notFlag: "done_shutan" }, effects: [{ setFlag: "done_shutan" }], next: "shutan" },
         { text: "【桥头夜市】馄饨、消息、一应用度。", hint: "市集", cond: { notFlag: "done_yeshi" }, effects: [{ setFlag: "done_yeshi" }], next: "yeshi" },
         { text: "【贡院墙根】几个落第士子围着盏灯，争一件夜里的事——「谁进过贡院，谁心里有鬼。」", hint: "证词辩真 · 赢了听个真话（败不可再战）", cond: { notFlag: "done_logic" }, effects: [{ setFlag: "done_logic" }], next: "qw_logic" },
+        { text: "【重访证人】再回贡院墙根，重访那些散去的目击者。", hint: "兜底 · 重新打开可能错过的关键线索（限 2 次）", cond: { statAtLeast: { revisit_left: 1 } }, effects: [{ stat: { revisit_left: -1 } }, { unlockClue: "q5" }, { unlockClue: "q7" }], next: "rv_qiuwei" },
         { text: "◆ 回驿馆。明日叩贡院的门。", effects: [], next: "d1_intro" },
       ],
+    },
+    {
+      id: "rv_qiuwei",
+      title: "重访 · 贡院墙根",
+      lines: [
+  "你折回贡院墙根。灯还亮着，人散了大半，剩几个蹲在墙根下，见了官袍，又往阴影里缩了缩。",
+  "",
+  "你不问案子，只问那些夜里的事——库房彻夜的灯火，深夜出入的长衫文士，书吏床底那只锁着的匣子。",
+  "",
+  "话不多，但总有一两句，落在你先前没听见的地方。",
+  "",
+  "灯花爆了一下。你把它记进卷宗。"
+],
+      next: "market_gate",
     },
     {
       id: "qw_logic",
@@ -657,7 +674,7 @@ export const qiuwei: Scenario = {
       choices: [
         {
           text: "【办多深】惊雷还是埋雷——先定这一笔对朝堂的分量。",
-          hint: "姿态 · 砸向御前，还是埋进土里",
+          hint: "姿态 · 砸向御前，还是埋进土里（需至少保留一日缓冲）",
           effects: [],
           next: "q_power_prep",
         },

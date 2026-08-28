@@ -31,15 +31,26 @@ export const DEFAULT_GOAL = 5;
 /** 压制制缺省每回合行动力（帝国加成在 baseAp 上叠加，换气后不丢） */
 export const DEFAULT_AP = 3;
 
+/** W-2 言力免费出牌数：情绪制前 N 张成术免费，第 N 张后每张耗 1 言力（防无限链出的轻预算）。
+ *  N=5 + yanliMax=7 → 每局成术上限 12 手：覆盖最长情绪制胜线（赣州强攻 12 步），
+ *  同时终结无限刷共鸣（原 9 手上限把赣州从可胜 12 步压成死局，故放宽——2026-08-27 复核）。 */
+export const EMOTION_FREE_PLAYS = 5;
+
 export interface DuelState {
   cfg: DuelConfig;
   mode: "emotion" | "pressure";
   rules: "classic" | "v2";
   round: number;
+  /** 本局选中的 script 变体（scriptVariants 随机选中后写回；断点续局时供 App 还原 cfg.script） */
+  variantScript?: string[];
   // emotion
   rapport: number;       // 共鸣
   guard: number;         // 对手防备
   qi: number;            // 我方气力
+  /** W-2 言力预算（情绪制）：剩余言力，前 EMOTION_FREE_PLAYS 张成术免费，此后每张 -1；pressure 置 0 不生效 */
+  yanli: number;
+  /** W-2 言力上限（emotion=4；pressure=0） */
+  yanliMax: number;
   opponentShown: Suit | null;
   opponentTrue: Suit | null;  // 对手真色（博弈·虚张时与 shown 分离）
   bluffed: boolean;      // 当前亮色是否为虚张（读牌后拆穿置 false）
@@ -69,6 +80,10 @@ export interface DuelState {
   // ---- 随从（斥候/内应）----
   scoutLeft: number;     // 刺探剩余次数
   insiderLeft: number;   // 收买剩余次数
+  /** C-1 独立次数分桶：凡级斥候（sharedTotal=0）独立剩余次数——不受共享上限封死 */
+  indScoutLeft: number;
+  /** C-1 独立次数分桶：良级内应（sharedTotal=0）独立剩余次数——不受共享上限封死 */
+  indInsiderLeft: number;
   sharedUsed: number;    // 共用次数已用（精/传级随从）
   sharedTotal: number;   // 共用次数上限（0=斥候/内应各自独立）
   insiderActive: boolean;// 收买已发动：对手下一招作废
@@ -83,9 +98,13 @@ export interface DuelBoosts {
 }
 
 export function initDuel(cfg: DuelConfig, deck: string[], allCards: CardDef[], boosts?: DuelBoosts): DuelState {
-  // script 常驻扰动：有变体池时开局随机选一个作为本局 script（副本写回，UI/引擎读同一来源）
+  // script 常驻扰动：有变体池时开局随机选一个作为本局 script（副本写回，UI/引擎读同一来源）。
+  // B-1：选中变体同时写入 st.variantScript，随 Omit<DuelState,"cfg"> 序列化持久化，供断点续局时还原 cfg.script。
+  let variantScript: string[] | undefined;
   if (cfg.scriptVariants?.length) {
-    cfg = { ...cfg, script: cfg.scriptVariants[Math.floor(Math.random() * cfg.scriptVariants.length)]! };
+    const chosen = cfg.scriptVariants[Math.floor(Math.random() * cfg.scriptVariants.length)]!;
+    cfg = { ...cfg, script: chosen };
+    variantScript = chosen;
   }
   if (!cfg.script?.length) throw new Error(`对局配置错误「${cfg.id}」: script 为空`);
   const rules = cfg.rules ?? "classic";
@@ -109,6 +128,9 @@ export function initDuel(cfg: DuelConfig, deck: string[], allCards: CardDef[], b
   const insiderTotal = retinueCards.reduce((s, c) => s + (c.passive!.insider ?? 0), 0);
   // 共用次数：多张共用随从取各张 sharedTotal 之和
   const sharedTotal = retinueCards.reduce((s, c) => s + (c.passive!.sharedTotal ?? 0), 0);
+  // C-1 独立次数分桶：凡级斥候/良级内应（sharedTotal=0 的卡）各自独立计次，与共享池分开记账
+  const indScoutTotal = retinueCards.filter((c) => (c.passive!.sharedTotal ?? 0) <= 0).reduce((s, c) => s + (c.passive!.scout ?? 0), 0);
+  const indInsiderTotal = retinueCards.filter((c) => (c.passive!.sharedTotal ?? 0) <= 0).reduce((s, c) => s + (c.passive!.insider ?? 0), 0);
 
   const bonusQi = passives.reduce((s, p) => s + p.qi, 0);
   // 人物卡不进牌库：开局即场外生效（被动已在上方解析）
@@ -121,14 +143,19 @@ export function initDuel(cfg: DuelConfig, deck: string[], allCards: CardDef[], b
     return true;
   })) : [];
   const hpBase = (cfg.hp?.player ?? 10) + bonusQi + (boosts?.qi ?? 0);
+  // W-2 言力预算：仅情绪制生效（轻上限 7，共 12 手），pressure 置 0 完全不受影响
+  const yanliMax = cfg.mode === "emotion" ? 7 : 0;
   const st: DuelState = {
     cfg,
     mode: cfg.mode,
     rules,
     round: 0,
+    variantScript,
     rapport: 0,
     guard: 3,
     qi: 3,
+    yanli: yanliMax,
+    yanliMax,
     opponentShown: null,
     opponentTrue: null,
     bluffed: false,
@@ -152,6 +179,8 @@ export function initDuel(cfg: DuelConfig, deck: string[], allCards: CardDef[], b
     passives,
     scoutLeft: scoutTotal,
     insiderLeft: insiderTotal,
+    indScoutLeft: indScoutTotal,
+    indInsiderLeft: indInsiderTotal,
     sharedUsed: 0,
     sharedTotal,
     insiderActive: false,
@@ -246,6 +275,18 @@ export function playEmotion(st: DuelState, card: CardDef): boolean {
   if (st.rules === "v2") {
     if (cardLayerIs(card, "物品")) return playItem(st, card);
     if (cardLayerIs(card, "人物")) return false;
+  }
+  // W-2 言力预算（情绪制防无限链出的轻预算；规则见 initDuel）：
+  //   前 EMOTION_FREE_PLAYS 张成术免费；此后每出一张成术耗 1 言力；yanli 耗尽则不可再出。
+  //   物品不耗言力（上方已早退）；pressure 模式 yanliMax=0 且不走本函数，完全不受影响。
+  //   旧档无言力字段时保持旧行为不设限（typeof 守卫）。
+  if (typeof st.yanli === "number") {
+    if (st.round >= EMOTION_FREE_PLAYS) {
+      if (st.yanli <= 0) return false;
+      st.yanli -= 1;
+    }
+  }
+  if (st.rules === "v2") {
     // 成术卡：打出进弃牌堆（情绪制不耗行动力）
     st.hand = st.hand.filter((c) => c !== card.id);
     st.discard.push(card.id);
@@ -441,10 +482,12 @@ export function playPressure(st: DuelState, playerCard: CardDef, oppCardId: stri
     }
     st.trap = { cardId: playerCard.id, name: playerCard.name, effect: playerCard.trap };
     st.lastPlay = null;
-    st.lastCardId = playerCard.id; // 招式用老只盯成术，陷阱不计入
+    // 招式用老盯的是「上一张实际打出的牌」，盖放同样算——同牌再出按招式用老计（-2）
+    st.lastCardId = playerCard.id;
     st.lastResult = { text: `你把「${playerCard.name}」反扣在案上——不急着亮。`, kind: "gambit" };
     st.round += 1;
-    if (st.seeNext !== "none") st.seeNext = "none";
+    // C-2 陷阱是「盖放消耗」而非真实交手：刺探买到的 seeNext 情报不清空，
+    // 保留至下一次真实交手结算后（playPressure 结算段 525 行左右）才过期。
     afterTurn(st);
     return true;
   }
@@ -549,8 +592,14 @@ export function duelSpend(
   if (st.retinueNames.length === 0) {
     return { ok: false, log: "无随从随行——需先雇斥候/内应。" };
   }
-  if (st.sharedTotal > 0 && st.sharedUsed >= st.sharedTotal) {
-    return { ok: false, log: "随从已用尽了力气。" };
+  // C-1 次数分桶：共享（精/传，sharedTotal>0）与独立（凡/良）分开记账。
+  //   - 共享池有余量时优先从共享池出（精/传的共用次数先耗，保住独立次数作兜底）；
+  //   - 共享池耗尽则回退独立次数（凡/良各自 indScoutLeft/indInsiderLeft），
+  //     因此独立次数不会被共享上限封死（原实现任何随从动作都 sharedUsed+=1）。
+  const indLeft = kind === "scout" ? (st.indScoutLeft ?? 0) : (st.indInsiderLeft ?? 0);
+  const usedShared = st.sharedTotal > 0 && st.sharedUsed < st.sharedTotal;
+  if (!usedShared && indLeft <= 0) {
+    return { ok: false, log: st.sharedTotal > 0 ? "随从已用尽了力气。" : (kind === "scout" ? "斥候已无余力再探。" : "内应已无余力再动。") };
   }
   if (kind === "scout" && st.scoutLeft <= 0) {
     return { ok: false, log: "斥候已无余力再探。" };
@@ -565,6 +614,8 @@ export function duelSpend(
     st.insiderActive = true;
     st.insiderLeft -= 1;
   }
-  st.sharedUsed += 1;
+  if (usedShared) st.sharedUsed += 1;
+  else if (kind === "scout") st.indScoutLeft = (st.indScoutLeft ?? 0) - 1;
+  else st.indInsiderLeft = (st.indInsiderLeft ?? 0) - 1;
   return { ok: true, log: kind === "scout" ? "斥候探得军情——看清对手下一手。" : "内应已买通——对手下一招将成空。" };
 }

@@ -138,9 +138,31 @@ function parseCond(s) {
 }
 function nonEmpty(o) { return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== "" && v != null)); }
 
+// C-5：列白名单硬校验——export 端只写白名单列；白名单之外的列一旦在导入 Excel 中有非空值即抛错，
+// 防止内容管线新旧脱节导致新列被静默丢弃（layer/rarity/itemEffect/passive/resource/price/shop/minigame 等
+// 引擎/UI 已支持但 content.mjs 尚未支持的列，导入时必须显式报错而非静默吞掉）。
+// 当前无「有意忽略」例外列：需忽略的列应直接在导出模板中删除。
+function assertKnownCols(sheet, rowList, known) {
+  for (const row of rowList) {
+    for (const key of Object.keys(row)) {
+      const v = row[key];
+      if (!known.has(key) && v !== "" && v != null) {
+        throw new Error(`[${sheet}] 存在未支持的列「${key}」（值：${S(v).slice(0, 40)}）——该列会被 content.mjs 静默丢弃，请改用已支持列或先扩展脚本`);
+      }
+    }
+  }
+}
+
 function doImport(file, id) {
   const wb = XLSX.readFile(file);
   const rows = (name) => XLSX.utils.sheet_to_json(wb.Sheets[name], { defval: "" });
+  // C-5：各 sheet 列白名单硬校验（见 assertKnownCols）
+  assertKnownCols("scenario", rows("scenario"), new Set(["id", "title", "subtitle", "mode", "stats", "startScene", "verdict"]));
+  assertKnownCols("scenes", rows("scenes"), new Set(["id", "title", "lines", "next", "duel", "effects", "ending"]));
+  assertKnownCols("choices", rows("choices"), new Set(["sceneId", "order", "text", "hint", "cond", "effects", "next"]));
+  assertKnownCols("cards", rows("cards"), new Set(["id", "name", "suit", "text", "lore", "power", "cost"]));
+  assertKnownCols("clues", rows("clues"), new Set(["id", "name", "kind", "desc"]));
+  assertKnownCols("duels", rows("duels"), new Set(["id", "mode", "title", "intro", "opponent", "goal", "hp", "script", "deck", "winScene", "loseScene"]));
   const [sc0] = rows("scenario");
   const stats = S(sc0.stats).split(";").filter(Boolean).map(p => {
     const [key, rest] = p.split(":"); const [name, init] = rest.split("=");

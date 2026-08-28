@@ -16,12 +16,12 @@ export const xingxing: Scenario = {
     { key: "xinhuo", name: "心气", init: 50 },
   ],
   cards: [
-    { id: "g_li_zheng", name: "据理力争", suit: "策", power: 3, text: "把整顿的道理，一条一条摆出来。", lore: "「一小部分人就不要急吗？他们会影响其他的人！」" },
-    { id: "g_li_shi", name: "陈述实情", suit: "策", power: 3, text: "不辩解，只把看到的实情说给他听。", lore: "事实最硬。硬过一切气话。" },
+    { id: "g_li_zheng", name: "据理力争", suit: "策", power: 3, situational: { suit: "势", bonus: 2 }, text: "把整顿的道理，一条一条摆出来——他以势压人，你更据理不让。", lore: "「一小部分人就不要急吗？他们会影响其他的人！」" }, // C-4 机制位扩编
+    { id: "g_li_shi", name: "陈述实情", suit: "策", power: 3, drawOnPlay: 1, text: "不辩解，只把看到的实情说给他听——实情一开，话就多了（抽 1 张）。", lore: "事实最硬。硬过一切气话。" }, // C-4 机制位扩编
     { id: "g_wei_ding", name: "态度鲜明", suit: "势", power: 4, text: "明天会上，第一个表态：队伍不能散。", lore: "「你的态度一定要鲜明。」——他交代任务时，从不客气。" },
-    { id: "g_wei_zhi", name: "直言无隐", suit: "隐", power: 3, text: "连他不爱听的，也照实说。", lore: "他最恼的从来不是顶嘴，是含糊。" },
+    { id: "g_wei_zhi", name: "直言无隐", suit: "隐", power: 3, sacrifice: 1, text: "连他不爱听的，也照实说——这一句，先伤的是自己（自伤 1，本张 +2）。", lore: "他最恼的从来不是顶嘴，是含糊。" }, // C-4 机制位扩编
     { id: "g_qing_xiang", name: "顺着乡音", suit: "隐", power: 3, text: "学他的湖南腔，把话说到一块去。", lore: "「好嘛，我睡了。反正明天我还要去办我的干部学校。」" },
-    { id: "g_qing_huo", name: "念念伤员", suit: "隐", power: 2, text: "说祠堂里那些攥着他的手的伤员。", lore: "「委员，我不想走，我还要跟你打广州……」" },
+    { id: "g_qing_huo", name: "念念伤员", suit: "隐", power: 2, situational: { suit: "器", bonus: 2 }, text: "说祠堂里那些攥着他的手的伤员——他摆得出军械，摆不出那双手。", lore: "「委员，我不想走，我还要跟你打广州……」" }, // C-4 机制位扩编
     { id: "g_li_huo", name: "护着火种", suit: "器", power: 3, text: "替干部学校争人手、争经费。", lore: "「马上开讲的有六个，还有十几个正在跑。」" },
     { id: "g_ren_shou", name: "教「人」与「手」", suit: "器", power: 3, text: "在门板上一撇一捺，写下「人」，再写下「手」。", lore: "「我们穷人的双手，是要做什么呢？」" },
       { id: "x_shenghuo", name: "星火初燃", suit: "势", power: 3, text: "星火初燃，一盏灯就是一粒种。", lore: "油灯如豆，照着一屋子人。" },
@@ -49,7 +49,8 @@ export const xingxing: Scenario = {
       opponent: { name: "委员", desc: "深夜伏案的人。白天刚跟军长拍过桌子。" },
       goal: 5,
       script: ["势", "策", "势", "策", "策", "势", "策"],
-      deck: ["g_li_shi", "g_qing_huo", "g_qing_xiang", "g_li_zheng", "g_wei_zhi", "g_li_huo"],
+      // A-1 番外钥匙卡：x_gesheng/x_tiankan/x_jiutui（power2 弱卡）下发进对局可用牌组，胜局可解锁番外「夜校一灯」
+      deck: ["g_li_shi", "g_qing_huo", "g_qing_xiang", "g_li_zheng", "g_wei_zhi", "g_li_huo", "x_gesheng", "x_tiankan", "x_jiutui"],
       winScene: "gb_win",
       loseScene: "gb_lose",
     },
@@ -284,9 +285,9 @@ export const xingxing: Scenario = {
   "灯芯爆了一声。军法官、朱军长、杨先生，三双眼睛，都落在我身上。"
 ],
       choices: [
-        { text: "支持军法官——纪律不立，队伍就散了。", hint: "立威 · 心气蚀", effects: [{ stat: { junxin: 8, xinhuo: -5 } }], next: "xx_zhengxun" },
-        { text: "随朱军长——能打仗，就是好兵。", hint: "务实 · 心气微蚀", effects: [{ stat: { junxin: 5, xinhuo: -3 } }], next: "xx_zhengxun" },
-        { text: "随杨先生——先讲清楚「为什么打仗」，再谈怎么打。", hint: "教育 · 军心蚀", effects: [{ stat: { xinhuo: 8, junxin: -5 } }], next: "xx_zhengxun" },
+        { text: "支持军法官——纪律不立，队伍就散了。", hint: "立威 · 心气蚀", effects: [{ stat: { junxin: 8, xinhuo: -5 } }, { setFlag: "support_judge" }], next: "xx_zhengxun" },
+        { text: "随朱军长——能打仗，就是好兵。", hint: "务实 · 心气微蚀", effects: [{ stat: { junxin: 5, xinhuo: -3 } }, { setFlag: "follow_zhu" }], next: "xx_zhengxun" },
+        { text: "随杨先生——先讲清楚「为什么打仗」，再谈怎么打。", hint: "教育 · 军心蚀", effects: [{ stat: { xinhuo: 8, junxin: -5 } }, { setFlag: "follow_yang" }], next: "xx_zhengxun" },
       ],
     },
     {
@@ -301,6 +302,11 @@ export const xingxing: Scenario = {
   "我教他们写自己的名字。有一个老兵，练了半宿，把「人」字写了满纸，举起来说：报告，我会写「人」了。",
   "那晚的灯，又亮到很晚。杨先生路过我桌边，看了一眼我写的字：字是好字。就是太规矩——让它们，活一点。"
 ],
+      variantLines: [
+        { cond: { flag: "support_judge" }, lines: ["军法官临走时，把那张名单收了起来：「账，先记着。」", "你听着这话，心里一沉——整顿的课，才刚开始。"] },
+        { cond: { flag: "follow_zhu" }, lines: ["朱军长磕了磕烟袋：「就这么定了。」", "可你知道，那三个犯事的兵，夜里被叫去，谈了半个时辰的话。"] },
+        { cond: { flag: "follow_yang" }, lines: ["杨先生的课，从「人」字讲起。", "军法官没有反对，只把名单叠好，收进了怀里。"] },
+      ],
       next: "xx_lide",
     },
     {
@@ -316,9 +322,9 @@ export const xingxing: Scenario = {
   "屋里安静下来。朱军长抽着烟袋，看看他，又看看李德——满屋子人，等着我这个随队写字的开口。"
 ],
       choices: [
-        { text: "支持李德——国际经验，总不会错。", hint: "服从 · 心气蚀", effects: [{ stat: { junxin: 5, xinhuo: -5 } }], next: "xx_city_intro" },
-        { text: "支持杨先生——敌强我弱，打大城市是送死。", hint: "实事求是 · 军心蚀", effects: [{ stat: { junxin: -5, xinhuo: 8 } }], next: "xx_city_intro" },
-        { text: "两边都听——先小规模试一次，用伤亡说话。", hint: "折中 · 代价自会开口", effects: [{ stat: { junxin: 3, xinhuo: 3 } }], next: "xx_city_intro" },
+        { text: "支持李德——国际经验，总不会错。", hint: "服从 · 心气蚀", effects: [{ stat: { junxin: 5, xinhuo: -5 } }, { setFlag: "back_lide" }], next: "xx_city_intro" },
+        { text: "支持杨先生——敌强我弱，打大城市是送死。", hint: "实事求是 · 军心蚀", effects: [{ stat: { junxin: -5, xinhuo: 8 } }, { setFlag: "back_yang" }], next: "xx_city_intro" },
+        { text: "两边都听——先小规模试一次，用伤亡说话。", hint: "折中 · 代价自会开口", effects: [{ stat: { junxin: 3, xinhuo: 3 } }, { setFlag: "hear_both" }], next: "xx_city_intro" },
       ],
     },
     {
@@ -331,6 +337,11 @@ export const xingxing: Scenario = {
   "出发那夜，队伍列在路口。朱军长走到队首，把烟袋别回腰上：打完这仗，都给老子活着回来。",
   "我跟着队伍，看见那个练了半宿「人」字的老兵，在人群里，把枪攥得发白。"
 ],
+      variantLines: [
+        { cond: { flag: "back_lide" }, lines: ["命令下来那晚，你想起沙盘边李德笃定的脸。", "队伍里，有人把「打大城市」四个字，念了一夜。"] },
+        { cond: { flag: "back_yang" }, lines: ["杨先生蹲在连队里讲「怎么在败仗里活下来」。", "你站在门口听完了那堂课——课没讲完，你就先明白了：这一仗，是要拿人命去试的。"] },
+        { cond: { flag: "hear_both" }, lines: ["小规模的试探，用伤亡说了话。", "李德看着伤亡数字，没有再提「国际经验」——可城，还是要打。"] },
+      ],
       duel: "d_city",
     },
     {

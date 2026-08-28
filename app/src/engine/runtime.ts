@@ -118,3 +118,14 @@ export function visibleChoices(scene: Scene, st: RunState): Choice[] {
   // 有 altNext 的选项（真结局硬门槛降级）恒显示——cond 不满足时点击落入降级结局
   return (scene.choices ?? []).filter((c) => checkCond(c.cond, st) || !!c.altNext);
 }
+
+/**
+ * 解析场景实际正文：variantLines 按 cond 顺序匹配，首个满足者的 lines 追加到默认正文末尾；
+ * 全部不满足 → 仅默认 lines（无条件兜底，保证可达性）。
+ */
+export function resolveSceneLines(scene: Scene, st: RunState): string[] {
+  for (const v of scene.variantLines ?? []) {
+    if (checkCond(v.cond, st)) return [...scene.lines, ...v.lines];
+  }
+  return scene.lines;
+}

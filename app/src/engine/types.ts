@@ -203,6 +203,12 @@ export interface Scene {
   desc?: string;
   /** 正文段落，按次逐段呈现 */
   lines: string[];
+  /**
+   * 文本回响（选择承接）：进入场景时按 cond 顺序匹配，首个满足者的 lines
+   * **追加到默认正文末尾**（场景结尾给出"决策的结果"）。全部不满足 → 仅默认正文（无条件兜底）。
+   * 用于让前置选择在后续剧情产生可见文本差异。
+   */
+  variantLines?: { cond?: Cond; lines: string[] }[];
   /** 选项（互斥分支；不满足 cond 的选项隐藏） */
   choices?: Choice[];
   /** 无选项时点击继续前往的下一场景 */

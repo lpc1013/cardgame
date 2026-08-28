@@ -16,17 +16,17 @@ export const jianfeng: Scenario = {
     { key: "liangxin", name: "良知", init: 50 },
   ],
   cards: [
-    { id: "jf_shi", name: "诛心之议", suit: "策", power: 3, text: "不谈他的罪，只谈沙盘、横渠、长河落日。", lore: "让谋逆者在沉默里自己烂掉——比刀体面，比刀狠。" },
+    { id: "jf_shi", name: "诛心之议", suit: "策", power: 3, sacrifice: 1, text: "不谈他的罪，只谈沙盘、横渠、长河落日——先自剖一刀，再诛他心（自伤 1，本张 +2）。", lore: "让谋逆者在沉默里自己烂掉——比刀体面，比刀狠。" }, // C-4 机制位扩编
     { id: "j_duan", name: "断其四肢", suit: "器", power: 4, text: "暗室之中，先断其四肢，再置于殿上。", lore: "将军们夸陛下胆大心细，敢将罪人不戴刑具置于身旁。" },
     { id: "j_quan", name: "攻心为上", suit: "隐", power: 4, text: "不必在乎一城一池，攻城为下，攻心为上。", lore: "说这话时，屏风后那个人正在叫骂。" },
     { id: "j_ye", name: "夜袭粮屯", suit: "隐", power: 4, text: "雨夜衔枚，绕到城后，烧它一座屯。", lore: "守了数月的人，最怕的不是云梯，是身后的火。" },
     { id: "j_hong", name: "毁堤开闸", suit: "器", power: 4, text: "借端午汛潮，以水为兵。", lore: "那条让人头疼的护城河，成了洪水的帮凶。" },
-    { id: "j_wei", name: "十倍围之", suit: "势", power: 3, text: "围三阙一，慢慢耗死这座城。", lore: "十倍围之，怎么会拿不下一座小小的城池？" },
-    { id: "j_qu", name: "劝降不屠", suit: "策", power: 2, text: "一遍又一遍地派使者：降者，不屠。", lore: "第五波劝降的士兵，变成尸体被抬了回来。" },
+    { id: "j_wei", name: "十倍围之", suit: "势", power: 3, situational: { suit: "策", bonus: 2 }, text: "围三阙一，慢慢耗死这座城——敌以计(策)相搏，十倍之围尽显。", lore: "十倍围之，怎么会拿不下一座小小的城池？" }, // C-4 机制位扩编
+    { id: "j_qu", name: "劝降不屠", suit: "策", power: 2, situational: { suit: "策", bonus: 2 }, text: "一遍又一遍地派使者：降者，不屠——敌举兵(策)来犯时，诚意更真。", lore: "第五波劝降的士兵，变成尸体被抬了回来。" }, // C-4 机制位扩编
       { id: "jf_tianxia", name: "天下棋局", suit: "势", power: 3, text: "天下棋局，落子即江山。", lore: "舆图铺案，山河是棋。" },
     { id: "jf_huangquan", name: "皇权剑锋", suit: "器", power: 3, text: "剑出鞘半，权柄在握。", lore: "剑光里，照见玉玺。" },
     { id: "jf_shuishi", name: "水师点兵", suit: "势", power: 4, text: "水师点兵，江面如镜。", lore: "战船列阵，旗压江风。" },
-    { id: "jf_junzhou", name: "军舟如梭", suit: "器", power: 2, text: "军舟如梭，往来如织。", lore: "桨影交叠，水花不歇。" },
+    { id: "jf_junzhou", name: "军舟如梭", suit: "器", power: 2, drawOnPlay: 1, text: "军舟如梭，往来如织——军情随水，一路淌回来（抽 1 张）。", lore: "桨影交叠，水花不歇。" }, // C-4 机制位扩编
     { id: "jf_anshi", name: "暗室议事", suit: "隐", power: 3, text: "暗室议事，灯下无影。", lore: "窗纸透一线光，照不全几张脸。" },
     { id: "jf_chengzhou", name: "城舟之盟", suit: "策", power: 2, text: "城舟之盟，两指为凭。", lore: "盟书上的指印，比墨重。" },
     { id: "jf_guyu", name: "孤屿危城", suit: "隐", power: 2, text: "孤屿危城，浪打墙根。", lore: "城在水中，水在城外。" },
@@ -47,7 +47,8 @@ export const jianfeng: Scenario = {
       opponent: { name: "孤城", desc: "两千五百守军，数月不降。老人妇孺，皆已被食。" },
       hp: { player: 10, opponent: 12 },
       script: ["u_qiang", "u_jian", "u_you", "u_qiang", "u_jian", "u_you"],
-      deck: ["j_hong", "j_wei", "j_qu", "jf_shi", "j_quan", "j_ye"],
+      // A-1 番外钥匙卡：jf_junzhou/jf_chengzhou/jf_dongwu（power2 弱卡）下发进对局可用牌组，胜局可解锁番外「暗室密议」
+      deck: ["j_hong", "j_wei", "j_qu", "jf_shi", "j_quan", "j_ye", "jf_junzhou", "jf_chengzhou", "jf_dongwu"],
       oppCards: [
         { id: "u_qiang", name: "城墙滚石", suit: "策", power: 5, text: "十丈高墙，一夫当关。", lore: "" },
         { id: "u_jian", name: "火箭如雨", suit: "策", power: 4, text: "数月守出来的箭术，又准又狠。", lore: "" },
@@ -147,6 +148,10 @@ export const jianfeng: Scenario = {
   "\r",
   "我知道，是时候了。\r"
 ],
+      variantLines: [
+        { cond: { flag: "purge_all" }, lines: ["成蟜的党羽，杀了一批又一批。宗室们上朝时，脚步比从前轻——轻到像怕踩着什么。", "你坐在殿上，忽然想起成蟜小时候，跟你抢过一只风筝。"] },
+        { cond: { flag: "punish_only" }, lines: ["罪止成蟜。被赦的宗室，跪在殿外谢恩——谢得比讨逆那日，真心得多。", "你隔着帘子听着，没让他们进来。"] },
+      ],
       next: "punish",
     },
     {
@@ -192,6 +197,10 @@ export const jianfeng: Scenario = {
   "\r",
   "城头那面帅旗，在风里猎猎地响，像在应战。\r"
 ],
+      variantLines: [
+        { cond: { flag: "execute_traitor" }, lines: ["枭首的令，传遍了三军。", "军中的脚步声，此后整齐了许多——整齐得有些发沉。你听得出，那里面没有怨，只有怕。"] },
+        { cond: { flag: "spare_traitor" }, lines: ["留他一口气的令，也传遍了三军。", "有人私下说：王，宽厚。你听见了，没接话。宽厚这两个字，在军中的分量，你比谁都清楚。"] },
+      ],
       next: "city_seen",
     },
     {
@@ -239,6 +248,10 @@ export const jianfeng: Scenario = {
   "\r",
   "开闸，还是收闸——这个决定，今夜就要落。\r"
 ],
+      variantLines: [
+        { cond: { flag: "forbid_slaughter" }, lines: ["「此后攻城，不得滥杀」的军令，从这一营，传到了下一营。", "夜里有人问：王，这是动了恻隐？你没答。有些线，画下去，就不许再跨。"] },
+        { cond: { flag: "press_on" }, lines: ["「兵不厌诈」四个字，是你说给自己听的。", "城头那面帅旗还在风里响。你想：它响不了几天了。"] },
+      ],
       choices: [
         {
           text: "「开闸！」——毁堤开闸，以水为兵。",
@@ -558,6 +571,7 @@ export const jianfeng: Scenario = {
           "text": "发兵讨——王命讨逆，叛者族诛。",
           "hint": "雷霆 · 宗室胆寒",
           "effects": [
+            { "setFlag": "suppress_revolt" },
             {
               "stat": {
                 "weiwang": 8,
@@ -571,6 +585,7 @@ export const jianfeng: Scenario = {
           "text": "遣使招抚——成蟜若归，既往不咎。",
           "hint": "怀柔 · 宗室可安",
           "effects": [
+            { "setFlag": "pacify_revolt" },
             {
               "stat": {
                 "liangxin": 8,
@@ -584,6 +599,7 @@ export const jianfeng: Scenario = {
           "text": "按兵不动——看他自溃。",
           "hint": "拖延 · 不费一兵",
           "effects": [
+            { "setFlag": "sit_out" },
             {
               "stat": {
                 "weiwang": -3,
@@ -609,11 +625,17 @@ export const jianfeng: Scenario = {
   "\r",
   "这道命令落下去，宗室会记住一辈子：王，对血脉也下得去手。\r"
 ],
+      variantLines: [
+        { cond: { flag: "suppress_revolt" }, lines: ["讨逆的诏书，比大军先到屯留。宗室跪送王师出城——跪得很齐。", "你看着他们的背，忽然明白：这一跪，是跪给天下的。"] },
+        { cond: { flag: "pacify_revolt" }, lines: ["招抚的使者，带着王命入城。成蟜的军心，散得比预想快。", "兵士们放下刀时，有人低声说：王不杀降。"] },
+        { cond: { flag: "sit_out" }, lines: ["你按兵不动。三日后，屯留的军心自己先散了。", "可朝堂上，有人开始私下说：王，连自己弟弟的事，都拿不定主意。"] },
+      ],
       choices: [
         {
           "text": "尽诛其党——血脉也当正法。",
           "hint": "斩尽 · 宗室再不敢望",
           "effects": [
+            { "setFlag": "purge_all" },
             {
               "stat": {
                 "weiwang": 6,
@@ -627,6 +649,7 @@ export const jianfeng: Scenario = {
           "text": "罪止成蟜——余者不问。",
           "hint": "宽宥 · 收宗室之心",
           "effects": [
+            { "setFlag": "punish_only" },
             {
               "stat": {
                 "liangxin": 6,
@@ -661,6 +684,7 @@ export const jianfeng: Scenario = {
           "text": "迁太后于雍——以正国法。",
           "hint": "国法 · 天下见王不徇私",
           "effects": [
+            { "setFlag": "move_taihou" },
             {
               "stat": {
                 "weiwang": 8,
@@ -674,6 +698,7 @@ export const jianfeng: Scenario = {
           "text": "嫪毐罪止其身——全太后颜面。",
           "hint": "母子 · 宫闱秽闻按下",
           "effects": [
+            { "setFlag": "spare_taihou" },
             {
               "stat": {
                 "liangxin": 6,
@@ -701,11 +726,16 @@ export const jianfeng: Scenario = {
   "\r",
   "茅焦跪在棺材旁，白发在风里飘。他连死的地方都替自己选好了。\r"
 ],
+      variantLines: [
+        { cond: { flag: "move_taihou" }, lines: ["迁雍的诏书既下，太后车驾出宫那日，你没去送。", "后来你才知道，她走的时候，没有回头——帘子放下来，就再没掀开过。"] },
+        { cond: { flag: "spare_taihou" }, lines: ["嫪毐罪止其身。太后的寝宫，重新点了灯。", "你站在长廊这头，看帘子后面的影子动了动——到底，没有走出来。"] },
+      ],
       choices: [
         {
           "text": "从茅焦谏——迎太后归。",
           "hint": "纳谏 · 天下称孝",
           "effects": [
+            { "setFlag": "accept_maojiao" },
             {
               "stat": {
                 "liangxin": 10,
@@ -719,6 +749,7 @@ export const jianfeng: Scenario = {
           "text": "王命已下——岂可反覆。",
           "hint": "固执 · 茅焦伏诛",
           "effects": [
+            { "setFlag": "reject_maojiao" },
             {
               "stat": {
                 "weiwang": 6,
@@ -744,11 +775,16 @@ export const jianfeng: Scenario = {
   "\r",
   "殿外，各国来客的车马，已经开始有人收拾行装了。\r"
 ],
+      variantLines: [
+        { cond: { flag: "accept_maojiao" }, lines: ["迎太后归宫那日，咸阳城的百姓挤满了长街。", "有人喊「王孝」，也有人跟着喊。你坐在车里，帘子掀开一角，看见茅焦跪在人群里——白发，还飘着。"] },
+        { cond: { flag: "reject_maojiao" }, lines: ["茅焦的那口棺材，最后是自己抬出去的。", "朝臣们说：王，圣意已决。你听着这话，忽然想起棺材上那道新的木纹——它到底，还是没用上。"] },
+      ],
       choices: [
         {
           "text": "一切逐客——秦之社稷，秦人守之。",
           "hint": "快意 · 人才散",
           "effects": [
+            { "setFlag": "expel_guests" },
             {
               "stat": {
                 "weiwang": 8,
@@ -762,6 +798,7 @@ export const jianfeng: Scenario = {
           "text": "召李斯庭对——听他怎么说。",
           "hint": "纳谏 · 客卿可留",
           "effects": [
+            { "setFlag": "hear_lisi" },
             {
               "stat": {
                 "liangxin": 10,
@@ -793,6 +830,10 @@ export const jianfeng: Scenario = {
   "\r",
   "殿外，各国客卿的车马已经停在了城门口。掌印官抱着印匣，等我。\r"
 ],
+      variantLines: [
+        { cond: { flag: "expel_guests" }, lines: ["逐客令用了印。城门口的车马，散了一日一夜。", "你站在城楼上看着，忽然想起名单上那几个名字——修过城的、练过兵的、写过法令的。", "掌印官轻声问：王，可要追回？你没有回答。"] },
+        { cond: { flag: "hear_lisi" }, lines: ["李斯的话，你听完了。逐客令的草稿，烧在了灯里。", "各国客卿的车马，又一辆一辆，从城门口调了头。", "掌印官抱着印匣退下时，脚步比来时轻快。"] },
+      ],
       effects: [],
       next: "bf_panchen",
     },
@@ -813,6 +854,7 @@ export const jianfeng: Scenario = {
           "text": "枭首示众——叛者皆鉴。",
           "hint": "威慑 · 军中肃然",
           "effects": [
+            { "setFlag": "execute_traitor" },
             {
               "stat": {
                 "weiwang": 8,
@@ -826,6 +868,7 @@ export const jianfeng: Scenario = {
           "text": "留他一口气——戴罪立功。",
           "hint": "物尽其用 · 示天下宽",
           "effects": [
+            { "setFlag": "spare_traitor" },
             {
               "stat": {
                 "liangxin": 8,
@@ -852,6 +895,7 @@ export const jianfeng: Scenario = {
           "text": "严令止杀——此后攻城不得滥杀。",
           "hint": "立线 · 军中或有怨",
           "effects": [
+            { "setFlag": "forbid_slaughter" },
             {
               "stat": {
                 "liangxin": 10,
@@ -865,6 +909,7 @@ export const jianfeng: Scenario = {
           "text": "兵不厌诈——继续推进。",
           "hint": "铁腕 · 把那点软弱埋进泥里",
           "effects": [
+            { "setFlag": "press_on" },
             {
               "stat": {
                 "weiwang": 8,

@@ -19,6 +19,7 @@ export const qinhuai: Scenario = {
   stats: [
     { key: "shenwang", name: "圣望", init: 50 },
     { key: "jiangnan", name: "江南人心", init: 50 },
+    { key: "revisit_left", name: "重访余次", init: 2 },
   ],
   cards: [
     { id: "h_wei_zhang", name: "惊堂拍案", layer: "成术", rarity: "精", suit: "势", power: 4, text: "一拍惊堂木，教他掂量抗命的分量。", lore: "大理寺的堂木，一年响不了几回。响一回，就得有人掉脑袋。", price: 24 },
@@ -125,6 +126,7 @@ export const qinhuai: Scenario = {
   "你伸手按了按卷宗。纸是凉的。外头的秦淮河，今夜没有风。\r",
   "窗外有更声敲过一响。你吹熄了灯，却没有躺下——十日，两百四十个时辰。卷宗里的每一行字，都在黑夜里睁着眼。\r"
 ],
+      effects: [{ gainSilver: 15 }],
       next: "market_gate",
     },
     {
@@ -213,8 +215,23 @@ export const qinhuai: Scenario = {
         { text: "【大牢】提审周莽", hint: "买凶的口子（卡牌对局）", cond: { notFlag: "done_zm" }, effects: [{ setFlag: "done_zm" }], next: "zm_intro" },
         { text: "【秦淮夜宴】夜访苏十娘", hint: "内臣之死的钥匙（卡牌对局）", cond: { notFlag: "done_ss" }, effects: [{ setFlag: "done_ss" }], next: "ss_intro" },
         { text: "【河畔酒肆】入席行令——酒过三巡，舌头比口供松。", hint: "宴会行令 · 赢得席间传闻（败可再战）", cond: { notFlag: "done_jiuling" }, next: "jiuling_scene" },
+        { text: "【重访证人】重访渡口与画舫，重查密奏小本的下落。", hint: "兜底 · 重新打开可能错过的关键线索（限 2 次）", cond: { statAtLeast: { revisit_left: 1 } }, effects: [{ stat: { revisit_left: -1 } }, { unlockClue: "m8" }, { unlockClue: "m7" }], next: "rv_qinhuai" },
         { text: "◆ 回公堂结案（至少勘得五条线索方可定谳）", cond: { cluesAtLeast: 5 }, next: "verdict" },
       ],
+    },
+    {
+      id: "rv_qinhuai",
+      title: "重访 · 渡口与画舫",
+      lines: [
+  "你回到秦淮。封存在渡口的小舟，又验了一遍船底的双层水痕。",
+  "",
+  "画舫重开一席，苏十娘照旧滴水不漏——可舱角那缕非兰非麝的淡香，还在。",
+  "",
+  "谷公公随身那册密奏小本，遍寻无踪。小太监的话又响在耳边：「金陵的事，比密奏里写的，要深。」",
+  "",
+  "香是宫里的。这话，你信。"
+],
+      next: "hub",
     },
     // ---------- 河堤 ----------
     {

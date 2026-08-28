@@ -17,11 +17,11 @@ export const diaolan: Scenario = {
   ],
   cards: [
     { id: "d_zhen", name: "雷霆手段", suit: "器", power: 4, text: "禁军封锁九门，先斩后奏。", lore: "政变只分两种：成了的史书叫中兴，败了的史书叫谋逆。" },
-    { id: "d_wen", name: "步步为营", suit: "器", power: 3, text: "先夺禁军印信，再断其耳目。", lore: "旅贲军是从我府里带出来的。京兆尹，昨日来信。" },
-    { id: "d_shou", name: "按兵不动", suit: "隐", power: 2, text: "示弱于外，等待时机。", lore: "龙武军与右骁卫——只要他们中立，大事可成。" },
+    { id: "d_wen", name: "步步为营", suit: "器", power: 3, situational: { suit: "器", bonus: 1 }, text: "先夺禁军印信，再断其耳目——敌凭器械之利时，正步步紧逼。", lore: "旅贲军是从我府里带出来的。京兆尹，昨日来信。" }, // C-4 机制位扩编
+    { id: "d_shou", name: "按兵不动", suit: "隐", power: 2, drawOnPlay: 1, text: "示弱于外，等待时机——风声先到，牌路自开（抽 1 张）。", lore: "龙武军与右骁卫——只要他们中立，大事可成。" }, // C-4 机制位扩编
     { id: "d_en", name: "施恩旧部", suit: "器", power: 3, text: "多年布下的人情，今夜一并兑现。", lore: "封赏名单几千人。鸡犬升天的人，也记得是谁给的鸡犬。" },
-    { id: "d_bi", name: "以身作饵", suit: "策", power: 3, text: "亲赴军营，以天子之身压阵。", lore: "帝王的血也是血——但流在正确的位置，就是旗。" },
-    { id: "d_tui", name: "断腕求生", suit: "隐", power: 2, text: "弃车保帅，先活着退出长安。", lore: "朱将军的刀再快，也追不上不要命的皇帝。" },
+    { id: "d_bi", name: "以身作饵", suit: "策", power: 3, sacrifice: 1, text: "亲赴军营，以天子之身压阵——把自己摆上桌，才有人上钩（自伤 1，本张 +2）。", lore: "帝王的血也是血——但流在正确的位置，就是旗。" }, // C-4 机制位扩编
+    { id: "d_tui", name: "断腕求生", suit: "隐", power: 2, sacrifice: 1, text: "弃车保帅，先活着退出长安（自伤 1，本张 +2）。", lore: "朱将军的刀再快，也追不上不要命的皇帝。" }, // C-4 机制位扩编
       { id: "d_taihou", name: "太后垂帘", suit: "势", power: 4, text: "垂帘听政，一言定鼎。", lore: "帘后一声，比殿上十声都响。" },
     { id: "d_waioi", name: "外戚执印", suit: "势", power: 3, text: "外戚执印，朝野侧目。", lore: "印在他手，国在他手。" },
     { id: "d_huanzhe", name: "宦者传旨", suit: "隐", power: 3, text: "宦者传旨，真假难辨。", lore: "一道旨出宫，十道话回宫。" },
@@ -45,7 +45,8 @@ export const diaolan: Scenario = {
       opponent: { name: "朱将军亲军", desc: "肥头大耳的将军豢养的死士，正从四面八方涌来。" },
       hp: { player: 9, opponent: 12 },
       script: ["z_men", "z_sha", "z_huo", "z_men", "z_sha", "z_huo"],
-      deck: ["d_zhen", "d_wen", "d_shou", "d_en"],
+      // A-1 番外钥匙卡：d_duanbi/d_manshu/d_tui（power2 弱卡）下发进对局可用牌组（本局为设计性死局，钥匙卡入组以满足数据可达）
+      deck: ["d_zhen", "d_wen", "d_shou", "d_en", "d_duanbi", "d_manshu", "d_tui"],
       oppCards: [
         { id: "z_men", name: "九门封锁", suit: "器", power: 5, text: "宫门被死士围死，飞鸟难出。", lore: "" },
         { id: "z_sha", name: "死士冲杀", suit: "势", power: 4, text: "刀锋直指寝殿。", lore: "" },
@@ -123,6 +124,11 @@ export const diaolan: Scenario = {
   "\r",
   "对面的臣子低着头，假装没听见。殿外的雨，下得更大了。\r"
 ],
+      variantLines: [
+        { cond: { flag: "sign_all" }, lines: ["朱将军的封赏，批得最快。他谢恩时，眼神很满意。", "你在案下，把另一份更长的名单，往深处压了压。"] },
+        { cond: { flag: "hold_back_list" }, lines: ["压住的几份要职，朱将军派人来问过两次。", "你回话：容朕细思。第三次，他没来。"] },
+        { cond: { flag: "keep_pending" }, lines: ["名单留中三日。宦官低声提醒：藩镇们等着呢。", "你说：等着，就对了。"] },
+      ],
       next: "dl_jiushang",
     },
     {
@@ -139,6 +145,10 @@ export const diaolan: Scenario = {
   "\r",
   "灯花爆了一下。我伸手，摸了摸怀里的东西。\r"
 ],
+      variantLines: [
+        { cond: { flag: "call_doctor" }, lines: ["伤疤入了太医的档。老太医颤着手盖了印，没敢多问一个字。", "可宫里的灯，从那天起，亮得更密了。"] },
+        { cond: { flag: "tough_it" }, lines: ["伤疤自己结了痂。没人敢问。", "只是夜里的疼，你自己咽着——和这满城的心事，一起咽。"] },
+      ],
       choices: [
         {
           text: "摸了摸怀中毒药。冰凉的瓷瓶刺着掌心——若败，这便是归宿。绝不当汉献帝。",
@@ -496,6 +506,7 @@ export const diaolan: Scenario = {
           "text": "照签——全批，先稳住藩镇。",
           "hint": "暂时低头 · 收人心",
           "effects": [
+            { "setFlag": "sign_all" },
             {
               "stat": {
                 "quanli": -5,
@@ -509,6 +520,7 @@ export const diaolan: Scenario = {
           "text": "扣压——压住几份要职。",
           "hint": "示强 · 藩镇记恨",
           "effects": [
+            { "setFlag": "hold_back_list" },
             {
               "stat": {
                 "quanli": 8,
@@ -522,6 +534,7 @@ export const diaolan: Scenario = {
           "text": "留中——留中不发，日后作价。",
           "hint": "两头都不落实",
           "effects": [
+            { "setFlag": "keep_pending" },
             {
               "stat": {
                 "quanli": 3,
@@ -556,6 +569,7 @@ export const diaolan: Scenario = {
           "text": "叫太医——示弱，收宫人心。",
           "hint": "示软 · 旧伤入档",
           "effects": [
+            { "setFlag": "call_doctor" },
             {
               "stat": {
                 "renmai": 8,
@@ -569,6 +583,7 @@ export const diaolan: Scenario = {
           "text": "硬撑——不发一言，伤疤入夜自己结痂。",
           "hint": "强撑 · 臣下不敢窥",
           "effects": [
+            { "setFlag": "tough_it" },
             {
               "stat": {
                 "quanli": 5,
@@ -605,6 +620,7 @@ export const diaolan: Scenario = {
           "text": "亲征——天子御驾，以正视听。",
           "hint": "押上身家 · 人心或归",
           "effects": [
+            { "setFlag": "go_personal" },
             {
               "stat": {
                 "quanli": 8,
@@ -618,6 +634,7 @@ export const diaolan: Scenario = {
           "text": "倚藩镇——借强藩之力。",
           "hint": "引虎驱狼 · 他日难制",
           "effects": [
+            { "setFlag": "rely_warlord" },
             {
               "stat": {
                 "quanli": -8,
@@ -631,6 +648,7 @@ export const diaolan: Scenario = {
           "text": "守内——闭九门固本。",
           "hint": "稳内先 · 外敌得寸进尺",
           "effects": [
+            { "setFlag": "hold_city" },
             {
               "stat": {
                 "quanli": 5,
@@ -660,6 +678,11 @@ export const diaolan: Scenario = {
   "\r",
   "长安的灯，一夜之间，少了很多。\r"
 ],
+      variantLines: [
+        { cond: { flag: "go_personal" }, lines: ["亲征的诏书，压过了满朝的声音。御驾出长安那日，百姓跪了一路。", "也有人，只是站在人群里，看着。"] },
+        { cond: { flag: "rely_warlord" }, lines: ["朱将军的兵，替你把城夺回来了。", "他班师时的眼神，比功劳簿更烫——你记下了。"] },
+        { cond: { flag: "hold_city" }, lines: ["九门紧闭。南边的失地，又丢了一城。", "朝堂上没人敢说话——可那沉默，比说话更响。"] },
+      ],
       next: "rain_night",
     },
     {
@@ -687,6 +710,7 @@ export const diaolan: Scenario = {
           "text": "倚朝臣——以士大夫制衡。",
           "hint": "文心归 · 文官势涨",
           "effects": [
+            { "setFlag": "lean_officials" },
             {
               "stat": {
                 "renmai": 8,
@@ -700,6 +724,7 @@ export const diaolan: Scenario = {
           "text": "靠宦官——内廷为耳目。",
           "hint": "得权 · 遗臭之名",
           "effects": [
+            { "setFlag": "lean_eunuchs" },
             {
               "stat": {
                 "quanli": 5,
@@ -713,6 +738,7 @@ export const diaolan: Scenario = {
           "text": "亲藩镇——以虎制狼。",
           "hint": "最稳 · 后患最深",
           "effects": [
+            { "setFlag": "lean_warlord" },
             {
               "stat": {
                 "quanli": 8,
@@ -744,11 +770,17 @@ export const diaolan: Scenario = {
   "\r",
   "窗外，宫灯在风里晃。我提笔，墨滴在纸上，洇开一团。\r"
 ],
+      variantLines: [
+        { cond: { flag: "lean_officials" }, lines: ["崔相的帖子，你回得最快。士大夫们拱手称贺——他们的声音，从此在朝堂上，大了一倍。", "你坐在龙椅上，忽然想：这份贺，是贺我，还是贺他们自己？"] },
+        { cond: { flag: "lean_eunuchs" }, lines: ["刘公公的耳目，一夜之间铺满了宫墙。", "你坐在养心殿，忽然觉得，殿里的每一道影子，都有人看着。"] },
+        { cond: { flag: "lean_warlord" }, lines: ["朱将军的兵，从城外开进了城内。", "你握着那份空白的任命状，指节发白。"] },
+      ],
       choices: [
         {
           "text": "制衡——引第三方压住坐大者。",
           "hint": "两头摇摆 · 皆不满",
           "effects": [
+            { "setFlag": "balance_power" },
             {
               "stat": {
                 "quanli": 3,
@@ -762,6 +794,7 @@ export const diaolan: Scenario = {
           "text": "从一而终——全押所选。",
           "hint": "快意 · 他日成提线木偶",
           "effects": [
+            { "setFlag": "commit_all" },
             {
               "stat": {
                 "quanli": 8,
@@ -775,6 +808,7 @@ export const diaolan: Scenario = {
           "text": "抽身——自掌禁军，谁也不信。",
           "hint": "最硬 · 最孤",
           "effects": [
+            { "setFlag": "go_alone" },
             {
               "stat": {
                 "quanli": 10,
@@ -806,6 +840,11 @@ export const diaolan: Scenario = {
   "\r",
   "我往回走。宫门口的灯，一盏也没灭。\r"
 ],
+      variantLines: [
+        { cond: { flag: "balance_power" }, lines: ["制衡的棋，你落了。坐大的一边被压了下去，可另外两边看你的眼神，都多了三分打量。", "你提着灯，走完了整条西市——灯一盏一盏地亮着，没有一盏，是为你点的。"] },
+        { cond: { flag: "commit_all" }, lines: ["从一而终。你押的那一边，从此坐大。", "你站在灯市中央，忽然觉得，这满街的灯，都照着同一个人。"] },
+        { cond: { flag: "go_alone" }, lines: ["禁军的兵符，攥在了你自己手里。满朝寂静。", "灯市依旧热闹。你从人群里穿过去，没有一个人认出你——也没有一盏灯，为你停下来。"] },
+      ],
       next: "boy",
     },
   ],

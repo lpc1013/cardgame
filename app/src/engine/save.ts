@@ -27,6 +27,8 @@ export interface SaveData {
   state: RunState;
   duel?: DuelWire;
   savedAt: number;
+  /** C-6：存档版本高于当前 SAVE_VERSION 时置 true（不删除，由 UI 提示升级，避免误删新版本进度） */
+  future?: boolean;
 }
 
 export function saveGame(scenarioId: string, state: RunState, duel?: DuelWire): void {
@@ -57,7 +59,19 @@ export function loadGame(): SaveData | null {
     if (!raw) return null;
     const d = JSON.parse(raw) as Record<string, unknown>;
     const ver = typeof d.version === "number" ? d.version : 0;
-    if (ver > SAVE_VERSION || !isValidRunState(d.state)) {
+    if (ver > SAVE_VERSION) {
+      // C-6 高版本存档不销毁：原样返回并标记 future，交 UI 提示「存档来自更新版本」；
+      // 仅形状校验失败（损坏/旧格式）才 removeItem。
+      return {
+        version: ver,
+        scenarioId: d.scenarioId as string,
+        state: d.state as RunState,
+        duel: d.duel as DuelWire | undefined,
+        savedAt: d.savedAt as number,
+        future: true,
+      };
+    }
+    if (!isValidRunState(d.state)) {
       localStorage.removeItem(SAVE_KEY);
       return null;
     }

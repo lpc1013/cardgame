@@ -17,15 +17,15 @@ export const jieyu: Scenario = {
     { key: "renwen", name: "人心", init: 50 },
   ],
   cards: [
-    { id: "j_hou", name: "固守反击", suit: "器", power: 3, text: "依城而守，以火器迎敌。", lore: "神机营的火铳，是大明最后的依仗。" },
+    { id: "j_hou", name: "固守反击", suit: "器", power: 3, situational: { suit: "器", bonus: 2 }, text: "依城而守，以火器迎敌——敌凭器利来攻，正撞火器锋芒。", lore: "神机营的火铳，是大明最后的依仗。" }, // C-4 机制位扩编
     { id: "j_tu", name: "开门逆击", suit: "器", power: 4, text: "背城死战，不留退路。", lore: "「临阵将不顾军先退者，斩。」军令如山，最先斩的是自己。" },
     { id: "j_yuan", name: "驰援侧翼", suit: "器", power: 3, text: "分兵救友军之急。", lore: "九门是一张网。哪一根线断，网就破了。" },
-    { id: "j_min", name: "民助城防", suit: "隐", power: 2, text: "发动百姓运砖送料。", lore: "百姓自发送来的砖石木料，在城墙下堆成一座小山。" },
+    { id: "j_min", name: "民助城防", suit: "隐", power: 2, situational: { suit: "势", bonus: 2 }, text: "发动百姓运砖送料——敌骑(势)冲城时，百姓的砖石自会说话。", lore: "百姓自发送来的砖石木料，在城墙下堆成一座小山。" }, // C-4 机制位扩编
     { id: "j_ben", name: "纵马疾驰", suit: "隐", power: 4, text: "不恋战，只突围。", lore: "密信送到，才有意义。" },
-    { id: "j_bi", name: "避其锋芒", suit: "隐", power: 2, text: "绕路、潜行、藏锋。", lore: "一路上遇敌只突围，不恋战。" },
+    { id: "j_bi", name: "避其锋芒", suit: "隐", power: 2, drawOnPlay: 1, text: "绕路、潜行、藏锋——一路见闻，尽收囊中（抽 1 张）。", lore: "一路上遇敌只突围，不恋战。" }, // C-4 机制位扩编
     { id: "j_sheng", name: "留人一命", suit: "策", power: 3, text: "刀下留人，饶敌伤兵。", lore: "都是爹娘生养。何必赶尽杀绝。" },
     { id: "j_jue", name: "乾纲独断", suit: "势", power: 4, text: "「朕意已决，不必再议！」", lore: "那句话出口时，他自己都愣住了。" },
-    { id: "j_nai", name: "垂询旧臣", suit: "隐", power: 3, text: "先问太后，再问百官，再等一等。", lore: "偏院长大的孩子，习惯把话咽回去。" },
+    { id: "j_nai", name: "垂询旧臣", suit: "隐", power: 3, drawOnPlay: 1, text: "先问太后，再问百官，再等一等——话问得越多，听的就越多（抽 1 张）。", lore: "偏院长大的孩子，习惯把话咽回去。" }, // C-4 机制位扩编
     { id: "j_ren", name: "推诚相待", suit: "策", power: 3, text: "把心里的怕，说给信得过的人。", lore: "「等皇兄回来……他们会不会把我从椅子上拖下去？」" },
     { id: "j_shi", name: "神机营三段击", suit: "器", power: 5, text: "三排火铳轮射，弹丸如雨。", lore: "打光最后一发火铳之前，不许让一架云梯搭上这面墙。" },
     { id: "j_ling", name: "军法祭旗", suit: "策", power: 3, text: "临阵退缩者，斩。", lore: "斩一卒以正军法。九门肃然，无人再敢回头。" },

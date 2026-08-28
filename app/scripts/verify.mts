@@ -40,6 +40,27 @@ const cardOf = (sc: Scenario, duelOpp?: CardDef[]) => (id: string): CardDef => {
   return c;
 };
 
+/** B-5：从残局候选文案解析棋盘坐标（文案按 1 起行/列），支持「第3行第4列」「(3,4)」「3行4列」等写法；解析失败返回 null */
+function parseOptionCoord(opt: string): { r: number; c: number } | null {
+  const CN = "零一二三四五六七八九十";
+  const toNum = (t: string): number | null => {
+    if (/^\d+$/.test(t)) return Number(t);
+    if (t.length === 1 && CN.includes(t)) return CN.indexOf(t);
+    return null;
+  };
+  const a = opt.match(/第\s*([0-9零一二三四五六七八九十]+)\s*行/);
+  const b = opt.match(/第\s*([0-9零一二三四五六七八九十]+)\s*列/);
+  if (a && b) {
+    const r = toNum(a[1]!), c = toNum(b[1]!);
+    if (r !== null && c !== null) return { r: r - 1, c: c - 1 };
+  }
+  const p = opt.match(/[（(]\s*([0-9]+)\s*,\s*([0-9]+)\s*[)）]/);
+  if (p) return { r: Number(p[1]) - 1, c: Number(p[2]) - 1 };
+  const q = opt.match(/^([0-9]+)\s*行[\s\S]*?([0-9]+)\s*列/);
+  if (q) return { r: Number(q[1]) - 1, c: Number(q[2]) - 1 };
+  return null;
+}
+
 /** v2 对局测试卡组：满编(全部卡池中非资源卡)以获得确定性；人物卡由引擎自动场外化 */
 function v2Loadout(sc: Scenario): string[] {
   return sc.cards.filter((c) => (c.layer ?? "成术") !== "资源").map((c) => c.id);
@@ -201,6 +222,16 @@ for (const sc of ALL) {
       }
     }
     if (s.lines.length === 0) warn(`场景 ${s.id} 没有正文`);
+    // 1b2) variantLines 文本回响：cond 引用合法、lines 非空
+    for (const v of s.variantLines ?? []) {
+      if (!v.lines || v.lines.length === 0) fail(`场景 ${s.id} variantLines 存在空回响文本`);
+      if (v.cond) {
+        if (v.cond.clue && !sc.clues?.find(x => x.id === v.cond!.clue)) fail(`场景 ${s.id} variantLines 条件引用不存在的线索 ${v.cond.clue}`);
+        if (v.cond.card && !sc.cards.find(x => x.id === v.cond!.card)) fail(`场景 ${s.id} variantLines 条件引用不存在的卡牌 ${v.cond.card}`);
+        if (v.cond.notCard && !sc.cards.find(x => x.id === v.cond!.notCard)) fail(`场景 ${s.id} variantLines 条件引用不存在的卡牌 ${v.cond.notCard}`);
+        for (const k of Object.keys(v.cond.statAtLeast ?? {})) if (!sc.stats?.find(t => t.key === k)) fail(`场景 ${s.id} variantLines 条件引用未定义数值 ${k}`);
+      }
+    }
     // 1b) 引用完整性：effects/cond 指向的线索/卡牌/数值必须存在
     for (const ef of s.effects ?? []) {
       if (ef.unlockClue && !sc.clues?.find(c => c.id === ef.unlockClue)) fail(`场景 ${s.id} 解锁不存在的线索 ${ef.unlockClue}`);
@@ -313,6 +344,55 @@ for (const sc of ALL) {
         if (!step.options.length) fail(`场景 ${s.id} 残局第${i + 1}手无候选`);
         if (step.answer < 0 || step.answer >= step.options.length) fail(`场景 ${s.id} 残局第${i + 1}手正解索引 ${step.answer} 越界`);
       });
+      // B-5 正解数值校验：boards 快照每步应恰好多一枚 B 子（正解落子位置），与 step.answer 对账。
+      //   快照不满足「每步多一子」时保留上方越界校验并 warn 说明无法推断，不误杀合法残局。
+      const gb = mg.gobang;
+      if (gb.boards) {
+        if (gb.boards.length !== gb.steps.length + 1) {
+          warn(`场景 ${s.id} 残局 boards 快照数 ${gb.boards.length} ≠ 步数+1(${gb.steps.length + 1})，无法推断正解位置`);
+        } else if (!gb.boards.every((b) => Array.isArray(b) && b.every((r) => typeof r === "string"))) {
+          warn(`场景 ${s.id} 残局 boards 快照格式异常（须为 string[]），无法推断正解位置`);
+        } else {
+          const countB = (rows: string[]) => rows.reduce((n, r) => n + [...r].filter((ch) => ch === "B").length, 0);
+          for (let i = 0; i < gb.steps.length; i++) {
+            const before = gb.boards[i]!;
+            const after = gb.boards[i + 1]!;
+            if (before.length !== after.length || !before.every((r, ri) => r.length === after[ri]?.length)) {
+              warn(`场景 ${s.id} 残局第${i + 1}手前后快照尺寸不一致，无法推断正解位置`);
+              continue;
+            }
+            const added = countB(after) - countB(before);
+            if (added !== 1) {
+              warn(`场景 ${s.id} 残局第${i + 1}手快照黑子增 ${added} ≠ 1，无法推断正解位置（保持越界校验）`);
+              continue;
+            }
+            // 定位唯一新增黑子坐标（0 起）
+            let pos: { r: number; c: number } | null = null;
+            outer: for (let r = 0; r < after.length; r++) {
+              for (let c = 0; c < after[r]!.length; c++) {
+                if (after[r]![c] === "B" && before[r]![c] !== "B") {
+                  if (pos) { pos = null; break outer; } // 多子同增 → 无法唯一推断
+                  pos = { r, c };
+                }
+              }
+            }
+            if (!pos) {
+              warn(`场景 ${s.id} 残局第${i + 1}手无法唯一确定新增黑子位置，无法与 answer 对账`);
+              continue;
+            }
+            const step = gb.steps[i]!;
+            const opt = step.options[step.answer] ?? "";
+            const parsed = parseOptionCoord(opt);
+            if (parsed) {
+              if (parsed.r !== pos.r || parsed.c !== pos.c) {
+                fail(`场景 ${s.id} 残局第${i + 1}手 answer(${step.answer})「${opt}」指向 ${parsed.r + 1}行${parsed.c + 1}列，但 boards 推断正解为 ${pos.r + 1}行${pos.c + 1}列`);
+              }
+            } else {
+              warn(`场景 ${s.id} 残局第${i + 1}手候选未含坐标，跳过 answer 与棋盘对账（boards 增子校验已通过：${pos.r + 1}行${pos.c + 1}列）`);
+            }
+          }
+        }
+      }
     }
     if (mg.type === "jiuling" && mg.jiuling) {
       if (mg.jiuling.rounds < 1) fail(`场景 ${s.id} 行令轮数非法`);

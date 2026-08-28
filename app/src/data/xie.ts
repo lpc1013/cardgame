@@ -18,6 +18,7 @@ export const xie: Scenario = {
   stats: [
     { key: "shengyuan", name: "圣眷", init: 50 },
     { key: "minxin", name: "民心", init: 50 },
+    { key: "revisit_left", name: "重访余次", init: 2 },
   ],
   cards: [
     // ---------- 洞察 · 看破类（第五轮新增） ----------
@@ -141,6 +142,7 @@ export const xie: Scenario = {
   "",
   "传令：封锁现场，复勘。"
 ],
+      effects: [{ gainSilver: 10 }],
       next: "market_gate",
     },
     // ================= 县前夜市 =================
@@ -166,8 +168,23 @@ export const xie: Scenario = {
         { text: "【夜市】采买一应查案之物。", hint: "市集", cond: { notFlag: "done_market" }, effects: [{ setFlag: "done_market" }], next: "market" },
         { text: "【书坊尾灯】掌柜的正在抄书——「大人要什么孤本？」", hint: "剧情商人 · 孤本货栈", cond: { notFlag: "done_book" }, effects: [{ setFlag: "done_book" }], next: "bookshop" },
         { text: "【书坊棋枰】尾灯下，有位老者摆了盘残局——「应三手，彩头三十两。」", hint: "棋局残局 · 赢得彩头（败不可再战）", cond: { notFlag: "done_weigi" }, effects: [{ setFlag: "done_weigi" }], next: "xie_weigi" },
+        { text: "【重访证人】再访檐下织妇，重问那夜的素衣人影。", hint: "兜底 · 重新打开可能错过的关键线索（限 2 次）", cond: { statAtLeast: { revisit_left: 1 } }, effects: [{ stat: { revisit_left: -1 } }, { unlockClue: "v12" }], next: "rv_xie" },
         { text: "◆ 回驿馆。明日复勘。", effects: [], next: "search_gate" },
       ],
+    },
+    {
+      id: "rv_xie",
+      title: "重访 · 檐下织机",
+      lines: [
+  "你换一身布衣，又走到土墙檐下。织妇的梭子没停，灯油换了新的一盏。",
+  "",
+  "你不再问案子，只陪她数那几日巷口进出的人影。",
+  "",
+  "临别，她忽然开口：「老朽说过，只看见一道素衣人影——立在墙头，俯身朝酒摊的方向，安置了良久。」",
+  "",
+  "「那话，老朽没看错。」"
+],
+      next: "market_gate",
     },
     {
       id: "xie_weigi",
@@ -208,9 +225,9 @@ export const xie: Scenario = {
           ],
           boardHint: "黑＝你 · 白＝老者 · 大龙腰部有一处断点，先看清再落子",
           steps: [
-            { prompt: "第一手：黑大龙欲断你的归路，你——", options: ["虎口补断，先保归路", "反断其龙，对杀", "退一路，避其锋芒"], answer: 0 },
-            { prompt: "第二手：白欲做眼成活，你——", options: ["点在眼位，破其成活", "长自身，厚势为先", "飞封外围，慢慢来"], answer: 0 },
-            { prompt: "第三手（杀着）：白棋只剩一口气，你——", options: ["扑入虎口，倒扑成杀", "提子收官，稳取实利", "立下阻渡，断其外援"], answer: 0 },
+            { prompt: "第一手：黑大龙欲断你的归路，你——", options: ["虎口补断，先保归路（第3行第12列）", "反断其龙，对杀", "退一路，避其锋芒"], answer: 0 },
+            { prompt: "第二手：白欲做眼成活，你——", options: ["点在眼位，破其成活（第6行第11列）", "长自身，厚势为先", "飞封外围，慢慢来"], answer: 0 },
+            { prompt: "第三手（杀着）：白棋只剩一口气，你——", options: ["扑入虎口，倒扑成杀（第8行第16列）", "提子收官，稳取实利", "立下阻渡，断其外援"], answer: 0 },
           ],
           winText: "三手毕，满盘黑白分明。老者盯着棋枰看了很久，把三十两彩头推了过来：「大人这一手『倒扑』——断案，也是这个路数。」",
           loseText: "他拂乱棋子：「棋差一着。茶钱留下，改日再来。」",

@@ -877,7 +877,8 @@ export default function App() {
             <button className="btn-main" onClick={resume}>
               继续上次 · {SCENARIOS.find((s) => s.id === save.scenarioId)?.title ?? save.scenarioId}
             </button>
-            <button className="link-btn" onClick={() => { clearSave(); setTitleTick((t) => t + 1); }}>放弃存档</button>
+            {/* L-5：标题页「放弃存档」不再直接删除——统一走设置面板的两段式确认（幽灵按钮→反悔/延迟确定） */}
+            <button className="link-btn" onClick={() => { sfx.choice(); setPanel("settings"); }}>放弃存档</button>
           </div>
         )}
         {/* W-3：退回上一幕安全垫——低调入口，每周目限 1 次 */}

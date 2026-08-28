@@ -32,7 +32,8 @@ export default defineConfig({
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'images',
-              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              // C-6：maxEntries 200 < 全库卡图 ~338 张——提到 400 覆盖完整离线体验（含成就图标/结局图）
+              expiration: { maxEntries: 400, maxAgeSeconds: 60 * 60 * 24 * 30 },
             },
           },
         ],

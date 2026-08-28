@@ -988,7 +988,9 @@ button { font-family: inherit; }
 }
 @media (max-width: 720px) {
   .card-zoom-body { flex-direction: column; align-items: center; }
-  .card-zoom-body .tcard { max-width: 82vw; }
+  /* M-3：折叠态大卡高度钳到 ~34vh，详情（由来/作用/卡面长文本）第一屏可见，不被迫滚过整张大卡 */
+  .card-zoom-body .tcard { max-width: 82vw; width: 82vw; }
+  .card-zoom-body .tcard .card-art { height: 34vh; }
   .card-detail { min-width: 0; width: 100%; max-width: 82vw; }
 }
 .codex-zoom-overlay .tcard-corner { top: 46px; }

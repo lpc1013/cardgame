@@ -24,6 +24,7 @@ import { changhen } from "../src/data/changhen.ts";
 import { jianfeng } from "../src/data/jianfeng.ts";
 import { xingxing } from "../src/data/xingxing.ts";
 import { touming } from "../src/data/touming.ts";
+import { BONUS_SCENES } from "../src/data/bonus.ts";
 import type { Scenario, CardDef, Suit } from "../src/engine/types.ts";
 import { initDuel, revealEmotion, playEmotion, playPressure, setDuelShuffle, endTurn, readEmotion, chargeUp, breakMove, RESTRAIN, type DuelState } from "../src/engine/duel.ts";
 
@@ -513,6 +514,26 @@ for (const sc of ALL) {
     if (!jieyuSc?.scenes.some((s) => s.ending?.name === "信在人在")) fail("成就 hero_letter 引用的结局「信在人在」不存在");
   }
   console.log(`成就审计: ${ACHIEVEMENTS.length} 条定义合法`);
+}
+
+// ---------- 番外可达性（A-1 门禁）----------
+// 与 App.tsx 解锁判定同构：hits = keyCards ∩ cfg.deck ≥ need；全剧本死局（unwinnable）→ 败线兜底豁免。
+// 防 touming/jieyu 类静默断链：钥匙卡定义了、卡片也在表，但没有一个对局 deck 能带进去 → 番外永不解锁。
+{
+  for (const b of BONUS_SCENES) {
+    const sc = ALL.find((s) => s.id === b.scenarioId);
+    if (!sc) {
+      fail(`番外「${b.title}」归属剧本 ${b.scenarioId} 不存在`);
+      continue;
+    }
+    const duels = sc.duels.filter((d) => d.deck);
+    const maxHits = Math.max(0, ...duels.map((d) => b.keyCards.filter((k) => d.deck!.includes(k)).length));
+    const noWinRoute = sc.duels.length > 0 && sc.duels.every((d) => d.unwinnable);
+    if (!noWinRoute && maxHits < b.need) {
+      fail(`番外「${b.title}」钥匙卡不可达：本剧本 ${sc.duels.length} 个对局 deck 均不满足携带 ≥${b.need} 张（keyCards: ${b.keyCards.join("/")}）——请将 ≥${b.need} 张钥匙卡补入任一可胜对局 deck`);
+    }
+  }
+  console.log(`番外可达性: ${BONUS_SCENES.length} 个番外校验完成`);
 }
 
 console.log(`\n========== ${failures} 失败 / ${warnings} 警告 ==========`);

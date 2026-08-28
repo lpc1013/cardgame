@@ -60,7 +60,9 @@ export const jieyu: Scenario = {
         ["w_qi", "w_she", "w_qi", "w_yun", "w_she", "w_qi", "w_she"],
         ["w_yun", "w_qi", "w_she", "w_qi", "w_she", "w_yun", "w_qi"],
       ],
-      deck: ["j_hou", "j_tu", "j_yuan", "j_min", "j_shi", "j_ling", "j_lei", "j_gucheng", "j_haojiao", "j_xuncheng"],
+      // A-1 番外钥匙卡：j_liangdao（粮道告急·策3）/j_wengcheng（瓮城巷战·器3）补入守城牌组——
+      // 兼补 script 对势的克制缺口（原池仅 1 张策牌），胜局可解锁番外「走马灯」（jieyu 原全对局无钥匙卡可达）
+      deck: ["j_hou", "j_tu", "j_yuan", "j_min", "j_shi", "j_ling", "j_lei", "j_gucheng", "j_haojiao", "j_xuncheng", "j_liangdao", "j_wengcheng"],
       oppCards: [
         { id: "w_she", name: "骑射如雨", suit: "器", power: 4, text: "箭如飞蝗，先射后冲——草原的老打法。", lore: "" },
         { id: "w_qi", name: "骑兵冲锋", suit: "势", power: 4, text: "草原的雄鹰，奔袭天下无双。", lore: "" },

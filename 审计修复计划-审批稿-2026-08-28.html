@@ -201,6 +201,24 @@
 <tr><td><span class="badge b-dec">D7</span></td><td>STORY_VISUAL 合并是否按方案 B 立项？</td><td>方案 B 立项，但放批次 D 长期，不抢当前主线</td></tr>
 </table>
 
+<h2>五 · 执行结果（2026-08-28 当日落地）</h2>
+<div class="find opin">
+  <div class="t">全部四批已执行完毕，两笔提交落库</div>
+  <table>
+  <tr><th>提交</th><th>内容</th><th>状态</th></tr>
+  <tr><td><code>bc7824c</code></td><td>审计修复主批次（P0/P1/大部分 P2/卫生）——verify + tsc + build 三绿后提交</td><td><span class="badge b-done">已提交</span></td></tr>
+  <tr><td><code>fee385c</code></td><td>批次 B/C/D 增量：标题页放弃存档接入两段确认（L-5 补漏）、M-3 ZoomView 折叠态钳高、PWA 缓存 maxEntries 200→400、冒烟脚本 ×2</td><td><span class="badge b-done">已提交</span></td></tr>
+  </table>
+</div>
+<table>
+<tr><th style="width:70px">批次</th><th>执行情况</th></tr>
+<tr><td><span class="badge b-done">A</span></td><td>✅ 三绿提交；冒烟通过（页面/树 detail/退回上一幕/书斋/移动端聚合，无页面错误）；touming 番外补策系钥匙卡入茶局 deck（hits=0→2，番外「梁家铺子」解锁链打通，verify 复跑 0/0）；富商成就复核：递增查获率下出千 EV 前 2 手仍正（+0.19/+0.06 每注），100/200 两可达（反复进店刷安全期），无需调门槛；dist_old ×2（482M）清理</td></tr>
+<tr><td><span class="badge b-done">B</span></td><td>✅ L-5 设置面板完整 + 标题页补漏；U-3 渐进披露（edge-hint + guide-sec + fix-term-tip 术语注释）；PrepModal 满员 replaceHint；X-2 z-index 表（app.css 首部）；X-1 pick 字号 11px；M-3 折叠态 34vh（本次补）；树 640px 适配</td></tr>
+<tr><td><span class="badge b-done">C</span></td><td>✅ 盘点确认全部已落地：S-3 话术收敛 + changjiang qipan_yield 跨视角旗标（489 行「那枚白子，该回去陪他了」）；W-2 情绪制言力预算（duel.ts，前 N 张免费/之后耗言力，pressure 不受影响）；卡牌 C-4 机制位 8 部各扩 4 张；视觉批次 C-1 安全区条款（PROMPTS.md:79 原文）、C-2 文字区 3 行截断、C-3 数值角标 fix-corner-power、C-5 层徽 fix-layer-seal；U-4 卡图 3:4 模板统一（存量 2:3 不返工，按裁决）</td></tr>
+<tr><td><span class="badge b-done">D</span></td><td>✅ 随从分桶（duel.ts 独立计次）；W-6 押注档位随身家浮动 10%/25%/50%；W-7 qinhuai 补 gainSilver 15 保底；S-5 虚实对照表（docs/虚实对照表.md）；S-8 惊雷 hint「至少保留一日缓冲」；PWA maxEntries 400。⏳ 仅剩长期两项：主 JS 1.3MB 按剧本动态分包、STORY_VISUAL 方案 B 合并（均不阻塞发布）</td></tr>
+</table>
+<p><strong>遗留（长期，不阻塞）</strong>：① 主 JS 1.3MB/gzip 568KB 单 chunk → 按剧本 dynamic import 分包；② STORY_VISUAL 左→右 DAG 泳道按方案 B 并入剧情树（玩法图层图标角标）；③ 棋局残局部分 step 若候选不含坐标，verify 只 warn 不 fail（boards 增子校验已覆盖）。</p>
+
 <footer>
   方法备注：全部「已修复」条目均以 grep/脚本对当前工作区（HEAD 5639c34 + 未提交改动）实证核对，非凭报告文本转述；verify.mts 复跑 0 失败 0 警告；番外钥匙卡可达性以 Node 脚本扫描 8 部数据文件确认（固定 deck 内置 3 张 ≥ need=2）。本稿只陈述 2026-08-28 工作区事实。
 </footer>

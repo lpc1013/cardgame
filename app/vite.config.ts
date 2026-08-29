@@ -4,6 +4,9 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   base: './',
+  // 端口固定 3000：dev/preview 同端口，strictPort 被占即报错，绝不自动换端口开出多个
+  server: { port: 3000, strictPort: true },
+  preview: { port: 3000, strictPort: true },
   plugins: [
     react(),
     VitePWA({
@@ -15,7 +18,7 @@ export default defineConfig({
         description: '中式权谋叙事卡牌 · 剧本引擎',
         lang: 'zh-CN',
         display: 'standalone',
-        orientation: 'portrait',
+        orientation: 'landscape',
         background_color: '#171512',
         theme_color: '#171512',
         icons: [

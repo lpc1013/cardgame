@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback, useRef, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef, type ReactNode, type CSSProperties } from "react";
 import type { Scenario, CardDef, Suit } from "./engine/types";
 import { initState, findScene, visibleChoices, applyEffects, registerScenarios, checkCond, resolveSceneLines, type RunState } from "./engine/runtime";
 import { initDuel, revealEmotion, playEmotion, playPressure, endTurn, readEmotion, chargeUp, breakMove, cardCost, duelSpend, DEFAULT_GOAL, type DuelState, type DuelBoosts } from "./engine/duel";
@@ -12,7 +12,7 @@ import {
 import { SHOP_BOOSTS, SHOP_THEMES } from "./data/empireShop";
 import { ACHIEVEMENTS, checkDuelAchievements, checkMinigameAchievements, checkEndingAchievements, type AchCategory, type AchievementDef } from "./data/achievements";
 import { getAchievements, unlockAchievement } from "./engine/save";
-import { bonusOfCard, bonusOfScenario } from "./data/bonus";
+import { bonusOfCard, bonusListOfScenario, isBonusUnlocked, bonusUnlockDesc } from "./data/bonus";
 import { TreeView } from "./components/TreeView";
 import { sfx, sfxEnabled, toggleSfx } from "./engine/sfx";
 import { initSicbo, sicboRoll, sicboPayout, sicboSetBet, initPuzzle, puzzlePlay, initJiuling, jiulingDraw, jiulingPlay, initQuiz, quizAnswer, initPaijiu, paijiuBet, paijiuFold, type SicboState, type PuzzleState, type JiulingState, type QuizState, type PaijiuState } from "./engine/minigames";
@@ -39,6 +39,17 @@ const SCENARIOS: Scenario[] = [
   diaolan, changhen, jianfeng, touming, xingxing,
 ];
 registerScenarios(SCENARIOS);
+// 番外 dual 解锁判定：剧本各视角 → 归属结局名列表（ending.name）
+function vpEndingsOf(scId: string): Record<string, string[]> {
+  const sc = SCENARIOS.find((s) => s.id === scId);
+  const m: Record<string, string[]> = {};
+  for (const v of sc?.viewpoints ?? []) {
+    m[v.id] = (v.endings ?? [])
+      .map((eid) => sc?.scenes.find((s) => s.id === eid)?.ending?.name ?? "")
+      .filter(Boolean);
+  }
+  return m;
+}
 // 结局进度分母动态注入：以数据实有结局场景数为准（A-3 防漂移）
 setTotalEnds(SCENARIOS.reduce((n, s) => n + s.scenes.filter(x => x.ending).length, 0));
 
@@ -378,7 +389,10 @@ export default function App() {
   const [vpFor, setVpFor] = useState<Scenario | null>(null);
   const [vpId, setVpId] = useState<string | undefined>(undefined);
   const [coverIdx, setCoverIdx] = useState(0);
+  // 手机横屏悬浮胶囊（商市/书斋/规则书/设置+结局进度）展开态
+  const [fabOpen, setFabOpen] = useState(false);
   const [coverZoom, setCoverZoom] = useState(false);
+  const [bonusFor, setBonusFor] = useState<string | null>(null);
   const thumbsRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     // 缩略图条自动跟随：当前选中项始终保持在可视区（隐藏滑轮，平滑滚动）
@@ -525,20 +539,14 @@ export default function App() {
       }
       // 战争局失败：记录（解锁「岁币之约」购买）；劫与烬（北京保卫战）为唯一战争剧本，虽败亦不求和，但记录仍用于商市解锁判定
       if (duel.finished === "lose" && sc.id === "jieyu") recordWarLoss(sc.id);
-      // 番外解锁：携带本剧本番外钥匙卡（≥need 张）赢下对局 → 解锁（幂等）
-      const b = bonusOfScenario(sc.id);
-      if (b) {
-        // A-1 diaolan 死局兜底：若本剧本所有对局均设计为不可胜（unwinnable），无胜路可走——
-        // 败线结局达成同样解锁番外（不再要求钥匙卡数量，死局没得赢，番外就该败线后看）。
-        const noWinRoute = sc.duels.length > 0 && sc.duels.every((d) => d.unwinnable);
-        if (duel.finished === "win") {
-          const deckIds = new Set(duel.cfg.deck);
-          const hits = b.keyCards.filter((k) => deckIds.has(k)).length;
-          if (noWinRoute || hits >= b.need) {
-            if (unlockBonus(b.id)) setToast(`番外解锁：「${b.title}」——去卡册详情展阅。`);
-          }
-        } else if (noWinRoute && duel.finished === "lose") {
-          if (unlockBonus(b.id)) setToast(`番外解锁：「${b.title}」——去卡册详情展阅。`);
+      // 番外解锁：cards 型番外——携带本剧本番外钥匙卡（≥need 张）赢下对局 → 解锁（幂等）
+      const noWinRoute = sc.duels.length > 0 && sc.duels.every((d) => d.unwinnable);
+      for (const b of bonusListOfScenario(sc.id).filter((x) => x.unlock !== "ending" && x.unlock !== "dual")) {
+        const hits = (b.keyCards ?? []).filter((k) => new Set(duel.cfg.deck).has(k)).length;
+        const hitOk = duel.finished === "win" && (noWinRoute || hits >= (b.need ?? 2));
+        const loseOk = noWinRoute && duel.finished === "lose";
+        if (hitOk || loseOk) {
+          if (unlockBonus(b.id)) setToast(`番外解锁：「${b.title}」——去剧本封面展阅。`);
         }
       }
       const target = duel.finished === "win"
@@ -842,6 +850,41 @@ export default function App() {
     const curTree = getTree()[cur.id] ?? [];
     const unlocked = scenarioUnlocked(coverIdx % SCENARIOS.length, gallery, getTree(), save?.scenarioId, empire.brokenSeals);
     const prevSc = coverIdx > 0 ? SCENARIOS[coverIdx - 1] : null;
+    const totalEnds = getTotalEnds();
+    const mileClaimable = END_MILES.some(
+      (m, i) => gallery.length >= Math.ceil(totalEnds * m.pct) && i >= empire.endMile,
+    );
+    // 结局进度条 JSX 复用：PC 左下角常驻一份，手机横屏在悬浮胶囊面板内再渲染一份（CSS 各显其一）
+    const progressBar = (
+      <div className="end-progress" title="结局进度：每解锁一结局 +20 墨铤；里程碑达标后可点击领取">
+        <span className="end-progress-label">结局 <b>{gallery.length}</b>/{totalEnds}</span>
+        <div className="end-progress-track">
+          <div className="end-progress-fill" style={{ width: `${Math.min(100, (gallery.length / totalEnds) * 100)}%` }} />
+          {END_MILES.map((m, i) => {
+            const reached = gallery.length >= Math.ceil(totalEnds * m.pct);
+            const claimed = i < empire.endMile;
+            return (
+              <button
+                key={m.pct}
+                className={`end-progress-mile ${reached ? "got" : ""} ${claimed ? "claimed" : ""} ${!reached ? "locked" : ""}`}
+                style={{ left: `${m.pct * 100}%` }}
+                title={claimed ? `已领取（${Math.round(m.pct * 100)}% · +${m.ink} 墨铤）` : reached ? `领取 ${m.ink} 墨铤（${Math.round(m.pct * 100)}%）` : `解锁 ${Math.round(m.pct * 100)}% 结局后领取 +${m.ink} 墨铤`}
+                disabled={!reached || claimed}
+                onClick={() => {
+                  if (claimMile()) {
+                    sfx.coin();
+                    setToast(`里程碑达成 · 领取 ${m.ink} 墨铤`);
+                    setEmpTick((t) => t + 1);
+                  }
+                }}
+              >
+                {claimed ? "✓" : reached ? "🎁" : ""}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
     return (
       <div className="title-screen title-v2">
         <nav className="title-nav">
@@ -881,8 +924,41 @@ export default function App() {
             <button className="link-btn" onClick={() => { sfx.choice(); setPanel("settings"); }}>放弃存档</button>
           </div>
         )}
-        {/* W-3：退回上一幕安全垫——低调入口，每周目限 1 次 */}
+        {/* W-3：退回上一幕安全垫——低调入口，每周目限 1 次（PC 显示；手机横屏收进胶囊面板） */}
         <button className="link-btn fix-prev-ghost" onClick={() => { sfx.choice(); restorePrev(); }}>退回上一幕</button>
+        {/* 手机横屏悬浮入口：继续上次 + 墨铤胶囊（点开下拉面板：商市/书斋/规则书/设置/退回上一幕/结局进度）；PC 隐藏走顶栏 */}
+        <div className="fab-row">
+          {save && (
+            <button className="btn-main fab-resume" onClick={resume}>
+              继续上次 · {SCENARIOS.find((s) => s.id === save.scenarioId)?.title ?? save.scenarioId}
+            </button>
+          )}
+          <button
+            className={`fab-capsule ${mileClaimable ? "has-claim" : ""}`}
+            onClick={() => { sfx.choice(); setFabOpen((v) => !v); }}
+          >
+            <IngotIcon /> {empire.ink}
+            <span className="fab-burger">☰</span>
+            {mileClaimable && <span className="fab-dot" />}
+          </button>
+          {fabOpen && (
+            <>
+              <div className="fab-backdrop" onClick={() => setFabOpen(false)} />
+              <div className="fab-panel">
+                <div className="fab-panel-head">帝成观止</div>
+                <div className="fab-grid">
+                  <button onClick={() => { sfx.choice(); setPanel("shop"); setFabOpen(false); }}>商市</button>
+                  <button onClick={() => { sfx.choice(); setFabOpen(false); setShowStudy(true); }}>书斋</button>
+                  <button onClick={() => { sfx.choice(); setShowGuide(true); setFabOpen(false); }}>规则书</button>
+                  <button onClick={() => { sfx.choice(); setPanel("settings"); setFabOpen(false); }}>设置</button>
+                  <button className="fab-tree-btn" onClick={() => { sfx.choice(); setFabOpen(false); restorePrev(); }}>退回上一幕</button>
+                </div>
+                <div className="fab-progress">{progressBar}</div>
+              </div>
+            </>
+          )}
+        </div>
+        <div className="cover-layout">
         <div className="cover-stage">
           <button className="cover-arrow" aria-label="上一个" onClick={() => { sfx.choice(); setCoverIdx((coverIdx + SCENARIOS.length - 1) % SCENARIOS.length); }}>‹</button>
           <div className={`cover-main ${unlocked ? "" : "sealed"}`}>
@@ -932,6 +1008,11 @@ export default function App() {
                 {(curTree.length > 0 || curEnds.length > 0) && (
                   <button className="tree-btn" onClick={() => { sfx.choice(); setTreeOf(cur); }}>剧情树（{curTree.length}/{cur.scenes.length}）</button>
                 )}
+                {bonusListOfScenario(cur.id).length > 0 && (
+                  <button className="tree-btn" onClick={() => { sfx.choice(); setBonusFor(cur.id); }}>
+                    番外（{bonusListOfScenario(cur.id).filter((b) => isBonusUnlocked(b, gallery, vpEndingsOf(cur.id), getBonuses())).length}/{bonusListOfScenario(cur.id).length}）
+                  </button>
+                )}
                 {cur.cardSystem && (
                   <button className="tree-btn" onClick={() => { sfx.choice(); setCardsOf(cur); }}>
                     卡牌图鉴（{(getCardSeen()[cur.id] ?? []).length}/{cur.cards.filter(c => (c.layer ?? "成术") !== "资源").length}）
@@ -960,34 +1041,8 @@ export default function App() {
           </div>
           <button className="thumb-arrow next" aria-label="下一个" onClick={() => { sfx.choice(); setCoverIdx((coverIdx + 1) % SCENARIOS.length); }}>›</button>
         </div>
-        <div className="end-progress" title="结局进度：每解锁一结局 +20 墨铤；里程碑达标后可点击领取">
-          <span className="end-progress-label">结局 <b>{gallery.length}</b>/{getTotalEnds()}</span>
-          <div className="end-progress-track">
-            <div className="end-progress-fill" style={{ width: `${Math.min(100, (gallery.length / getTotalEnds()) * 100)}%` }} />
-            {END_MILES.map((m, i) => {
-              const reached = gallery.length >= Math.ceil(getTotalEnds() * m.pct);
-              const claimed = i < empire.endMile;
-              return (
-                <button
-                  key={m.pct}
-                  className={`end-progress-mile ${reached ? "got" : ""} ${claimed ? "claimed" : ""} ${!reached ? "locked" : ""}`}
-                  style={{ left: `${m.pct * 100}%` }}
-                  title={claimed ? `已领取（${Math.round(m.pct * 100)}% · +${m.ink} 墨铤）` : reached ? `领取 ${m.ink} 墨铤（${Math.round(m.pct * 100)}%）` : `解锁 ${Math.round(m.pct * 100)}% 结局后领取 +${m.ink} 墨铤`}
-                  disabled={!reached || claimed}
-                  onClick={() => {
-                    if (claimMile()) {
-                      sfx.coin();
-                      setToast(`里程碑达成 · 领取 ${m.ink} 墨铤`);
-                      setEmpTick((t) => t + 1);
-                    }
-                  }}
-                >
-                  {claimed ? "✓" : reached ? "🎁" : ""}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        </div>{/* /.cover-layout */}
+        {progressBar}
                 {coverZoom && coverOf(cur.id) && (
           <div className="cover-zoom-overlay" onClick={() => setCoverZoom(false)}>
             <img src={coverOf(cur.id)} alt={cur.title} />
@@ -996,6 +1051,39 @@ export default function App() {
           </div>
         )}
         <p className="foot-tip">点击画面推进文本 · 空格推进/数字选支 · 进度自动保存 · ✦ = 含卡牌系统 v2 · 解锁结局可获墨铤 · 案件按序解封，可花 {UNSEAL_COST} 墨铤提前破封</p>
+        {bonusFor && (() => {
+          const list = bonusListOfScenario(bonusFor);
+          const curSc = SCENARIOS.find((s) => s.id === bonusFor);
+          const vpNames = vpEndingsOf(bonusFor);
+          return (
+            <div className="clue-overlay bonus-read" onClick={() => setBonusFor(null)}>
+              <div className="bag-panel bonus-read-panel" onClick={(e) => e.stopPropagation()}>
+                <h3>番外 · {curSc?.title ?? bonusFor}</h3>
+                <p className="muted">剧本外篇——达成条件后解锁，与主线剧情互不干扰。</p>
+                {list.map((b) => {
+                  const unlocked = isBonusUnlocked(b, gallery, vpNames, getBonuses());
+                  return (
+                    <div key={b.id} className="card-detail-sec">
+                      <div className="card-detail-sec-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span>{b.title}</span>
+                        {unlocked ? <span style={{ color: "var(--gold)" }}>已解锁</span> : <span className="muted">未解锁</span>}
+                      </div>
+                      <p className="detail-line muted">{b.desc}</p>
+                      {unlocked ? (
+                        <div className="bonus-lines">
+                          {b.lines.map((l, i) => <p key={i} className="detail-line">{l}</p>)}
+                        </div>
+                      ) : (
+                        <p className="detail-line muted">🔒 {bonusUnlockDesc(b)}</p>
+                      )}
+                    </div>
+                  );
+                })}
+                <button className="btn-main" onClick={() => setBonusFor(null)}>合卷</button>
+              </div>
+            </div>
+          );
+        })()}
         {showGuide && (
           <div className="clue-overlay" onClick={() => setShowGuide(false)}>
             <div className="clue-overlay-panel" onClick={(e) => e.stopPropagation()}>
@@ -1159,28 +1247,31 @@ export default function App() {
       <div className="story-root">
         <div className="story-panel ending" ref={panelRef}>
           {endImg && <img className="ending-art" src={endImg} alt={scene.ending.name} />}
-          <div className="ending-rank">{scene.ending.rank}</div>
-          <h2 className="ending-name">{scene.ending.name}</h2>
-          {resolveSceneLines(scene, st).map((l, i) => (
-            <p key={i} className="story-line show">{l}</p>
-          ))}
-          <p className="muted">{scene.ending.desc}</p>
-          <div className="run-report">
-            <div className="run-report-title">── 本局战报 ──</div>
-            <div className="stat-report">
-              {Object.entries(st.stats).map(([k, v]) => (
-                <span key={k}>{sc.stats?.find((s) => s.key === k)?.name ?? k}：{v}</span>
-              ))}
+          {/* ending-body 在 PC 上 display:contents 保持原版居中排版；手机横屏转为右栏文本区（左图右文） */}
+          <div className="ending-body">
+            <div className="ending-rank">{scene.ending.rank}</div>
+            <h2 className="ending-name">{scene.ending.name}</h2>
+            {resolveSceneLines(scene, st).map((l, i) => (
+              <p key={i} className="story-line show">{l}</p>
+            ))}
+            <p className="muted">{scene.ending.desc}</p>
+            <div className="run-report">
+              <div className="run-report-title">── 本局战报 ──</div>
+              <div className="stat-report">
+                {Object.entries(st.stats).map(([k, v]) => (
+                  <span key={k}>{sc.stats?.find((s) => s.key === k)?.name ?? k}：{v}</span>
+                ))}
+              </div>
+              <div className="stat-report">
+                <span>探索 {st.visited.length + 1} 幕</span>
+                {st.clues.length > 0 && <span>线索 {st.clues.length} 条</span>}
+                {sc.cardSystem && <span>藏卡 {st.bag.length} 张 · 余银 {st.silver} 两</span>}
+              </div>
             </div>
-            <div className="stat-report">
-              <span>探索 {st.visited.length + 1} 幕</span>
-              {st.clues.length > 0 && <span>线索 {st.clues.length} 条</span>}
-              {sc.cardSystem && <span>藏卡 {st.bag.length} 张 · 余银 {st.silver} 两</span>}
-            </div>
+            <button className="btn-main" onClick={() => { setPhase("title"); setSt(null); }}>
+              回到卷宗架
+            </button>
           </div>
-          <button className="btn-main" onClick={() => { setPhase("title"); setSt(null); }}>
-            回到卷宗架
-          </button>
         </div>
       </div>
     );
@@ -1699,6 +1790,19 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager }: {
     return { pct, n, ok: n >= 5 };
   });
 
+  // 手机横屏扇形手牌：raisedId = 悬浮在最上方的卡（null 时扇形中位卡自然顶出）。
+  // 顶卡点击/上滑直接出牌；他卡点击先浮升预览（二次确认），上滑仍直接出牌。
+  const [raisedId, setRaisedId] = useState<string | null>(null);
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const swipeYRef = useRef<number | null>(null);
+  const centerIdx = Math.round((handIds.length - 1) / 2);
+  useEffect(() => {
+    // 手牌变化（出牌/补牌）后顶卡失效则复位；台词/日志区滚动到底
+    if (raisedId && !handIds.includes(raisedId)) setRaisedId(null);
+    const el = stageRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  });
+
   return (
     <div className="duel-root">
       <div className="duel-header">
@@ -1744,7 +1848,7 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager }: {
         {v2 && <span className="muted">牌库 {duel.library.length} · 手牌 {duel.hand.length} · 弃牌 {duel.discard.length}</span>}
       </div>
 
-      <div className="duel-stage">
+      <div className="duel-stage" ref={stageRef}>
         {duel.mode === "emotion" && duel.opponentShown && (
           <div className={`mood-banner`} style={{ borderLeftColor: `var(--suit-${duel.opponentShown === "策" ? "ce" : duel.opponentShown === "器" ? "qi" : duel.opponentShown === "势" ? "shi" : "yin"})` }}>
             <SuitSeal suit={duel.opponentShown} />
@@ -1853,12 +1957,26 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager }: {
       </div>
 
       <div className="hand">
-        {handIds.map((id) => {
+        {handIds.map((id, i) => {
           const c = cardOf(id);
           const disabled = !!duel.finished || (duel.mode === "emotion" && !duel.opponentShown) || (v2 && duel.mode === "pressure" && duel.ap < cardCost(c));
           const isChar = (c.layer ?? "成术") === "人物";
+          const d = i - (handIds.length - 1) / 2;
+          const isTop = raisedId ? raisedId === id : i === centerIdx;
           return (
-            <button key={id} className={`play-card rarity-${c.rarity ?? "凡"} ${c.suit ? `suit-${c.suit}` : ""} ${isChar ? "char-card" : ""}`} disabled={disabled && !isChar ? true : !!duel.finished || (duel.mode === "emotion" && !duel.opponentShown)} onClick={() => clickCard(id)}>
+            <button
+              key={id}
+              className={`play-card rarity-${c.rarity ?? "凡"} ${c.suit ? `suit-${c.suit}` : ""} ${isChar ? "char-card" : ""} ${isTop ? "hand-top" : ""}`}
+              style={{ "--d": d, "--z": Math.abs(d) } as CSSProperties}
+              disabled={disabled && !isChar ? true : !!duel.finished || (duel.mode === "emotion" && !duel.opponentShown)}
+              onClick={() => { if (isTop) { setRaisedId(null); clickCard(id); } else setRaisedId(id); }}
+              onTouchStart={(e) => { swipeYRef.current = e.touches[0]?.clientY ?? null; }}
+              onTouchEnd={(e) => {
+                const y0 = swipeYRef.current;
+                swipeYRef.current = null;
+                if (y0 !== null && y0 - (e.changedTouches[0]?.clientY ?? y0) > 24) { setRaisedId(null); clickCard(id); }
+              }}
+            >
               {c.suit && <SuitGlyph suit={c.suit} />}
               {c.power !== undefined && !isChar && <span className="pc-power-badge">{c.power}</span>}
               <div className="card-artwrap">
@@ -2211,7 +2329,7 @@ function CardZoomView({ sc, c, seen, onClose }: { sc: Scenario; c: CardDef; seen
                   <button className="link-btn" onClick={() => { sfx.choice(); setReadBonus(true); }}>展阅番外</button>
                 </>
               ) : (
-                <p className="detail-line muted">携带此卡及同组另 {Math.max(1, bonus.need - 1)} 张（{bonus.keyCards.slice(0, 3).join("、")}{bonus.keyCards.length > 3 ? "…" : ""}）赢下本剧本对局，解锁番外「{bonus.title}」。</p>
+                <p className="detail-line muted">{bonusUnlockDesc(bonus)}</p>
               )}
             </div>
           )}

@@ -526,11 +526,26 @@ for (const sc of ALL) {
       fail(`番外「${b.title}」归属剧本 ${b.scenarioId} 不存在`);
       continue;
     }
+    if (b.lines.length === 0) fail(`番外「${b.title}」正文为空`);
+    // ending 型：unlockEndings 必须是该剧本存在的结局名
+    if (b.unlock === "ending") {
+      const names = new Set(sc.scenes.filter((s) => s.ending).map((s) => s.ending!.name));
+      for (const en of b.unlockEndings ?? []) {
+        if (!names.has(en)) fail(`番外「${b.title}」解锁结局「${en}」不在剧本 ${b.scenarioId} 结局表中（实有：${[...names].join("/")}）`);
+      }
+      continue;
+    }
+    // dual 型：剧本必须有 ≥2 个视角，且各视角归属结局名存在
+    if (b.unlock === "dual") {
+      if ((sc.viewpoints?.length ?? 0) < 2) fail(`番外「${b.title}」要求双视角解锁，但剧本 ${b.scenarioId} 仅有 ${sc.viewpoints?.length ?? 0} 个视角`);
+      continue;
+    }
+    // cards 型（默认）：钥匙卡可达性
     const duels = sc.duels.filter((d) => d.deck);
-    const maxHits = Math.max(0, ...duels.map((d) => b.keyCards.filter((k) => d.deck!.includes(k)).length));
+    const maxHits = Math.max(0, ...duels.map((d) => (b.keyCards ?? []).filter((k) => d.deck!.includes(k)).length));
     const noWinRoute = sc.duels.length > 0 && sc.duels.every((d) => d.unwinnable);
-    if (!noWinRoute && maxHits < b.need) {
-      fail(`番外「${b.title}」钥匙卡不可达：本剧本 ${sc.duels.length} 个对局 deck 均不满足携带 ≥${b.need} 张（keyCards: ${b.keyCards.join("/")}）——请将 ≥${b.need} 张钥匙卡补入任一可胜对局 deck`);
+    if (!noWinRoute && maxHits < (b.need ?? 2)) {
+      fail(`番外「${b.title}」钥匙卡不可达：本剧本 ${sc.duels.length} 个对局 deck 均不满足携带 ≥${b.need ?? 2} 张（keyCards: ${(b.keyCards ?? []).join("/")}）——请将 ≥${b.need ?? 2} 张钥匙卡补入任一可胜对局 deck`);
     }
   }
   console.log(`番外可达性: ${BONUS_SCENES.length} 个番外校验完成`);

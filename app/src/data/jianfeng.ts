@@ -398,11 +398,30 @@ export const jianfeng: Scenario = {
 ],
       choices: [
         {
-          text: "「慈不掌兵。这是战争。」——合上眼，翻身上马，不再看。",
-          hint: "帝王之术 · 把那点软弱埋进泥里",
-          effects: [{ stat: { weiwang: 5, liangxin: -5 } }],
-          next: "end_iron",
+          text: "死者已矣——把这座城，最后一程，走完。",
+          hint: "对死与碑 · 城门口的石料，还等着一个名字",
+          effects: [],
+          next: "aftermath_memorial",
         },
+        {
+          text: "生者未已——城里的活人、后世的史笔，还等着一个交代。",
+          hint: "对生与史 · 该记的记下，该找的去找",
+          effects: [],
+          next: "aftermath_live",
+        },
+      ],
+    },
+    {
+      id: "aftermath_memorial",
+      title: "碑与马",
+      lines: [
+  "城门口，那块空地。有人搬来的石料，一块一块，码得很齐。\r",
+  "\r",
+  "两千五百守将，无一降者。他们死在水里，死在自己守了一辈子的城墙下。\r",
+  "\r",
+  "石料是冷的。手按上去，像按着两千五百个不肯闭上的名字。\r"
+],
+      choices: [
         {
           text: "为两千五百守将立碑——不写国号，只刻八个字：皆为士卒，无一人降。",
           hint: "帝王也是人 · 需良知≥55 · 一块碑压不住什么，但立了",
@@ -411,12 +430,30 @@ export const jianfeng: Scenario = {
           next: "end_stone",
         },
         {
+          text: "「慈不掌兵。这是战争。」——合上眼，翻身上马，不再看。",
+          hint: "帝王之术 · 把那点软弱埋进泥里",
+          effects: [{ stat: { weiwang: 5, liangxin: -5 } }],
+          next: "end_iron",
+        },
+      ],
+    },
+    {
+      id: "aftermath_live",
+      title: "生与史",
+      lines: [
+  "废墟之间，有士兵抬着担架走过，担架上的伤员，还活着。\r",
+  "\r",
+  "史官远远站着，笔已蘸了墨——他在等，等这场仗，会有一个什么样的名字。\r",
+  "\r",
+  "水攻一事，记下来是千古骂名；不记，它就烂在淤泥里，像那些没来得及喊出口的求饶。\r"
+],
+      choices: [
+        {
           text: "「传史官。」——水攻一事，直笔入史，一字不许讳。",
           hint: "直笔 · 需良知≥70 · 千古骂名，自己背",
           cond: { statAtLeast: { liangxin: 70 } },
           effects: [{ stat: { liangxin: 10 } }],
           next: "end_brush",
-          altNext: "end_search",
         },
         {
           text: "「再搜一遍。」——传军医入城，活要见人。",

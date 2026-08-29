@@ -161,48 +161,9 @@ function layout(sc) {
       for (const nx of adj.get(cur) ?? []) if (idSet.has(nx) && !seen.has(nx)) { seen.add(nx); stack.push(nx); }
     }
   });
-  // 尾声泳道：多结局分裂点（choices 的不同选项通向不同的结局链）之后，每个分支独享一条泳道
-  // ——用于"尾声双视角/多线收束"的剧本（如星火：孩童·队伍线 / 女教师·乡村线）
-  const reachEnds = new Map();
-  const calcReach = (id) => {
-    if (reachEnds.has(id)) return reachEnds.get(id);
-    const n = byId.get(id);
-    const s = new Set();
-    reachEnds.set(id, s); // 先占位防环（图中存在环时递归不终止）
-    if (!n) return s;
-    if (n.type === "ending") s.add(id);
-    for (const nx of adj.get(id) ?? []) for (const e of calcReach(nx)) s.add(e);
-    return s;
-  };
-  for (const n of nodes) calcReach(n.id);
-  const splitPoints = new Set();
-  for (const n of nodes) {
-    if (n.type === "ending" || !(n.choices?.length >= 2)) continue;
-    const sigs = new Set(n.choices.map((c) => [...(reachEnds.get(c.next) ?? new Set())].sort().join(",")));
-    if (sigs.size >= 2) splitPoints.add(n.id);
-  }
-  let nextLane = laneStarts.length;
-  const splitLaneNames = new Map();
-  for (const sid of splitPoints) {
-    const s = byId.get(sid);
-    for (const c of s.choices ?? []) {
-      if (!idSet.has(c.next) || (reachEnds.get(c.next) ?? new Set()).size === 0) continue;
-      const lane = nextLane++;
-      const _hint = c.hint || "";
-      const _label = _hint.split("·").pop().trim().slice(0, 12) || (c.text || "").slice(0, 12);
-      splitLaneNames.set(lane, _label);
-      const stack = [c.next];
-      const seen = new Set();
-      while (stack.length) {
-        const cur = stack.pop();
-        if (!idSet.has(cur) || seen.has(cur)) continue;
-        seen.add(cur);
-        if (splitPoints.has(cur) || byId.get(cur)?.type === "ending") continue; // 不越过分裂点/结局
-        laneOf.set(cur, lane);
-        for (const nx of adj.get(cur) ?? []) stack.push(nx);
-      }
-    }
-  }
+  // 泳道按视角划分：主 startScene = lane 0，各 viewpoint.start 依次为 lane 1..n。
+  // 多结局分支（尾声）不再单独开泳道——分支节点与后续节点都归所属视角泳道（DFS laneOf），
+  // 避免泳道数量膨胀、占用多余空间。
   for (const n of nodes) if (!laneOf.has(n.id)) laneOf.set(n.id, 0); // 兜底归主视角
   // 主线 = next 链（玩家必走的推进路线；choices 分支不算主线）
   const isMain = new Set();
@@ -271,73 +232,75 @@ function layout(sc) {
   const realMax = Math.max(0, ...layer.values());
   for (const n of nodes) if (!layer.has(n.id)) layer.set(n.id, realMax);
 
-  // ③ 初始 y（按 id 序）+ Barycenter 迭代排序层内节点
+  // ③ 泳道垂直分离布局（v6，整理重排）：
+  // - 泳道 = 视角（主 start + 各 viewpoint）；多结局分支不额外占泳道
+  // - 每条泳道独立垂直带：lane 0 顶 → lane n 底，间距 LANE_PAD 固定且紧凑
+  // - **泳道内节点垂直叠排**（同列多节点上下排），泳道高自适应 = max(该泳道各列叠排高)
+  // - 所有节点（场景/结局/共享/收获）都归位自己泳道，禁止侵占别人泳道
+  // - 列内顺序按"剧情叙述顺序"（父节点选项序号优先）整理
   const byLayer = groupByLayerArr(nodes, layer);
-  // 稳定排序初值
-  for (const arr of byLayer.values()) arr.sort((a, b) => (a.id < b.id ? -1 : 1));
-  // 视角泳道分块：每层内按 lane 拆成若干块，块间固定间隙（泳道视觉分离）
-  const LANE_PAD = 80;
-  const laneBlocks = new Map();
-  for (const [l, arr] of byLayer) {
-    const lanesInLayer = [...new Set(arr.map((n) => laneOf.get(n.id)))].sort((a, b) => a - b);
-    const blocks = [];
-    for (const li of lanesInLayer) {
-      const b = arr.filter((n) => laneOf.get(n.id) === li);
-      if (b.length) blocks.push(b);
-    }
-    laneBlocks.set(l, blocks);
+  const Y0 = 84, LANE_PAD = 80, VGAP = 12; // 垂直叠排间距
+  const laneCount = Math.max(0, ...laneOf.values()) + 1;
+  // lane → 层 → [节点]
+  const laneCols = new Map();
+  for (const n of nodes) {
+    const li = laneOf.get(n.id), l = layer.get(n.id) ?? 0;
+    const k = `${li}|${l}`;
+    if (!laneCols.has(k)) laneCols.set(k, []);
+    laneCols.get(k).push(n);
   }
-  const y = new Map();
-  const initY = () => {
-    for (const [l, arr] of byLayer) {
-      let cy = 0;
-      for (const block of laneBlocks.get(l) ?? []) {
-        for (const n of block) { y.set(n.id, cy); cy += nodeH(n) + 26; }
-        cy += LANE_PAD;
-      }
+  // 剧情叙述顺序：同列多节点的位次 = 父节点（同泳道）choices 数组中该目标的序号
+  const optRank = (id) => {
+    const ins = incoming.get(id) ?? [];
+    for (const e of ins) {
+      if (laneOf.get(e.from) !== laneOf.get(id)) continue;
+      const pn = byId.get(e.from);
+      const idx = (pn?.choices ?? []).findIndex((c) => c.next === id);
+      if (idx >= 0) return idx;
     }
+    return 0;
   };
-  initY();
-  // 多次 Barycenter 双向扫描（仅在泳道块内排序，避免跨视角揉成一团）
-  for (let iter = 0; iter < 32; iter++) {
-    // 上→下：按入边上游 y 重心排
-    for (let l = 1; l <= realMax; l++) {
-      for (const block of laneBlocks.get(l) ?? []) {
-        block.sort((a, b) => {
-          const ia = (incoming.get(a.id) ?? []).map((x) => x.from);
-          const ib = (incoming.get(b.id) ?? []).map((x) => x.from);
-          return barycenter(a, ia, y) - barycenter(b, ib, y);
-        });
-      }
-    }
-    // 下→上：按出边下游 y 重心排（反序用）
-    for (let l = realMax - 1; l >= 1; l--) {
-      for (const block of laneBlocks.get(l) ?? []) {
-        block.sort((a, b) => barycenter(a, adj.get(b.id) ?? [], y) - barycenter(b, adj.get(a.id) ?? [], y));
-      }
-    }
-    initY();
+  for (const arr of laneCols.values()) {
+    arr.sort((a, b) => {
+      const ra = optRank(a.id), rb = optRank(b.id);
+      if (ra !== rb) return ra - rb;
+      return a.id < b.id ? -1 : 1;
+    });
   }
-
-  // ④ 分配 x：主列照常；收获节点（bonus）从主链下方单独拉一条轨道
-  const DX = 240, Y0 = 84;
+  // 泳道带高自适应：= 该泳道各列叠排高的最大值（+padding）
+  const laneH = new Map();
+  for (let li = 0; li < laneCount; li++) {
+    let h = 0;
+    for (const [k, arr] of laneCols) {
+      const kli = Number(k.split("|")[0]);
+      if (kli !== li) continue;
+      let ch = 0;
+      for (const n of arr) ch += nodeH(n) + VGAP;
+      if (ch > h) h = ch;
+    }
+    laneH.set(li, Math.max(h, 56) + 10);
+  }
+  // 泳道带起点：lane 0 顶 → 依次下排
+  const laneTop = new Map();
+  {
+    let cur = Y0;
+    for (let li = 0; li < laneCount; li++) { laneTop.set(li, cur); cur += laneH.get(li) + LANE_PAD; }
+  }
+  // y：泳道带内按列垂直叠排（同列多节点上下排）
+  const y = new Map();
+  for (const [k, arr] of laneCols) {
+    const li = Number(k.split("|")[0]);
+    let cy = laneTop.get(li) + 8;
+    for (const n of arr) { y.set(n.id, cy); cy += nodeH(n) + VGAP; }
+  }
+  // 未入列节点兜底归主泳道顶部
+  for (const n of nodes) if (!y.has(n.id)) y.set(n.id, laneTop.get(laneOf.get(n.id)) + 8);
+  // ④ 分配 x：列推进（layer * DX + 40），无横向偏移
+  const DX = 320;
   const pos = new Map();
-  // 主列底部（非 bonus 节点的最大 y + 高度）
-  let mainBottom = Y0;
-  for (const n of nodes) if (!bonus.has(n.id)) {
-    const ny = (y.get(n.id) ?? 0) + Y0 + nodeH(n) + 26;
-    if (ny > mainBottom) mainBottom = ny;
-  }
-  const bonusOrder = new Map();
   for (const n of nodes) {
     const l = layer.get(n.id) ?? 0;
-    if (bonus.has(n.id)) {
-      const bi = bonusOrder.get(l) ?? 0;
-      bonusOrder.set(l, bi + 1);
-      pos.set(n.id, { x: l * DX + 40, y: mainBottom + 70 + bi * 64, bonus: true });
-    } else {
-      pos.set(n.id, { x: l * DX + 40, y: (y.get(n.id) ?? 0) + Y0 });
-    }
+    pos.set(n.id, { x: l * DX + 40, y: y.get(n.id) ?? laneTop.get(laneOf.get(n.id)) + 8, bonus: bonus.has(n.id) });
   }
 
   // ⑤ 接入槽：每个目标节点按入边数 M 分配左缘 y 槽位（避免多条边挤一个点）
@@ -371,11 +334,11 @@ function layout(sc) {
     return (pos.get(id)?.y ?? 0) + 40; // 节点底部（NH*0.71）→ 视觉"从下方出"
   };
 
-  return { layer, byLayer, laneBlocks, laneOf, laneStarts, splitLaneNames, pos, portY, portYFrom, inSlot, nodeOptY, bonus, FINAL, maxL: realMax, edges, nodes };
+  return { layer, byLayer, laneOf, laneStarts, laneTop, laneH, pos, portY, portYFrom, inSlot, nodeOptY, bonus, FINAL, maxL: realMax, edges, nodes };
 }
 
 // ---------- 生成 HTML ----------
-const DX = 240, NW = 200, NH = 56, OPT_H = 26; // 列距(分支线舒展) / 节点宽 / 标题高 / 选项行高
+const DX = 320, NW = 200, NH = 56, OPT_H = 26; // 列距(分支线舒展) / 节点宽 / 标题高 / 选项行高
 const TYPE_COLOR = {
   scene: "#5b8fb8", ending: "#d2a44f", shop: "#5fa877", duel: "#c05b4d",
   pick: "#d99a4e", minigame: "#8b7ab8",
@@ -428,9 +391,9 @@ const scenarioViews = scs.map((sc) => {
     const isBonus = !!p?.bonus;
     if (MECH.has(n.type) && !isBonus) {
       // 机制节点（非收获：对局/翻牌等仍贴主线）：小圆点标注
-      return `<g class="node" data-id="${n.id}" transform="translate(${p.x + NW / 2},${p.y + 28})" opacity="0.9">
+      return `<g class="node" data-id="${n.id}" transform="translate(${p.x + NW / 2},${p.y + 28})" opacity="0.95">
         <title>${escapeXml(n.title)}（${TYPE_NAME[n.type]}${n.shop ? " · " + escapeXml(n.shop) : ""}）</title>
-        <circle r="13" fill="${c}" fill-opacity="0.22" stroke="${c}" stroke-width="1.2" class="node-rect"/>
+        <circle r="13" fill="${c}" fill-opacity="0.32" stroke="${c}" stroke-width="1.5" class="node-rect"/>
         <text y="4.5" font-size="12" fill="${c}" text-anchor="middle" font-weight="700">${icon}</text>
       </g>`;
     }
@@ -442,14 +405,23 @@ const scenarioViews = scs.map((sc) => {
       const rows = cs.map((cx, i) => {
         const oy = optY[i] ?? 0;
         const tag = cx.text.match(/^【([^】]*)】/)?.[1] ?? "";
-        const body = cx.text.replace(/^【[^】]*】/, "").trim().slice(0, 15) + (cx.text.replace(/^【[^】]*】/, "").trim().length > 15 ? "…" : "");
+        // 文字超框截断：有【】只显示【】内（截 7 字）；无【】取前 8 字
+        const tagShort = tag.slice(0, 7) + (tag.length > 7 ? "…" : "");
+        const bodyFull = cx.text.replace(/^【[^】]*】/, "").trim();
+        let label;
+        if (tag) {
+          label = `【${escapeXml(tagShort)}】`;
+          if (bodyFull) label += bodyFull.slice(0, 4) + (bodyFull.length > 4 ? "…" : "");
+        } else {
+          label = bodyFull.slice(0, 8) + (bodyFull.length > 8 ? "…" : "");
+        }
+        const labelLen = label.replace(/<[^>]*>/g, "").length;
         return `<line x1="12" y1="${oy - 7}" x2="${NW - 12}" y2="${oy - 7}" stroke="#3a342b" stroke-width="1"/>
           <circle cx="17" cy="${oy - 2}" r="3.5" fill="${c}" opacity="0.95"/>
-          ${tag ? `<text x="27" y="${oy}" font-size="11" font-weight="700" style="paint-order:stroke;stroke:#0e0c0a;stroke-width:3px" fill="${c}">【${escapeXml(tag)}】</text>` : ""}
-          <text x="${tag ? 27 + (tag.length + 2) * 11 + 2 : 27}" y="${oy}" font-size="12" font-weight="500" style="paint-order:stroke;stroke:#0e0c0a;stroke-width:3.5px" fill="#f5e8c8">${escapeXml(body)}</text>`;
+          <text x="27" y="${oy}" font-size="12" font-weight="600" style="paint-order:stroke;stroke:#0e0c0a;stroke-width:3.5px" fill="#f5e8c8">${label}</text>`;
       }).join("");
-      return `<g class="node" data-id="${n.id}" transform="translate(${p.x},${p.y})" opacity="${n.lines.length ? 1 : 0.75}">
-        <rect width="${NW}" height="${h}" rx="6" fill="#14110e" fill-opacity="0.85" stroke="${c}" stroke-width="${isStart ? 2.5 : 1.5}" ${isStart ? 'stroke-dasharray="5 3"' : ""} class="node-rect"/>
+      return `<g class="node" data-id="${n.id}" transform="translate(${p.x},${p.y})" opacity="${n.lines.length ? 1 : 0.78}">
+        <rect width="${NW}" height="${h}" rx="6" fill="#14110e" fill-opacity="1" stroke="${c}" stroke-width="${isStart ? 2.5 : 1.5}" ${isStart ? 'stroke-dasharray="5 3"' : ""} class="node-rect"/>
         <text x="10" y="19" font-size="14" fill="${c}" font-weight="700">${icon}</text>
         <text x="30" y="18" font-size="13.5" fill="#e8d9b0" style="paint-order:stroke;stroke:#0e0c0a;stroke-width:3.5px">${escapeXml(t1)}</text>
         ${t2 ? `<text x="30" y="33" font-size="13" fill="#e8d9b0" style="paint-order:stroke;stroke:#0e0c0a;stroke-width:3.5px">${escapeXml(t2)}</text>` : ""}
@@ -457,51 +429,68 @@ const scenarioViews = scs.map((sc) => {
         ${rows}
       </g>`;
     }
-    return `<g class="node" data-id="${n.id}" transform="translate(${p.x},${p.y})" opacity="${n.lines.length ? 1 : 0.75}">
-      <rect width="${NW}" height="56" rx="6" fill="#1c1915" fill-opacity="0.8" stroke="${c}" stroke-width="${isStart ? 2.5 : 1.5}" ${isBonus ? 'stroke-dasharray="6 4"' : isStart ? 'stroke-dasharray="5 3"' : ""} class="node-rect"/>
+    return `<g class="node" data-id="${n.id}" transform="translate(${p.x},${p.y})" opacity="${n.lines.length ? 1 : 0.78}">
+      <rect width="${NW}" height="56" rx="6" fill="#1c1915" fill-opacity="1" stroke="${c}" stroke-width="${isStart ? 2.5 : 1.5}" ${isBonus ? 'stroke-dasharray="6 4"' : isStart ? 'stroke-dasharray="5 3"' : ""} class="node-rect"/>
       <text x="8" y="18" font-size="14" fill="${c}" font-weight="700">${isBonus ? "✦" : icon}</text>
       <text x="27" y="17" font-size="13.5" fill="#e8d9b0" style="paint-order:stroke;stroke:#0e0c0a;stroke-width:3.5px">${escapeXml(t1)}</text>
       ${t2 ? `<text x="27" y="32" font-size="13" fill="#e8d9b0" style="paint-order:stroke;stroke:#0e0c0a;stroke-width:3.5px">${escapeXml(t2)}</text>` : ""}
       <text x="8" y="${t2 ? 48 : 44}" font-size="10" fill="#9a8f7d">${isBonus ? "✦ " + (MECH.has(n.type) ? TYPE_NAME[n.type] : "意外收获") : TYPE_NAME[n.type]}</text>
     </g>`;
   }).join("");
-  // 边路由：起点 y = 分支点选项行 y（layout 算好 portYFrom）；终点 y = 目标接入槽 y（layout.portY）
-  // 预计算 incoming 数组以与 layout.inSlot 同步算 slotIdx
+  // 边路由：横/竖分类决定端口位置
+  //  ——同层（next 链纵向推进）：源节点底中心 → 目标节点顶中心（"屁股"→"头"）
+  //  ——跨层（横向流转）：源节点右侧中心 → 目标节点左侧中心
+  //  机制节点是小圆点，没有"边"，统一用中心点
   const incMap = new Map();
   for (const x of data.edges) { if (!incMap.has(x.to)) incMap.set(x.to, []); incMap.get(x.to).push(x.from); }
+  const byIdE = new Map(data.nodes.map((n) => [n.id, n]));
   const edgeSvg = data.edges.map((e) => {
     const a = L.pos.get(e.from), b = L.pos.get(e.to);
     if (!a || !b) return "";
-    const mechOf = (id) => MECH.has(data.nodes.find((n) => n.id === id)?.type);
-    const x1 = mechOf(e.from) ? a.x + NW / 2 : a.x + NW;
-    const x2 = mechOf(e.to) ? b.x + NW / 2 : b.x;
-    const slotIdx = (incMap.get(e.to) ?? []).indexOf(e.from);
-    const y1 = L.portYFrom(e.from, slotIdx);
-    const y2 = L.portY(e.to, slotIdx);
+    const fromMech = MECH.has(byIdE.get(e.from)?.type);
+    const toMech = MECH.has(byIdE.get(e.to)?.type);
+    const sameLayer = L.layer.get(e.from) === L.layer.get(e.to);
+    const hFrom = nodeH(byIdE.get(e.from));
+    const hTo = nodeH(byIdE.get(e.to));
+    let x1, y1, x2, y2;
+    if (sameLayer && !fromMech && !toMech) {
+      // 同层竖直：源"屁股" → 目标"头"
+      x1 = a.x + NW / 2;
+      y1 = a.y + hFrom;
+      x2 = b.x + NW / 2;
+      y2 = b.y;
+    } else {
+      // 横向流转：右侧中心 → 左侧中心
+      x1 = fromMech ? a.x + NW / 2 : a.x + NW;
+      y1 = a.y + (fromMech ? 28 : hFrom / 2);
+      x2 = toMech ? b.x + NW / 2 : b.x;
+      y2 = b.y + (toMech ? 28 : hTo / 2);
+    }
     const dash = e.kind === "choice" ? "6 4" : e.kind === "next" ? "2 3" : "";
     const col = e.kind === "choice" ? "#d99a4e" : e.kind === "win" ? "#5fa877" : e.kind === "lose" ? "#c05b4d" : "#8a7f6e";
-    const midx = (x1 + x2) / 2;
-    return `<path d="M${x1},${y1} C${midx},${y1} ${midx},${y2} ${x2},${y2}" fill="none" stroke="${col}" stroke-width="1.3" stroke-dasharray="${dash}" opacity="0.9"/>`;
+    // 路径方向分类：同层竖直走直线；跨层走 Z 型正交（竖段在列间通道，避免长斜线穿过节点）
+    let d;
+    if (sameLayer && !fromMech && !toMech) {
+      d = `M${x1},${y1} L${x2},${y2}`;
+    } else {
+      const CH = DX - NW; // 列间通道宽
+      let xm;
+      if (b.x >= a.x + NW) xm = b.x - CH / 2;           // 目标在右：竖段走目标列左通道
+      else if (a.x >= b.x + NW) xm = a.x - CH / 2;      // 目标在左：竖段走源列左通道
+      else xm = (x1 + x2) / 2;                          // 同列兜底
+      d = `M${x1},${y1} L${xm},${y1} L${xm},${y2} L${x2},${y2}`;
+    }
+    return `<path data-from="${e.from}" data-to="${e.to}" d="${d}" fill="none" stroke="${col}" stroke-width="1.4" stroke-dasharray="${dash}" opacity="0.9"/>`;
   }).join("");
-  // 图高 = 最"胖"列（含分支点节点）的总高度（泳道块 + 间隙）+ 收获轨道
+  // 图高：泳道带最底（各泳道带之和）+ 余量
   let maxColH = 0;
   for (const [l, arr] of L.byLayer.entries()) {
     let h = 84;
-    for (const block of L.laneBlocks.get(l) ?? []) {
-      for (const n of block) h += nodeH(n) + 14;
-      h += 80;
-    }
+    for (const n of arr) h += nodeH(n) + 14;
     maxColH = Math.max(maxColH, h);
   }
-  // 泳道背景带 + 视角/尾声标签（多视角剧本：主视角 lane0 + 各 viewpoint/尾声分支泳道）
-  const laneLabel = (li) => {
-    if (li === 0) return `${data.title}`;
-    const v = data.viewpoints?.[li - 1];
-    if (v) return `视角 · ${v.name}`;
-    const sn = L.splitLaneNames?.get(li);
-    return sn ? `尾声 · ${sn}` : `泳道 ${li}`;
-  };
-  const laneRanges = [];
+  // 泳道背景带：按泳道真实 y 范围铺淡金色底（不再画左侧标签文字，保持干净）
+  const laneBounds = [];
   {
     const laneCount = Math.max(0, ...L.laneOf.values()) + 1;
     for (let li = 0; li < laneCount; li++) {
@@ -509,13 +498,14 @@ const scenarioViews = scs.map((sc) => {
       for (const n of data.nodes) {
         if (L.laneOf.get(n.id) !== li) continue;
         const p = L.pos.get(n.id);
-        if (!p || p.bonus) continue;
+        if (!p) continue; // bonus 节点也计入泳道范围（保证所有节点都在泳道带内）
         minY = Math.min(minY, p.y);
         maxY = Math.max(maxY, p.y + nodeH(n));
       }
-      if (minY < Infinity) laneRanges.push({ y0: minY - 14, y1: maxY + 16, label: laneLabel(li) });
+      if (minY < Infinity) laneBounds.push({ minY, maxY });
     }
   }
+  const laneRanges = laneBounds.map((b) => ({ y0: b.minY - 14, y1: b.maxY + 16 }));
   // 收获节点轨道（bonus）在主列下方：每层最多 1-2 个 → 底部 +70 + 轨道高
   let bonusH = 0;
   const bonusCols = new Map();
@@ -524,11 +514,12 @@ const scenarioViews = scs.map((sc) => {
     bonusCols.set(l, (bonusCols.get(l) ?? 0) + 1);
   }
   for (const c of bonusCols.values()) bonusH = Math.max(bonusH, c);
-  const H = maxColH + 60 + (bonusH ? 70 + bonusH * 64 : 0);
+  // 图高：泳道带最底 + 余量（bonus 已计入 laneBounds，故不再重复加）
+  const laneMaxY = Math.max(0, ...laneRanges.map((r) => r.y1));
+  const H = Math.max(maxColH, laneMaxY) + 60;
   const W = (maxL + 2) * DX + 50;
   const laneSvg = laneRanges.map((r) =>
-    `<rect x="0" y="${r.y0}" width="${W}" height="${r.y1 - r.y0}" fill="#d2a44f" fill-opacity="0.045"/>` +
-    `<text x="14" y="${r.y0 + 15}" font-size="11.5" fill="#d2a44f" letter-spacing="3" font-weight="600">${escapeXml(r.label)}</text>`
+    `<rect x="0" y="${r.y0}" width="${W}" height="${r.y1 - r.y0}" fill="#d2a44f" fill-opacity="0.045"/>`
   ).join("");
   const view = { id: data.id, title: data.title, subtitle: data.subtitle, mode: data.mode, startScene: data.startScene, W, H, nodeSvg, actTicks, edgeSvg, laneSvg, nodes: data.nodes, viewpoints: data.viewpoints };
   return view;

@@ -906,15 +906,6 @@ export const shumian: Scenario = {
         {
           text: "不先回营——先去他的军帐。",
           hint: "信人不疑 · 疑人不用",
-          cond: { flag: "trust_hold" },
-          effects: [],
-          next: "a2_meet_xinren",
-        },
-        {
-          // S-3 跨视角旗标：韩信线曾「亲领百骑」接应孤城——晨雾里那队轻骑的为首者，先于军令一步赶到
-          text: "（若韩信曾亲领百骑接应过孤城）——晨雾里那队轻骑的为首者，比任何人都先一步勒马。这一次，他没有让裂缝更深。",
-          hint: "信人不疑 · 他先向你走过来",
-          cond: { flag: "hanxin_personal_rescue" },
           effects: [],
           next: "a2_meet_xinren",
         },
@@ -945,6 +936,24 @@ export const shumian: Scenario = {
   "「用人不疑，疑人不用。」我低声念了一遍。这话是我自己说的——可孤城那夜，我失信了。",
   "帐外的旗，被晨风翻了一角。我想：这笔债，总有一日要还。"
 ],
+      variantLines: [
+        {
+          // S-3 跨视角旗标：韩信线曾「亲领百骑」接应孤城——晨雾里那队轻骑的为首者，先于军令一步赶到
+          cond: { flag: "hanxin_personal_rescue" },
+          lines: [
+            "晨雾里那队轻骑的为首者，比任何人都先一步勒马。",
+            "他不披披风，只带百骑，沿着孤城的方向，摸了一夜的山道——这一次，他没有让裂缝更深。",
+          ],
+        },
+        {
+          // 主公线「信他」承诺的回响：孤城夜疑他，此刻他已在军帐等你
+          cond: { flag: "trust_hold" },
+          lines: [
+            "孤城那夜，我说过「用人不疑，疑人不用」——这句话，如今是他替我守住了。",
+            "信过的人，不必再信第二次。",
+          ],
+        },
+      ],
       effects: [{ setFlag: "xinren_path" }],
       next: "a2_qi_falls",
     },
@@ -1319,13 +1328,12 @@ export const shumian: Scenario = {
         { text: "【入朝】萧何的信，我等了二十年。", hint: "钟室 · 灯已点亮", cond: { flag: "lishi_dead" }, effects: [], next: "end_jogou" },
         { text: "【入朝】兵符已经交出去了。这一趟，是回家。", hint: "良弓未藏 · 善终", cond: { flag: "lishi_alive", flag2: "jiao_bing" }, effects: [], next: "end_lianggong" },
         {
-          text: "【入朝】这顶楚王的冠冕，我当得堂堂正正。",
-          hint: "请封者 · 尽兴而来",
-          cond: { flag: "qing_wang", flag2: "lishi_alive", notFlag: "jiao_bing" },
+          text: "【入朝】齐王——不，该称楚王了。",
+          hint: "我的时代 · 史笔已蘸墨",
+          cond: { flag: "lishi_alive", notFlag: "jiao_bing" },
           effects: [],
           next: "a3_crown",
         },
-        { text: "【入朝】齐王——不，该称楚王了。", hint: "我的时代 · 史笔已蘸墨", cond: { flag: "lishi_alive", notFlag: "jiao_bing" }, effects: [], next: "a3_final" },
       ],
     },
     {
@@ -1339,6 +1347,22 @@ export const shumian: Scenario = {
   "钟鼓响起来。我按剑出门，去看我的国。迎面的风里有水汽、有炊烟，像极了淮阴的春天。",
   "那一年的封诰写得很好看。好看的东西多半留不住——可至少那天，我是笑着把印捧在手上的。"
 ],
+      variantLines: [
+        {
+          cond: { flag: "qing_wang" },
+          lines: [
+            "这顶冠冕，是我自己开口要来的。",
+            "当年齐王鼎下的火，烧到了今天——鼎没有翻，王冠戴稳了。",
+            "满朝都说我韩信贪。贪就贪罢——至少这天下，从此记得，是我韩信，先开口要的。",
+          ],
+        },
+        {
+          lines: [
+            "齐王、楚王——名号是陛下给的，可这身冕旒，是我自己一步步挣来的。",
+            "没开口求过什么。走到今天，也够了。",
+          ],
+        },
+      ],
       next: "a3_final",
     },
     {

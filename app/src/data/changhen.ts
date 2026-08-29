@@ -178,7 +178,7 @@ export const changhen: Scenario = {
   "\r",
   "我把那枚截断白龙的棋子，收回棋盒。棋盒的木纹，被摩挲得发亮。\r"
 ],
-      effects: [{ setFlag: "held_upper_hand" }, { stat: { junchen: 15 } }],
+      effects: [{ stat: { junchen: 15 } }],
       next: "yaoyu",
     },
     {
@@ -338,17 +338,41 @@ export const changhen: Scenario = {
         { cond: { statAtLeast: { shouming: 10 } }, lines: ["「面朝北」三个字，是你自己说完的。", "说完，你竟还笑了一下——父亲当年，大约也是这么说的。"] },
         { lines: ["话断在气里。「面朝北」三个字，只说了两个半。", "殿外，枇杷树的叶子落了一地——来年，大约不会再抽新枝了。"] },
       ],
-      next: "epilogue",
+      choices: [
+        {
+          text: "（削权之局）——司马懿的兵权，你已收回。这最后一子，落给他，也落给这个天下。",
+          hint: "收束 · 削权线",
+          cond: { flag: "cut_sima" },
+          effects: [],
+          next: "epilogue_cut",
+        },
+        {
+          text: "（盟誓之局）——榻前那卷誓书，你已亲手封进金匮。这最后一子，落在信字上。",
+          hint: "收束 · 盟誓线",
+          cond: { flag: "oath_sima" },
+          effects: [],
+          next: "epilogue_oath",
+        },
+        {
+          text: "（托孤之局）——曹爽与司马懿共辅幼主。这最后一子，你以托孤之义相托。",
+          hint: "收束 · 托孤线",
+          cond: { flag: "trust_sima" },
+          effects: [],
+          next: "epilogue_trust",
+        },
+      ],
     },
     {
-      id: "epilogue",
-      title: "尾声",
+      id: "epilogue_cut",
+      title: "尾声 · 削权",
       lines: [
   "史书记：帝崩，太子年幼，托孤于宗室与权臣。\r",
   "\r",
   "没人记下那一夜的枇杷树，落了满地的叶子。\r",
   "\r",
-  "也没人记下，高陵的方向，正对着北方。\r"
+  "也没人记下，高陵的方向，正对着北方。\r",
+  "\r",
+  "只是那道削权的诏书，先于你的遗诏一步，到了辽东。司马懿接诏那日，把印绶解下来，放得很慢——像放下一样拿了一辈子的东西。\r"
 ],
       variantLines: [
         { cond: { statAtLeast: { shouming: 20 } }, lines: ["史官另记一笔：帝崩前夜，那棵枇杷树，开了今年的第一朵花。", "没人看见。它自己开的。"] },
@@ -356,36 +380,71 @@ export const changhen: Scenario = {
       ],
       choices: [
         {
-          text: "（若你削了司马懿的兵权）—— 十年后，庙堂之上再无姓司马的权臣。",
+          text: "（若辽东之役由毋丘俭平下，司马懿的兵权便收得干净）——十年后，庙堂之上再无姓司马的权臣。",
+          hint: "收得干净 · 懿未立功",
           cond: { flag: "cut_sima", flag2: "held_upper_hand" },
           effects: [],
           next: "end_cut",
         },
         {
-          text: "（若你削了司马懿的兵权）—— 可庙堂之外，处处皆是他的门生故吏。",
+          text: "（若辽东之役仍由司马懿平下，兵权便只是换了个名字）——可庙堂之外，处处皆是他的门生故吏。",
+          hint: "收不干净 · 懿立功而归",
           cond: { flag: "cut_sima", flag2: "lost_upper_hand" },
           effects: [],
           next: "end_cut_fail",
         },
+      ],
+    },
+    {
+      id: "epilogue_oath",
+      title: "尾声 · 盟誓",
+      lines: [
+  "史书记：帝崩，太子年幼，托孤于宗室与权臣。\r",
+  "\r",
+  "没人记下那一夜的枇杷树，落了满地的叶子。\r",
+  "\r",
+  "也没人记下，高陵的方向，正对着北方。\r",
+  "\r",
+  "只是金匮里的那卷誓书，是你亲手封的。封口处的蜡，还印着你临终前按下的指痕。\r"
+],
+      variantLines: [
+        { cond: { statAtLeast: { shouming: 20 } }, lines: ["史官另记一笔：帝崩前夜，那棵枇杷树，开了今年的第一朵花。", "没人看见。它自己开的。"] },
+        { lines: ["史官没记的事很多。帝崩那日，枇杷树落尽了叶——来年春天，再没有抽过新枝。"] },
+      ],
+      choices: [
         {
-          text: "（若你们在榻前立过盟）—— 十年后，高平陵起了烽烟——但他先去了趟高陵。",
+          text: "（若司马懿未再立功，盟誓便守得住）——十年后，高平陵起了烽烟——但他先去了趟高陵。",
+          hint: "誓守住了 · 懿未再立功",
           cond: { flag: "oath_sima", flag2: "held_upper_hand" },
           effects: [],
           next: "end_oath",
         },
         {
-          text: "（若你们在榻前立过盟）—— 可金匮里的那卷誓书，不知何时丢了。",
+          text: "（若司马懿功高而归，盟誓便只是一纸空文）——可金匮里的那卷誓书，不知何时丢了。",
+          hint: "誓守不住 · 懿立功而归",
           cond: { flag: "oath_sima", flag2: "lost_upper_hand" },
           effects: [],
           next: "end_oath_broken",
         },
-        {
-          text: "（若你以托孤之义相托）—— 十年后，高平陵的烽烟起了。",
-          cond: { flag: "trust_sima" },
-          effects: [],
-          next: "end_trust",
-        },
       ],
+    },
+    {
+      id: "epilogue_trust",
+      title: "尾声 · 托孤",
+      lines: [
+  "史书记：帝崩，太子年幼，托孤于宗室与权臣。\r",
+  "\r",
+  "没人记下那一夜的枇杷树，落了满地的叶子。\r",
+  "\r",
+  "也没人记下，高陵的方向，正对着北方。\r",
+  "\r",
+  "只是那句托孤的话，你说了两遍——第一遍说给曹爽听，第二遍说给司马懿听。两个人，都听进去了。\r"
+],
+      variantLines: [
+        { cond: { statAtLeast: { shouming: 20 } }, lines: ["史官另记一笔：帝崩前夜，那棵枇杷树，开了今年的第一朵花。", "没人看见。它自己开的。"] },
+        { lines: ["史官没记的事很多。帝崩那日，枇杷树落尽了叶——来年春天，再没有抽过新枝。"] },
+      ],
+      next: "end_trust",
     },
     {
       id: "end_cut",
@@ -828,9 +887,10 @@ export const changhen: Scenario = {
       choices: [
         {
           "text": "遣司马懿——百战老将，兵权给足。",
-          "hint": "能胜 · 懿声望日隆",
+          "hint": "能胜 · 懿声望日隆 · 这一仗后，朝堂再无人压得住他",
           "effects": [
             { "setFlag": "send_sima" },
+            { "setFlag": "lost_upper_hand" },
             {
               "stat": {
                 "junchen": 6,
@@ -842,9 +902,10 @@ export const changhen: Scenario = {
         },
         {
           "text": "遣毋丘俭——宗室旧将，稳妥。",
-          "hint": "防懿 · 或久攻不克",
+          "hint": "防懿 · 或久攻不克 · 懿未立功，朝堂仍是你的朝堂",
           "effects": [
             { "setFlag": "send_wuqiu" },
+            { "setFlag": "held_upper_hand" },
             {
               "stat": {
                 "junchen": -4,

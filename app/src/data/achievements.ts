@@ -38,16 +38,41 @@ const WEAK_CARDS: [string, string][] = [
   ["touming", "t_wen"], ["touming", "t_dun"], ["touming", "t_li"],
 ];
 
+const WEAK_CARD_NAMES: Record<string, string> = {
+  "weak_fuma_c_li_mian": "抬出靠山", "weak_fuma_c_qing_tong": "将心比心", "weak_fuma_c_wei_yamen": "官威压顶",
+  "weak_qiuwei_w_li_guan": "官场人情", "weak_qiuwei_w_qing_tong": "雨中体恤", "weak_qiuwei_w_wei_ning": "冷眼威压",
+  "weak_sichou_r_zhanggui": "账房先生", "weak_sichou_w_li_guan": "官场人情", "weak_sichou_w_qing_tong": "雨中体恤",
+  "weak_xie_x_wen_kuan": "温言宽慰", "weak_xie_x_wei_yin": "隐于夜色", "weak_xie_x_wen_bu": "不动声色",
+  "weak_qinhuai_h_li_zhang": "算利害账", "weak_qinhuai_h_qing_nv": "闺阁叙话", "weak_qinhuai_h_li_yin": "攻心设饵",
+  "weak_jieyu_j_min": "民助城防", "weak_jieyu_j_bi": "避其锋芒", "weak_jieyu_j_hou": "固守反击",
+  "weak_shumian_m_fang": "放其生路", "weak_shumian_m_zun": "全其体面", "weak_shumian_m_wen": "缓图",
+  "weak_changjiang_c_qi_qi": "弃子", "weak_changjiang_c_ben_yi": "弃辎轻进", "weak_changjiang_c_qi_shou": "守拙",
+  "weak_diaolan_d_shou": "按兵不动", "weak_diaolan_d_tui": "断腕求生", "weak_diaolan_d_wen": "步步为营",
+  "weak_changhen_h_yong": "恩宠有加", "weak_changhen_h_fang": "外放夺权", "weak_changhen_h_chi": "急宣回京",
+  "weak_jianfeng_j_qu": "劝降不屠", "weak_jianfeng_jf_shi": "诛心之议", "weak_jianfeng_j_wei": "十倍围之",
+  "weak_xingxing_g_qing_huo": "念念伤员", "weak_xingxing_g_li_zheng": "据理力争", "weak_xingxing_g_li_shi": "陈述实情",
+  "weak_touming_t_wen": "缓言", "weak_touming_t_dun": "据守", "weak_touming_t_li": "算账",
+};
+const SCENARIO_NAMES: Record<string, string> = {
+  fuma: "驸马醉酒杀人案", qiuwei: "江南秋闱舞弊案", sichou: "丝绸通倭案", xie: "谢秀才自燃案",
+  qinhuai: "秦淮河堤秘亡案", jieyu: "劫与烬", shumian: "十面埋伏", changjiang: "不尽长江滚滚流",
+  changhen: "人生长恨水长东", jianfeng: "剑锋之上", xingxing: "星星之火，可以燎原",
+  touming: "投名状", diaolan: "雕栏玉彻朱颜再",
+};
+
 export const ACHIEVEMENTS: AchievementDef[] = [
   // ============ 卡组 · 弱卡点名（39，剧本级） ============
-  ...WEAK_CARDS.map(([sc, cardId]) => ({
-    id: `weak_${sc}_${cardId}`,
-    name: `废卡翻身 · ${cardId}`,
-    cond: `携带「${cardId}」通关剧本 ${sc}（它不弱，是没人用）`,
-    category: "deck" as const,
-    reward: "墨铤 +3",
-    scenario: sc,
-  })),
+  ...WEAK_CARDS.map(([sc, cardId]) => {
+    const cardName = WEAK_CARD_NAMES[`weak_${sc}_${cardId}`] ?? cardId;
+    return {
+      id: `weak_${sc}_${cardId}`,
+      name: `沧海遗珠 · ${cardName}`,
+      cond: `携带「${cardName}」通关剧本 ${SCENARIO_NAMES[sc] ?? sc}（它不弱，是没人用）`,
+      category: "deck" as const,
+      reward: "墨铤 +3",
+      scenario: sc,
+    };
+  }),
 
   // ============ 卡组 · 禁强（8） ============
   { id: "all_common", name: "白衣卿相", cond: "只用凡级卡组赢下一局", category: "deck", hidden: true, reward: "称号「白衣卿相」" },
@@ -84,6 +109,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: "trap_kill", name: "陷阱大师", cond: "隐色陷阱触发反杀获胜", category: "duel", hidden: true, reward: "墨铤 +6" },
   { id: "scout_win", name: "斥候建功", cond: "用刺探看破后获胜", category: "duel", reward: "墨铤 +4" },
   { id: "insider_win", name: "内应得手", cond: "用收买策反后获胜", category: "duel", reward: "墨铤 +4" },
+  { id: "st_changjiang_tuchu_win", name: "血路突围", cond: "不尽长江：太子亲自带队突围，杀出血路", category: "duel", reward: "墨铤 +6", scenario: "changjiang" },
   { id: "win_20", name: "百战不殆", cond: "累计获胜 20 局", category: "duel", reward: "称号「百战之身」" },
   { id: "classic_5", name: "复古棋手", cond: "classic 对局累计获胜 5 次", category: "duel", reward: "墨铤 +6" },
   { id: "retinue_duo", name: "左膀右臂", cond: "带 2 名随从出战并赢下一局", category: "duel", reward: "墨铤 +5" },
@@ -108,7 +134,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: "all_scenarios", name: "全境首通", cond: "13 部剧本各达成至少 1 个结局", category: "collect", reward: "墨铤 +15" },
   { id: "all_cases", name: "五案全破", cond: "五个案件剧本各达成至少一个结局", category: "collect", reward: "墨铤 +10" },
   { id: "story_all", name: "叙事通览", cond: "8 部叙事剧本全部通关", category: "collect", reward: "墨铤 +15" },
-  { id: "hero_letter", name: "信在人在", cond: "传令兵线达成「信在人在」结局", category: "hidden", hidden: true, reward: "墨铤 +8" },
+  { id: "hero_letter", name: "信在人在", cond: "劫与烬：石亨线达成「信在人在」结局", category: "hidden", hidden: true, reward: "墨铤 +8" },
   // ============ stat 博弈成就（结局结算校验 statAtLeast/statAtMost，21 条） ============
   { id: "st_fuma_chaoting60", name: "清名御史", cond: "驸马案：朝望≥60 通关", category: "collect", reward: "墨铤 +8", scenario: "fuma", statAtLeast: { chaoting: 60 } },
   { id: "st_fuma_daoyi35", name: "白手套", cond: "驸马案：道义≤35 通关（B 线圆谎）", category: "hidden", hidden: true, reward: "墨铤 +10", scenario: "fuma", statAtMost: { daoyi: 35 } },
@@ -121,10 +147,16 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: "st_qinhuai_shenwang60", name: "望重江南", cond: "秦淮案：圣望≥60 通关", category: "collect", reward: "墨铤 +8", scenario: "qinhuai", statAtLeast: { shenwang: 60 } },
   { id: "st_jieyu_junwei60", name: "军威赫赫", cond: "劫与烬：军威≥60 通关", category: "collect", reward: "墨铤 +8", scenario: "jieyu", statAtLeast: { junwei: 60 } },
   { id: "st_jieyu_renwen35", name: "孤家寡人", cond: "劫与烬：人心≤35 通关", category: "hidden", hidden: true, reward: "墨铤 +10", scenario: "jieyu", statAtMost: { renwen: 35 } },
+  { id: "st_jieyu_renwen60", name: "一呼百应", cond: "劫与烬：人心≥60 通关（刀下留人/道歉/送冬衣）", category: "collect", reward: "墨铤 +8", scenario: "jieyu", statAtLeast: { renwen: 60 } },
+  { id: "st_jieyu_daoge", name: "倒戈一击", cond: "劫与烬：也先最后一战（德胜门·最后一战）获胜", category: "duel", reward: "墨铤 +6", scenario: "jieyu" },
+  { id: "st_jieyu_wanjing", name: "晚景", cond: "劫与烬：达成「晚景」结局（南迁线·新世界线）", category: "hidden", hidden: true, reward: "墨铤 +10", scenario: "jieyu" },
+  { id: "st_jieyu_shihou", name: "忠国公", cond: "劫与烬：石亨达成「忠国公」结局（夺门线）", category: "hidden", hidden: true, reward: "墨铤 +10", scenario: "jieyu" },
+  { id: "st_jieyu_bingzu", name: "边关老卒", cond: "劫与烬：石亨达成「边关老卒」结局（拒夺门）", category: "hidden", hidden: true, reward: "墨铤 +10", scenario: "jieyu" },
   { id: "st_shumian_junji60", name: "令行禁止", cond: "十面埋伏：军纪≥60 通关", category: "collect", reward: "墨铤 +8", scenario: "shumian", statAtLeast: { junji: 60 } },
   { id: "st_shumian_diye60", name: "三分天下", cond: "十面埋伏（主公）：帝业≥60 通关", category: "collect", reward: "墨铤 +8", scenario: "shumian", statAtLeast: { diye: 60 } },
   { id: "st_changjiang_jungong60", name: "功高震主", cond: "不尽长江：军功≥60 通关", category: "collect", reward: "墨铤 +8", scenario: "changjiang", statAtLeast: { junGong: 60 } },
   { id: "st_changjiang_dixin35", name: "帝心难测", cond: "不尽长江：帝心≤35 通关", category: "hidden", hidden: true, reward: "墨铤 +10", scenario: "changjiang", statAtMost: { dixin: 35 } },
+  { id: "st_changjiang_minxin60", name: "载舟", cond: "不尽长江：民心≥60 通关（水能载舟）", category: "collect", reward: "墨铤 +8", scenario: "changjiang", statAtLeast: { minxin: 60 } },
   { id: "st_diaolan_quanli60", name: "权倾朝野", cond: "雕栏玉彻：权柄≥60 通关", category: "collect", reward: "墨铤 +8", scenario: "diaolan", statAtLeast: { quanli: 60 } },
   { id: "st_diaolan_renmai35", name: "众叛亲离", cond: "雕栏玉彻：人心≤35 通关", category: "hidden", hidden: true, reward: "墨铤 +10", scenario: "diaolan", statAtMost: { renmai: 35 } },
   { id: "st_changhen_junchen60", name: "君臣相得", cond: "长恨：君臣之分≥60 通关", category: "collect", reward: "墨铤 +8", scenario: "changhen", statAtLeast: { junchen: 60 } },
@@ -181,6 +213,10 @@ export function checkDuelAchievements(
   }
   if (layers.every((l) => l !== "资源")) win("no_resource");
   if (ctx.deck.includes("j_min") && ctx.duelId === "d_defense") win("weak_card");
+  // 劫与烬：也先倒戈一击（德胜门 · 最后一战）胜局
+  if (ctx.duelId === "d_daoge") win("st_jieyu_daoge");
+  // 不尽长江：太子突围（d_tuchu）胜局专属成就
+  if (ctx.duelId === "d_tuchu") win("st_changjiang_tuchu_win");
   return out;
 }
 
@@ -227,6 +263,9 @@ export function checkEndingAchievements(
   if (ctx.caseEndsDone >= 5) win("all_cases");
   if (ctx.storyEndsDone >= 8) win("story_all");
   if (ctx.scenarioId === "jieyu" && ctx.endingName === "信在人在") win("hero_letter");
+  if (ctx.scenarioId === "jieyu" && ctx.endingName === "晚景") win("st_jieyu_wanjing");
+  if (ctx.scenarioId === "jieyu" && ctx.endingName === "忠国公") win("st_jieyu_shihou");
+  if (ctx.scenarioId === "jieyu" && ctx.endingName === "边关老卒") win("st_jieyu_bingzu");
   // stat 博弈成就：结局结算时按 statAtLeast/statAtMost 校验（朝望/圣眷/时限等闭环）
   const st = ctx.stats ?? {};
   for (const a of ACHIEVEMENTS) {

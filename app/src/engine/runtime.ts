@@ -83,11 +83,18 @@ export function applyEffects(effects: Effect[] | undefined, st: RunState): void 
     }
     if (e.unlockClue && !st.clues.includes(e.unlockClue)) st.clues.push(e.unlockClue);
     if (e.unlockCard) {
-      if (!st.bag.includes(e.unlockCard)) st.bag.push(e.unlockCard);
-      // 新卡自动进编组（若未满）
-      const sc = cardScenario(st.scenarioId);
-      const limit = sc?.deckLimit ?? 12;
-      if (!st.deck.includes(e.unlockCard) && st.deck.length < limit) st.deck.push(e.unlockCard);
+      // F-6（2026-08-29 审计）：资源卡=银两面额，不入袋不入组，获得即折银——
+      // 旧实现进 bag 并自动入组，占 12 卡组额度、对局中被抽到当 1 点白板牌
+      const card = cardScenario(st.scenarioId)?.cards.find((c) => c.id === e.unlockCard);
+      if ((card?.layer ?? "成术") === "资源") {
+        st.silver += card?.resource ?? 0;
+      } else {
+        if (!st.bag.includes(e.unlockCard)) st.bag.push(e.unlockCard);
+        // 新卡自动进编组（若未满）
+        const sc = cardScenario(st.scenarioId);
+        const limit = sc?.deckLimit ?? 12;
+        if (!st.deck.includes(e.unlockCard) && st.deck.length < limit) st.deck.push(e.unlockCard);
+      }
     }
     if (e.removeCard) {
       st.bag = st.bag.filter((c) => c !== e.removeCard);

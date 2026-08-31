@@ -35,8 +35,10 @@ export default defineConfig({
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'images',
-              // C-6：maxEntries 200 < 全库卡图 ~338 张——提到 400 覆盖完整离线体验（含成就图标/结局图）
-              expiration: { maxEntries: 400, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              // C-6：maxEntries 200 < 全库卡图 ~338 张——提至 400（2026-08-27 审计）。
+              // F-10（2026-08-29 审计）：全库图片实测 644 张（卡 383+结局 93+成就 90+场景 36+立绘 29+封面 13），
+              // 400 仍会 LRU 淘汰，「完整离线」不成立——提至 720 全覆盖 + 余量
+              expiration: { maxEntries: 720, maxAgeSeconds: 60 * 60 * 24 * 30 },
             },
           },
         ],

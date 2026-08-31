@@ -135,10 +135,12 @@ export function initDuel(cfg: DuelConfig, deck: string[], allCards: CardDef[], b
   const bonusQi = passives.reduce((s, p) => s + p.qi, 0);
   // 人物卡不进牌库：开局即场外生效（被动已在上方解析）
   // 局外被动物品（clueReveal / shopPeek 等无 itemEffect）也不进牌库：对局内不可用，抽到即死牌
+  // F-6：资源卡同样不进牌库（老存档 deck 里可能残留，防御性过滤——资源卡翻到即折银，非对局牌）
   const library = rules === "v2" ? shuffleFn(deck.filter((id) => {
     const c = allCards.find((x) => x.id === id);
     const layer = c?.layer ?? "成术";
     if (layer === "人物") return false;
+    if (layer === "资源") return false;
     if (layer === "物品" && !c?.itemEffect) return false;
     return true;
   })) : [];
@@ -211,6 +213,21 @@ export function drawUp(st: DuelState, n: number = 4): void {
       st.library = shuffleFn([...st.discard]);
       st.discard = [];
     }
+    st.hand.push(st.library.shift()!);
+  }
+}
+
+/** F-5：真·抽 n 张（与 drawUp「补至 n 张」不同——手牌越补越多）。
+ *  机制位 drawOnPlay 语义：打出时抽 N 张；牌库抽空自动洗回弃牌堆。 */
+function drawN(st: DuelState, n: number): void {
+  if (st.rules !== "v2") return;
+  for (let i = 0; i < n; i++) {
+    if (st.library.length === 0) {
+      if (st.discard.length === 0) break;
+      st.library = shuffleFn([...st.discard]);
+      st.discard = [];
+    }
+    if (st.library.length === 0) break;
     st.hand.push(st.library.shift()!);
   }
 }
@@ -319,6 +336,11 @@ export function playEmotion(st: DuelState, card: CardDef): boolean {
     if (st.lastResult) st.lastResult.text += "（强牌·掷地有声，共鸣+1）";
   }
   st.buffPower = 0;
+  // F-5：机制位·抽牌（情绪制 v2 同样结算——此前仅压制制实现）
+  if (card.drawOnPlay && st.rules === "v2" && card.drawOnPlay > 0) {
+    drawN(st, card.drawOnPlay);
+    if (st.lastResult) st.lastResult.text += `（抽${card.drawOnPlay}张）`;
+  }
   st.round += 1;
   st.opponentShown = null;
   finishCheck(st, goal);
@@ -536,9 +558,9 @@ export function playPressure(st: DuelState, playerCard: CardDef, oppCardId: stri
     p *= 2;
     selfHarm = 1;
   }
-  // 机制位·抽牌：打出时抽 N 张（v2；每张抽牌卡各自触发一次）
+  // 机制位·抽牌：打出时抽 N 张（v2；每张抽牌卡各自触发一次；情绪制同样生效）
   if (playerCard.drawOnPlay && st.rules === "v2" && playerCard.drawOnPlay > 0) {
-    drawUp(st, playerCard.drawOnPlay);
+    drawN(st, playerCard.drawOnPlay);
   }
   st.lastPlay = { playerCard, oppCard: opp, damage: 0, to: "none", stale, edge, broke };
   st.lastCardId = playerCard.id;

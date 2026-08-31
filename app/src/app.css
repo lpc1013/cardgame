@@ -176,7 +176,7 @@ button { font-family: inherit; }
 .scenario-card:hover { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
 .sc-title { font-size: 22px; color: var(--gold); margin-bottom: 8px; }
 .sc-sub { font-size: 13px; color: var(--ink-dim); }
-.foot-tip { margin-top: 40px; font-size: 12px; color: var(--ink-dim); }
+.foot-tip { margin-top: 40px; font-size: 12px; color: var(--ink-dim); max-width: min(92vw, 640px); text-align: center; } /* F-16：限宽居中，不再钻进左下角进度条下方 */
 .resume-box { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 10px; }
 .link-btn { background: none; border: none; color: var(--ink-dim); font-size: 12px; cursor: pointer; text-decoration: underline; }
 .sell-locked { color: var(--gold); text-decoration: none; opacity: .75; cursor: help; letter-spacing: 1px; }
@@ -242,8 +242,9 @@ button { font-family: inherit; }
 .cover-arrow:hover { border-color: var(--gold); background: rgba(201,168,106,.08); }
 .cover-main {
   position: relative; flex: 0 1 auto; min-height: 0;
-  /* 封面 7:4 原生比例零裁剪：高度约束反推宽度（预留顶栏/预览条/提示行空间） */
-  width: min(100%, calc((100dvh - 230px) * 1.75));
+  /* 封面 7:4 原生比例零裁剪：高度约束反推宽度（预留顶栏/预览条/提示行空间；F-16：预留 230→300，
+     消除 1366×850 等矮视口下标题页 ~60px 纵向溢出滚动条） */
+  width: min(100%, calc((100dvh - 300px) * 1.75));
   aspect-ratio: 7 / 4;
   border: 1px solid var(--line); overflow: hidden; background: var(--panel);
 }
@@ -690,7 +691,7 @@ button { font-family: inherit; }
 .mood-banner .opp-line { margin: 0; font-size: 14px; flex: 1; }
 /* 相克提示行 */
 .edge-hint { font-size: 12px; color: var(--ink-dim); text-align: center; margin: 6px 0 0; }
-.duel-stage { flex: 1; padding: 18px 6px; overflow-y: auto; }
+.duel-stage { flex: 1; min-height: 170px; padding: 18px 6px; overflow-y: auto; }
 .opp-line { color: var(--ink); font-size: 16px; line-height: 1.9; }
 .duel-log { font-size: 14px; line-height: 1.8; margin-top: 10px; }
 .duel-log.match, .duel-log.win { color: #7fae7a; }
@@ -734,7 +735,10 @@ button { font-family: inherit; }
 .gambit-btn.break-器 { border-color: var(--suit-qi); }
 .gambit-btn.break-势 { border-color: var(--suit-shi); }
 .gambit-btn.break-隐 { border-color: var(--suit-yin); }
-.hand { display: grid; grid-template-columns: repeat(auto-fill, minmax(172px, 212px)); gap: 12px; justify-content: center; }
+/* F-2：手牌单行排列——旧 grid minmax(172px,212px) 在 4+ 张时折成两行 283px 高卡，
+   把 .duel-stage 挤压到 ~60px，联动自动滚底把情绪横幅/对手情报/换气全部顶出可视区 */
+.hand { display: flex; flex-wrap: nowrap; gap: 12px; justify-content: center; }
+.hand .play-card { flex: 1 1 0; min-width: 0; max-width: 212px; overflow: hidden; }
 /* 对局手牌：卡体 3:4 竖卡（外部卡牌设计规范 §6.2：1728×2304 主规格，卡面统一竖版）——
    图区弹性填满剩余空间，底部文字区固定高度，object-fit:cover 只压出血区（四边各 12%） */
 .play-card {
@@ -1524,16 +1528,22 @@ button { font-family: inherit; }
   .stat-report { flex-wrap: wrap; gap: 6px 14px; margin: 12px 0; justify-content: flex-start; }
   .story-panel.ending .btn-main { margin-top: 12px; align-self: flex-start; }
 
-  /* ---- 对局：台词/日志区固定像素内滚 + 状态条单行紧凑 ---- */
-  .duel-root { gap: 6px; padding: 8px 12px; padding-left: calc(12px + env(safe-area-inset-left)); padding-right: calc(12px + env(safe-area-inset-right)); }
+  /* ---- 对局：台词/日志区固定像素内滚 + 状态条单行紧凑 ----
+     F-9：duel-root 锁定视口高度、舞台弹性吸收剩余空间——旧布局各段固定高，
+     844×390 实测整页溢出 53px，手牌扇底部被裁、页面级滚动与舞台滚动叠用 */
+  .duel-root { height: 100dvh; overflow: hidden; gap: 6px; padding: 8px 12px; padding-left: calc(12px + env(safe-area-inset-left)); padding-right: calc(12px + env(safe-area-inset-right)); }
   .duel-header { line-height: 1.4; }
   .duel-title { font-size: 15px; }
+  .duel-header .muted { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .duel-status { flex-wrap: nowrap; overflow-x: auto; gap: 12px; white-space: nowrap; padding-bottom: 2px; }
   .duel-status span { font-size: 12px; }
   .duel-status .st-label { font-size: 11px; }
-  .duel-stage { flex: 0 0 auto; max-height: 124px; min-height: 80px; overflow-y: auto; }
+  .duel-stage { flex: 1 1 auto; min-height: 64px; max-height: none; overflow-y: auto; }
   .duel-rule { display: none; }
   .end-turn-btn { min-height: 34px; padding: 6px 14px; font-size: 13px; }
+  .wager-bar { gap: 6px; }
+  .wager-bar .wager-btn { min-height: 32px; padding: 4px 10px; font-size: 12px; }
+  .wager-bar .st-label, .wager-bar .fix-wager-note { font-size: 11px; }
 
   /* ---- 对局手牌：扇形弧排（炉石式）----
      悬浮最上方（.hand-top）= 待出牌：点击/上滑直接出；
@@ -1541,11 +1551,11 @@ button { font-family: inherit; }
   .hand {
     display: flex; justify-content: center; align-items: flex-end;
     position: relative; flex: 0 0 auto;
-    height: 152px; padding: 0 18px 8px;
+    height: 128px; padding: 0 18px 6px;
     overflow: visible;
   }
   .hand .play-card {
-    flex: 0 0 auto; width: 106px;
+    flex: 0 0 auto; width: 96px;
     margin-left: -30px;
     transform-origin: 50% 120%;
     transform: translateY(calc(var(--d) * var(--d) * 5px)) rotate(calc(var(--d) * 5deg));
@@ -1850,10 +1860,13 @@ button { font-family: inherit; }
 }
 .ach-tab.on { border-color: var(--gold); color: var(--gold); background: rgba(210,164,79,.1); }
 .ach-icon { font-size: 14px; min-width: 20px; text-align: center; }
+/* F-13：成就图标缺失时的 SVG 纹章兜底（不再回落 emoji） */
+.ach-seal-svg { width: 22px; height: 22px; display: block; }
+.ach-zoom-art .ach-seal-svg { width: 120px; height: 120px; margin: 0 auto; }
 
 /* 结局进度条（标题页左下角） */
 .end-progress {
-  position: absolute; left: 28px; bottom: 26px; width: 300px; max-width: 40vw;
+  position: absolute; left: 28px; bottom: 44px; width: 300px; max-width: 40vw; /* F-16：上提让出 foot-tip 行高 */
   display: flex; flex-direction: column; gap: 6px; z-index: 3;
 }
 .end-progress-label { font-size: 12px; color: var(--ink-dim); letter-spacing: 1px; }
@@ -2076,3 +2089,91 @@ button { font-family: inherit; }
 /* --- 剧情树：详情浮层兜底 + 图例开关（TreeView 已内联主样式，此处仅保底） --- */
 .tree-detail { border-radius: 8px; }
 .tree-legend-toggle:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* ============================================================
+   卡框体系（2026-08-30）：策 / 势 / 器 / 隐 / 孤 五类
+   v2 · 图片框：assets/frames/frame_{ce,shi,qi,yin,gu}.png（Pillow 程序化生成，
+        720×960 透明中心）——TCard 与对局手牌按「花色→四色框、孤品→孤框」叠
+        <img.card-frame-img>。换框 = 换 assets/frames 下的 PNG，零代码。
+        生成器：scripts/gen_card_frames.py（调参数重跑即可）
+   v1 的 .cframe-* 纯 CSS 框已废弃不再挂载（下方规则保留作无图后备，不会被命中）。
+   ============================================================ */
+.card-frame-img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 6; border-radius: inherit;
+}
+.cframe { position: relative; }
+.cframe::before, .cframe::after {
+  content: ""; position: absolute; inset: 3px;
+  pointer-events: none; z-index: 6; border-radius: inherit;
+}
+
+/* ---- 策 · 青蓝 · 棋枰谋略：细线双框 + 四角小方点（落子感），冷静克制 ---- */
+.cframe-策::before {
+  border: 1px solid rgba(91,143,184,.6);
+  background:
+    linear-gradient(rgba(91,143,184,.95), rgba(91,143,184,.95)) 3px 3px / 5px 5px no-repeat,
+    linear-gradient(rgba(91,143,184,.95), rgba(91,143,184,.95)) calc(100% - 3px) 3px / 5px 5px no-repeat,
+    linear-gradient(rgba(91,143,184,.95), rgba(91,143,184,.95)) 3px calc(100% - 3px) / 5px 5px no-repeat,
+    linear-gradient(rgba(91,143,184,.95), rgba(91,143,184,.95)) calc(100% - 3px) calc(100% - 3px) / 5px 5px no-repeat;
+}
+.cframe-策::after { inset: 7px; border: 1px solid rgba(91,143,184,.22); }
+
+/* ---- 势 · 朱红 · 兵符官印：加厚双框 + 四角 L 形括角，威压感 ---- */
+.cframe-势::before {
+  border: 2px solid rgba(201,107,87,.72);
+  background:
+    linear-gradient(rgba(201,107,87,.95), rgba(201,107,87,.95)) 3px 3px / 16px 3px no-repeat,
+    linear-gradient(rgba(201,107,87,.95), rgba(201,107,87,.95)) 3px 3px / 3px 16px no-repeat,
+    linear-gradient(rgba(201,107,87,.95), rgba(201,107,87,.95)) calc(100% - 3px) 3px / 16px 3px no-repeat,
+    linear-gradient(rgba(201,107,87,.95), rgba(201,107,87,.95)) calc(100% - 3px) 3px / 3px 16px no-repeat,
+    linear-gradient(rgba(201,107,87,.95), rgba(201,107,87,.95)) 3px calc(100% - 3px) / 16px 3px no-repeat,
+    linear-gradient(rgba(201,107,87,.95), rgba(201,107,87,.95)) 3px calc(100% - 3px) / 3px 16px no-repeat,
+    linear-gradient(rgba(201,107,87,.95), rgba(201,107,87,.95)) calc(100% - 3px) calc(100% - 3px) / 16px 3px no-repeat,
+    linear-gradient(rgba(201,107,87,.95), rgba(201,107,87,.95)) calc(100% - 3px) calc(100% - 3px) / 3px 16px no-repeat;
+}
+.cframe-势::after { inset: 7px; border: 1px solid rgba(201,107,87,.28); }
+.cframe-势 { box-shadow: 0 0 10px rgba(201,107,87,.14); }
+
+/* ---- 器 · 鎏金 · 青铜铆钉：细框 + 四角/四边中点铆钉圆点，器物厚重 ---- */
+.cframe-器::before {
+  border: 1px solid rgba(201,161,58,.62);
+  background:
+    radial-gradient(circle, rgba(201,161,58,.95) 0 2px, transparent 2.5px) 5px 5px / 6px 6px no-repeat,
+    radial-gradient(circle, rgba(201,161,58,.95) 0 2px, transparent 2.5px) calc(100% - 5px) 5px / 6px 6px no-repeat,
+    radial-gradient(circle, rgba(201,161,58,.95) 0 2px, transparent 2.5px) 5px calc(100% - 5px) / 6px 6px no-repeat,
+    radial-gradient(circle, rgba(201,161,58,.95) 0 2px, transparent 2.5px) calc(100% - 5px) calc(100% - 5px) / 6px 6px no-repeat,
+    radial-gradient(circle, rgba(201,161,58,.8) 0 2px, transparent 2.5px) 50% 4px / 6px 6px no-repeat,
+    radial-gradient(circle, rgba(201,161,58,.8) 0 2px, transparent 2.5px) 50% calc(100% - 4px) / 6px 6px no-repeat;
+}
+.cframe-器::after { inset: 7px; border: 1px solid rgba(201,161,58,.2); }
+
+/* ---- 隐 · 黛紫 · 雾隐虚线：虚线框 + 内缘雾光，圆角放大，若有若无 ---- */
+.cframe-隐::before {
+  border: 1px dashed rgba(154,114,192,.75);
+  border-radius: 14px;
+  box-shadow: inset 0 0 16px rgba(154,114,192,.16);
+}
+.cframe-隐::after { content: none; }
+
+/* ---- 孤 · 孤品 · 传世孤本：朱砂外框 + 鎏金括角 + 内衬金线，五类中最华丽 ---- */
+.cframe-孤::before {
+  border: 1px solid rgba(224,116,90,.6);
+  background:
+    linear-gradient(#e0b070, #8a5a28) 4px 4px / 20px 2px no-repeat,
+    linear-gradient(#e0b070, #8a5a28) 4px 4px / 2px 20px no-repeat,
+    linear-gradient(#e0b070, #8a5a28) calc(100% - 4px) 4px / 20px 2px no-repeat,
+    linear-gradient(#e0b070, #8a5a28) calc(100% - 4px) 4px / 2px 20px no-repeat,
+    linear-gradient(#e0b070, #8a5a28) 4px calc(100% - 4px) / 20px 2px no-repeat,
+    linear-gradient(#e0b070, #8a5a28) 4px calc(100% - 4px) / 2px 20px no-repeat,
+    linear-gradient(#e0b070, #8a5a28) calc(100% - 4px) calc(100% - 4px) / 20px 2px no-repeat,
+    linear-gradient(#e0b070, #8a5a28) calc(100% - 4px) calc(100% - 4px) / 2px 20px no-repeat,
+    linear-gradient(45deg, rgba(224,176,112,.95) 40%, transparent 42%) 4px 4px / 7px 7px no-repeat,
+    linear-gradient(-45deg, rgba(224,176,112,.95) 40%, transparent 42%) calc(100% - 4px) 4px / 7px 7px no-repeat,
+    linear-gradient(-45deg, rgba(224,176,112,.95) 40%, transparent 42%) 4px calc(100% - 4px) / 7px 7px no-repeat,
+    linear-gradient(45deg, rgba(224,176,112,.95) 40%, transparent 42%) calc(100% - 4px) calc(100% - 4px) / 7px 7px no-repeat;
+}
+.cframe-孤::after {
+  inset: 8px; border: 1.5px solid rgba(224,176,112,.45);
+}
+.cframe-孤 { box-shadow: 0 0 14px rgba(224,116,90,.22); }

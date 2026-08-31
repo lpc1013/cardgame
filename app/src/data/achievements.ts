@@ -59,14 +59,27 @@ const SCENARIO_NAMES: Record<string, string> = {
   changhen: "人生长恨水长东", jianfeng: "剑锋之上", xingxing: "星星之火，可以燎原",
   touming: "投名状", diaolan: "雕栏玉彻朱颜再",
 };
+/** F-14：弱卡成就跨剧本同名（官场人情/雨中体恤在秋闱案与丝绸案各一条）——重名时行名追加剧本短名 */
+const SCENARIO_SHORT: Record<string, string> = {
+  fuma: "驸马案", qiuwei: "秋闱案", sichou: "丝绸案", xie: "灯案", qinhuai: "秦淮案",
+  jieyu: "劫与烬", shumian: "埋伏", changjiang: "长江", diaolan: "雕栏", changhen: "长恨",
+  jianfeng: "剑锋", xingxing: "星火", touming: "投名状",
+};
+const WEAK_NAME_COUNT: Record<string, number> = {};
+for (const [sc, cardId] of WEAK_CARDS) {
+  const nm = WEAK_CARD_NAMES[`weak_${sc}_${cardId}`] ?? cardId;
+  WEAK_NAME_COUNT[nm] = (WEAK_NAME_COUNT[nm] ?? 0) + 1;
+}
 
 export const ACHIEVEMENTS: AchievementDef[] = [
   // ============ 卡组 · 弱卡点名（39，剧本级） ============
   ...WEAK_CARDS.map(([sc, cardId]) => {
     const cardName = WEAK_CARD_NAMES[`weak_${sc}_${cardId}`] ?? cardId;
+    // F-14：跨剧本同名卡（如两案的「官场人情」）行名追加剧本短名，消除同屏重复行的歧义
+    const disp = (WEAK_NAME_COUNT[cardName] ?? 0) > 1 ? `${cardName}（${SCENARIO_SHORT[sc] ?? sc}）` : cardName;
     return {
       id: `weak_${sc}_${cardId}`,
-      name: `沧海遗珠 · ${cardName}`,
+      name: `沧海遗珠 · ${disp}`,
       cond: `携带「${cardName}」通关剧本 ${SCENARIO_NAMES[sc] ?? sc}（它不弱，是没人用）`,
       category: "deck" as const,
       reward: "墨铤 +3",
@@ -105,8 +118,8 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: "last_stand", name: "力挽狂澜", cond: "只剩 1 点气力时赢下一局", category: "duel", reward: "墨铤 +5" },
   { id: "speedy_win", name: "速战速决", cond: "一局 ≤3 回合获胜", category: "duel", reward: "墨铤 +5" },
   { id: "break_ten", name: "破招十连", cond: "累计破招成功 10 次", category: "duel", reward: "墨铤 +8" },
-  { id: "charge_master", name: "蓄势待发", cond: "叠满 2 层蓄势后出牌获胜", category: "duel", reward: "墨铤 +5" },
-  { id: "trap_kill", name: "陷阱大师", cond: "隐色陷阱触发反杀获胜", category: "duel", hidden: true, reward: "墨铤 +6" },
+  { id: "charge_master", name: "蓄势待发", cond: "累计蓄势 5 次（行为成就）", category: "duel", reward: "墨铤 +5" },
+  { id: "trap_kill", name: "陷阱大师", cond: "隐色陷阱触发后赢下一局", category: "duel", hidden: true, reward: "墨铤 +6" },
   { id: "scout_win", name: "斥候建功", cond: "用刺探看破后获胜", category: "duel", reward: "墨铤 +4" },
   { id: "insider_win", name: "内应得手", cond: "用收买策反后获胜", category: "duel", reward: "墨铤 +4" },
   { id: "st_changjiang_tuchu_win", name: "血路突围", cond: "不尽长江：太子亲自带队突围，杀出血路", category: "duel", reward: "墨铤 +6", scenario: "changjiang" },
@@ -166,7 +179,19 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: "st_touming_xinyong35", name: "信用破产", cond: "投名状：信用≤35 通关", category: "hidden", hidden: true, reward: "墨铤 +10", scenario: "touming", statAtMost: { xinyong: 35 } },
 ];
 
-/** 对局胜利时判定（卡组构成 + 形态；行为类走跨局计数由钩子处理） */
+// F-7：卡组构成类成就只在 v2 卡牌系统剧本有判定意义——classic 剧本 deck=剧本全卡集（非玩家可操纵卡组），
+// 会出现「任意胜局自动解锁满编12张」式误发与「弱卡白给」。判定侧按 ctx.v2 门控，文案补标注。
+const V2_ONLY_ACH = new Set([
+  "all_common", "no_relic", "no_person", "no_item", "no_legend", "no_rare", "pure_art", "bare_deck",
+  "mono_ce", "mono_qi", "mono_shi", "mono_yin", "minimal_deck", "full_deck", "dual_suit",
+  "all_qi", "all_ce", "all_shi", "all_yin", "no_resource",
+]);
+for (const a of ACHIEVEMENTS) {
+  if (V2_ONLY_ACH.has(a.id) && !a.cond.includes("v2")) a.cond += "（仅 v2 卡牌剧本）";
+}
+
+/** 对局胜利时判定（卡组构成 + 形态；行为类走跨局计数由钩子处理）
+ *  F-7：ctx.v2=false（classic 剧本）时卡组构成类判定整体跳过——classic 的 deck 是剧本全卡集而非玩家编组 */
 export function checkDuelAchievements(
   ctx: {
     deck: string[];
@@ -178,6 +203,9 @@ export function checkDuelAchievements(
     round: number;
     retinueCount: number;
     duelId?: string;
+    v2?: boolean;
+    /** F-4 门禁补漏：裸卡组（编组全部来自本剧初始卡，无任何外带/随从/奖励卡）——verify 断言抓出的第 7 条无钩子成就 */
+    bareDeck?: boolean;
   },
   owned: Set<string>,
 ): string[] {
@@ -189,29 +217,31 @@ export function checkDuelAchievements(
   if (ctx.hpPlayer === 1) win("last_stand");
   if (ctx.round <= 3) win("speedy_win");
   if (ctx.retinueCount >= 2) win("retinue_duo");
-  // 禁强
-  if (cards.length && cards.every((id) => (ctx.rarityOf?.(id) ?? "凡") === "凡")) win("all_common");
-  if (cards.length && cards.every((id) => (ctx.rarityOf?.(id) ?? "凡") !== "孤品")) win("no_relic");
-  if (cards.length && cards.every((id) => (ctx.layerOf?.(id) ?? "成术") !== "人物")) win("no_person");
-  if (cards.length && cards.every((id) => (ctx.layerOf?.(id) ?? "成术") !== "物品")) win("no_item");
-  if (cards.length && cards.every((id) => ["凡", "良"].includes(ctx.rarityOf?.(id) ?? "凡"))) win("no_legend");
-  if (cards.length && cards.every((id) => (ctx.rarityOf?.(id) ?? "凡") !== "传")) win("no_rare");
-  if (cards.length && cards.every((id) => (ctx.layerOf?.(id) ?? "成术") === "成术")) win("pure_art");
-  // 形态
-  const suits = cards.map((id) => ctx.suitOf?.(id)).filter(Boolean) as string[];
-  const layers = cards.map((id) => ctx.layerOf?.(id) ?? "成术");
+  const v2 = ctx.v2 === true;
+  // 禁强（仅 v2：classic 无编组语义）
+  if (v2 && cards.length && cards.every((id) => (ctx.rarityOf?.(id) ?? "凡") === "凡")) win("all_common");
+  if (v2 && cards.length && cards.every((id) => (ctx.rarityOf?.(id) ?? "凡") !== "孤品")) win("no_relic");
+  if (v2 && cards.length && cards.every((id) => (ctx.layerOf?.(id) ?? "成术") !== "人物")) win("no_person");
+  if (v2 && cards.length && cards.every((id) => (ctx.layerOf?.(id) ?? "成术") !== "物品")) win("no_item");
+  if (v2 && cards.length && cards.every((id) => ["凡", "良"].includes(ctx.rarityOf?.(id) ?? "凡"))) win("no_legend");
+  if (v2 && cards.length && cards.every((id) => (ctx.rarityOf?.(id) ?? "凡") !== "传")) win("no_rare");
+  if (v2 && cards.length && cards.every((id) => (ctx.layerOf?.(id) ?? "成术") === "成术")) win("pure_art");
+  // 形态（仅 v2）
+  const suits = v2 ? cards.map((id) => ctx.suitOf?.(id)).filter(Boolean) as string[] : [];
+  const layers = v2 ? cards.map((id) => ctx.layerOf?.(id) ?? "成术") : [];
   if (suits.length && new Set(suits).size === 1) {
     const s = suits[0]!;
     win(s === "策" ? "mono_ce" : s === "器" ? "mono_qi" : s === "势" ? "mono_shi" : "mono_yin");
   }
-  if (cards.length > 0 && cards.length <= 6) win("minimal_deck");
-  if (cards.length >= 12) win("full_deck");
+  if (v2 && cards.length > 0 && cards.length <= 6) win("minimal_deck");
+  if (v2 && cards.length >= 12) win("full_deck");
   if (suits.length && new Set(suits).size === 2) win("dual_suit");
   if (suits.length && new Set(suits).size === 1) {
     const s = suits[0]!;
     win(s === "策" ? "all_ce" : s === "器" ? "all_qi" : s === "势" ? "all_shi" : "all_yin");
   }
-  if (layers.every((l) => l !== "资源")) win("no_resource");
+  if (v2 && layers.every((l) => l !== "资源")) win("no_resource");
+  if (v2 && ctx.bareDeck) win("bare_deck");
   if (ctx.deck.includes("j_min") && ctx.duelId === "d_defense") win("weak_card");
   // 劫与烬：也先倒戈一击（德胜门 · 最后一战）胜局
   if (ctx.duelId === "d_daoge") win("st_jieyu_daoge");
@@ -220,9 +250,9 @@ export function checkDuelAchievements(
   return out;
 }
 
-/** 小游戏胜利时判定 */
+/** 小游戏胜利时判定（F-4：补 mg_cycle 五艺俱全钩子——五类各胜一次，App 侧按 mg_<type> 计数器汇总传入） */
 export function checkMinigameAchievements(
-  ctx: { type: string; win: boolean; allRight?: boolean; netGain?: number },
+  ctx: { type: string; win: boolean; allRight?: boolean; netGain?: number; fiveArts?: boolean },
   owned: Set<string>,
 ): string[] {
   const out: string[] = [];
@@ -236,10 +266,13 @@ export function checkMinigameAchievements(
   if (id) win(id);
   if (ctx.allRight) win("quiz_all");
   if (ctx.netGain !== undefined && ctx.netGain >= 30) win("paijiu_high");
+  if (ctx.fiveArts) win("mg_cycle");
   return out;
 }
 
-/** 结局结算时判定（剧本级弱卡点名 + 收集 + 隐藏彩蛋 + stat 博弈成就） */
+/** 结局结算时判定（剧本级弱卡点名 + 收集 + 隐藏彩蛋 + stat 博弈成就）
+ *  F-4：补齐此前无判定钩子的六条——album_50/80/100（卡册达成率）、item_5（行囊）、
+ *  all_scenarios（13 部全通）；由 App 在结局结算时计算比率/数量后传入 */
 export function checkEndingAchievements(
   ctx: {
     scenarioId: string;
@@ -249,6 +282,9 @@ export function checkEndingAchievements(
     stats: Record<string, number>;
     caseEndsDone: number;
     storyEndsDone: number;
+    albumRatio?: number;
+    luggageCount?: number;
+    allScenariosDone?: boolean;
   },
   owned: Set<string>,
 ): string[] {
@@ -260,6 +296,11 @@ export function checkEndingAchievements(
   }
   if (ctx.silver >= 100) win("rich_man");
   if (ctx.silver >= 200) win("tycoon");
+  if ((ctx.albumRatio ?? 0) >= 0.5) win("album_50");
+  if ((ctx.albumRatio ?? 0) >= 0.8) win("album_80");
+  if ((ctx.albumRatio ?? 0) >= 1) win("album_100");
+  if ((ctx.luggageCount ?? 0) >= 5) win("item_5");
+  if (ctx.allScenariosDone) win("all_scenarios");
   if (ctx.caseEndsDone >= 5) win("all_cases");
   if (ctx.storyEndsDone >= 8) win("story_all");
   if (ctx.scenarioId === "jieyu" && ctx.endingName === "信在人在") win("hero_letter");

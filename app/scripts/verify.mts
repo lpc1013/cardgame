@@ -513,7 +513,23 @@ for (const sc of ALL) {
     const jieyuSc = ALL.find((s) => s.id === "jieyu");
     if (!jieyuSc?.scenes.some((s) => s.ending?.name === "信在人在")) fail("成就 hero_letter 引用的结局「信在人在」不存在");
   }
-  console.log(`成就审计: ${ACHIEVEMENTS.length} 条定义合法`);
+  // F-4 门禁：每条成就必须至少有一个判定钩子。钩子形态：win("<id>") 字面调用、
+  // 三元/映射表内的第二处字面引用、WEAK_CARDS 循环模板、statAtLeast/Most 通用循环、
+  // 或 App.tsx 行为计数表。缺钩子 = 永久不可达成的幽灵成就（F-4 曾漏检 bare_deck，本断言兜底）。
+  {
+    const { readFileSync } = await import("node:fs");
+    const achSrc = readFileSync(new URL("../src/data/achievements.ts", import.meta.url), "utf-8");
+    const appSrc = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf-8");
+    const noHook = ACHIEVEMENTS.filter((a) => {
+      if (a.id.startsWith("weak_") && a.id !== "weak_card") return !achSrc.includes("win(`weak_${scId}_${cardId}`)");
+      if (a.statAtLeast || a.statAtMost) return !achSrc.includes("win(a.id)");
+      const refs = achSrc.split(`"${a.id}"`).length - 1; // 定义处 1 次 + 其他钩子引用 ≥1
+      if (refs >= 2) return false;
+      return !appSrc.includes(`"${a.id}"`);
+    });
+    if (noHook.length) fail(`成就无判定钩子（永久不可达成）: ${noHook.map((a) => a.id).join(", ")}`);
+  }
+  console.log(`成就审计: ${ACHIEVEMENTS.length} 条定义合法（含钩子可达性断言）`);
 }
 
 // ---------- 番外可达性（A-1 门禁）----------

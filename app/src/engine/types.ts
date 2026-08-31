@@ -157,6 +157,8 @@ export interface DuelConfig {
   gambit?: boolean;
   /** 对手出牌可见性：缺省=案件模式（case）v2 压制局藏牌、其余开牌；"open" 强制明牌，"hidden" 强制藏牌 */
   seeOpp?: "open" | "hidden";
+  /** 战争对局（F-3）：和议之书仅对此类对局生效——审讯/对峙/宫变/截杀不算战争，不得花银买退 */
+  war?: boolean;
   /** 设计性死局（剧情杀）：玩家必败，败后走败线叙事——verify 跳过可胜性穷举（pressure 已天然放行，emotion 豁免） */
   unwinnable?: boolean;
   winScene: string;

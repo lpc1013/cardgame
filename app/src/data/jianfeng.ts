@@ -42,6 +42,7 @@ export const jianfeng: Scenario = {
       id: "d_gucheng",
       gambit: true,
       mode: "pressure",
+      war: true,
       title: "孤城 · 汛期",
       intro: "端午汛潮，连日大雨，上游堤坝告急。护城河十余丈宽，绊马坑、刺桩、火箭、滚油——强攻是拿人命填。但你还有一样他们没有的武器：水。",
       opponent: { name: "孤城", desc: "两千五百守军，数月不降。老人妇孺，皆已被食。" },
@@ -884,7 +885,7 @@ export const jianfeng: Scenario = {
   "\r",
   "我搁下朱笔，看着窗外。\r",
   "\r",
-  "这道命令，将决定此后三年，军中提起\"叛逆\"二字时的脸色。\r"
+  "这道命令，将决定此后三年，军中提起「叛逆」二字时的脸色。\r"
 ],
       choices: [
         {

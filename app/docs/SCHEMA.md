@@ -52,6 +52,8 @@
 | cost | 行动力费用（压制制缺省 1；情绪制不耗行动力；一般不必填） |
 | itemEffect | 物品卡道具效果：`破防/回气/强牌/共鸣/抽牌`（用后本局消耗） |
 | passive | 人物卡被动：`bonusSuit+bonusPower`（花色加点）/ `bonusQi`（气力上限）/ `extraDraw` |
+| trap / trapTrigger | 隐色陷阱卡：效果 `反伤/抵消/蓄锋/落空/借力/回生`；M4 起可配触发条件 `trapTrigger`（缺省 always=对手下一手主攻即触发），可选 `{kind:"oppSuit",suit}` / `{kind:"oppPowerAtLeast",n}` / `{kind:"selfHpBelow",n}`，条件未满足保持盖放不消耗 |
+| topics | M5 情绪制内容化：话题词数组，与本手「话头」（对局 emotionTopics）命中即算接话（花色层照常并行） |
 | resource | 资源卡面额（获得即入钱袋） |
 | price | 市集售价；非卖品不填（引擎默认按 10 两结算）。**显式填 0 = 陈列非卖品**：买/卖均被拒（2026-08-24 审计后补语义） |
 
@@ -81,6 +83,9 @@
 | deck | 玩家可用卡池子集（卡 id 必须存在于卡牌表或本对局 oppCards） |
 | oppCards | 对手专属牌（压制制对手牌在此定义；情绪制不需要） |
 | rules | `classic`（叙事剧本：固定手牌）/ `v2`（案件剧本：牌库抽牌+行动力+道具+被动） |
+| turnSchema | M2 回合制结构：`phased`=交替回合（我方主阶段→对手回合主行动→我方应手）；缺省 `legacy`（按出手推进）。**压制局应填 `phased`**；classic 压制局在 phased 下自动进入轻回合（每回合一个主行动，出完自动交先手） |
+| ai | M3 对手 AI 条件规则集（phased 生效，缺省全开）：`finisherCharge`（蓄力满放杀招）/ `defensiveHpPct`（残血蓄势阈值，0=关闭）/ `counterRepeat`（我方连出同色则宣言破招，缺省随 gambit）/ `oppTraps`（中盘埋伏，缺省开）。**剧情杀（unwinnable）必须配无情 AI**：`{finisherCharge:false, defensiveHpPct:0, counterRepeat:false, oppTraps:false}` |
+| emotionTopics | M5 情绪制话头：按回合索引循环的话题词数组（`[["敲打"],["恩宠"],…]`），与卡牌 topics 求交命中即算接话 |
 | winScene / loseScene | 胜/败去向场景 |
 
 ## 结局判定（verdict，案件模式）
@@ -101,6 +106,14 @@
 | `rules` | `classic` / `v2` | `classic` / `v2` |
 
 `rules: "v2"`（卡牌系统剧本）：卡组洗入牌库（**人物卡不进牌库、开局即场外生效**），起手抽 4，出牌入弃、回合末补至 4；牌库空时洗回弃牌堆；物品卡打出触发 `itemEffect` 并本局消耗。
+
+### 真回合（turnSchema: "phased"，2026-09 duels-v3 起）
+- **回合结构**：我方主阶段（出牌/蓄势/破招宣言/盖放，v2 受行动力约束）→ 结束回合交出先手 → 对手回合主行动（出招/蓄势/盖暗算/宣言破招）→ 我方应手 → 下一回合。
+- **应手**：对手主攻时从手牌选一张成术接招——守方 +1，反击差值减半（保底 1），不引爆发动位（牺牲/抽牌不结算），势牌同享 ×1.5 但不反噬。
+- **轻回合**：classic 压制局自动启用——无手牌无行动力，每回合一个主行动，出完自动交先手；主攻享先手 +1。
+- **陷阱**：伏击对手的主攻（我方盖的在他回合触发，他的暗算在我方主攻时触发）；盖位双方各 1。
+- **数值护栏**：势倍率只作用基础点数（power+被动）；单次交换伤害上限 6（TURN_DAMAGE_CAP）。
+- **verify 门禁**：phased 全合同 BFS + 逐变体穷举 + 首回合极限伤害 ≤6 + 剧情杀 unwinnable 反向断言；新对局数据必须过 `node --experimental-strip-types scripts/verify.mts`。
 
 场景化小游戏（骰宝/棋局残局/宴会行令）的配置字段见 `INTEGRATION.md` §3.3。
 

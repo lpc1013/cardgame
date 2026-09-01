@@ -26,7 +26,7 @@ import { xingxing } from "../src/data/xingxing.ts";
 import { touming } from "../src/data/touming.ts";
 import { BONUS_SCENES } from "../src/data/bonus.ts";
 import type { Scenario, CardDef, Suit } from "../src/engine/types.ts";
-import { initDuel, revealEmotion, playEmotion, playPressure, setDuelShuffle, endTurn, readEmotion, chargeUp, breakMove, RESTRAIN, type DuelState } from "../src/engine/duel.ts";
+import { initDuel, revealEmotion, playEmotion, playPressure, setDuelShuffle, endTurn, readEmotion, chargeUp, breakMove, respondOpponent, RESTRAIN, type DuelState } from "../src/engine/duel.ts";
 
 setDuelShuffle((a) => a);
 const ALL: Scenario[] = [fuma, qiuwei, sichou, xie, qinhuai, jieyu, shumian, changjiang, diaolan, changhen, jianfeng, xingxing, touming];
@@ -101,8 +101,11 @@ function edgesOf(sc: Scenario) {
 const cloneD = (d: DuelState): DuelState => JSON.parse(JSON.stringify(d));
 function stateKey(d: DuelState, handAware: boolean): string {
   const base = `${d.round}|${d.mode === "emotion" ? `${d.rapport},${d.guard},${d.qi}` : `${d.hpPlayer},${d.hpOpponent}`}|${d.finished ?? ""}|${d.lastCardId ?? ""}|${d.ap}|${d.buffPower}|${d.charge}|${d.foresuit ?? ""}|${d.bluffed ? "b" : ""}`;
-  if (!handAware) return base;
-  return `${base}|h:${d.hand.join(",")}|l:${d.library.join(",")}|x:${d.discard.join(",")}|u:${d.usedCards.join(",")}`;
+  // M2 交替回合：相位/回合数/对手意图与蓄力/对手宣言/双方陷阱入键
+  const phased = (d.turnSchema ?? "legacy") === "phased";
+  const turn = phased ? `|T:${d.phase},${d.turnNo},${d.oppIntent?.kind ?? "-"}|oc:${d.oppCharge ?? 0}|of:${d.oppForesuit ?? ""}|ot:${d.oppTrap ? 1 : 0}|pt:${d.trap ? 1 : 0}` : "";
+  if (!handAware) return base + turn;
+  return `${base}${turn}|h:${d.hand.join(",")}|l:${d.library.join(",")}|x:${d.discard.join(",")}|u:${d.usedCards.join(",")}`;
 }
 
 /** 情绪制：真实 UI 合同下的穷举可胜性。
@@ -161,49 +164,87 @@ function emotionCanWin(sc: Scenario, cfg: (typeof sc.duels)[number], loadout: st
   return { win: d.finished === "win", steps: d.round };
 }
 
-/** 压制制：真实 UI 合同下的穷举（出牌 + 换气；博弈局加蓄势/破招×4色） */
+/** 压制制：真实 UI 合同下的穷举（出牌 + 换气；博弈局加蓄势/破招×4色）。
+ *  M2 交替回合：phased 局区分我方主阶段（出牌/蓄势/破招/盖放/结束回合）与对手回合（应手）两个动作面。 */
 function pressureBest(sc: Scenario, cfg: (typeof sc.duels)[number], loadout: string[]): { d: DuelState; line: string[] } | null {
   const co = cardOf(sc, cfg.oppCards);
   const isV2 = cfg.rules === "v2";
+  const phased = (cfg.turnSchema ?? "legacy") === "phased";
   const seen = new Set<string>();
   let best: { d: DuelState; line: string[] } | null = null;
   const q: { d: DuelState; line: string[] }[] = [{ d: initDuel(cfg, loadout, sc.cards), line: [] }];
+  const push = (nd: DuelState, line: string[]) => {
+    const key = stateKey(nd, true);
+    if (!seen.has(key)) { seen.add(key); q.push({ d: nd, line }); }
+  };
   while (q.length) {
-    if (seen.size > 400000) { warn(`对局 ${cfg.id} 压制穷举超状态上限，结果可能不完整`); break; }
+    if (seen.size > 600000) { warn(`对局 ${cfg.id} 压制穷举超状态上限，结果可能不完整`); break; }
     const { d, line } = q.shift()!;
     if (d.finished === "win" && !best) { best = { d, line }; break; }
     if (d.finished) continue;
     const handIds = isV2 ? [...d.hand] : loadout;
     const oppId = cfg.script[d.round % cfg.script.length] ?? cfg.script[0]!;
+    const inOpp = phased && d.phase === "oppTurn";
+    if (inOpp) {
+      // 对手主攻 → 我方应手（成术非陷阱）
+      for (const id of handIds) {
+        const c = co(id);
+        if ((c.layer ?? "成术") !== "成术" || c.trap) continue;
+        const nd = cloneD(d);
+        if (!respondOpponent(nd, c, co)) continue;
+        push(nd, [...line, id]);
+      }
+      continue;
+    }
     for (const id of handIds) {
       const nd = cloneD(d);
       if (!playPressure(nd, co(id), oppId, co)) continue;
-      const key = stateKey(nd, isV2);
-      if (!seen.has(key)) { seen.add(key); q.push({ d: nd, line: [...line, id] }); }
+      push(nd, [...line, id]);
     }
     if (cfg.gambit) {
       const nd = cloneD(d);
-      if (chargeUp(nd, oppId, co)) {
-        const key = stateKey(nd, isV2);
-        if (!seen.has(key)) { seen.add(key); q.push({ d: nd, line: [...line, "(蓄势)"] }); }
-      }
+      if (chargeUp(nd, oppId, co)) push(nd, [...line, "(蓄势)"]);
       if (!d.foresuit) {
         for (const s of SUITS) {
           const nb = cloneD(d);
           if (!breakMove(nb, s, oppId, co)) continue;
-          const key = stateKey(nb, isV2);
-          if (!seen.has(key)) { seen.add(key); q.push({ d: nb, line: [...line, `(破${s})`] }); }
+          push(nb, [...line, `(破${s})`]);
         }
       }
     }
-    if (isV2 && d.ap < 3 && !d.finished) {
+    // 结束回合：legacy v2 在 AP 有余时才值得入队；phased v2 交先手是合法主选择（轻回合由引擎自动交）
+    if (isV2 && !phased && d.ap < 3) {
       const nd = cloneD(d);
       endTurn(nd);
-      const key = stateKey(nd, true);
-      if (!seen.has(key)) { seen.add(key); q.push({ d: nd, line: [...line, "(换气)"] }); }
+      push(nd, [...line, "(换气)"]);
+    } else if (isV2 && phased) {
+      const nd = cloneD(d);
+      endTurn(nd);
+      push(nd, [...line, "(结束回合)"]);
     }
   }
   return best;
+}
+
+/** M1 门禁：首回合极限伤害（蓄势×2 + 最强牌）必须 ≤ TURN_DAMAGE_CAP —— 杜绝蓄势×势 OTK 回潮 */
+function firstTurnMaxDamage(sc: Scenario, cfg: (typeof sc.duels)[number], loadout: string[]): number {
+  const co = cardOf(sc, cfg.oppCards);
+  const tryLine = (withCharge: boolean): number => {
+    const d = initDuel(cfg, loadout, sc.cards);
+    if (withCharge) {
+      if (!chargeUp(d, cfg.script[0]!, co)) return 0;
+      if (!chargeUp(d, cfg.script[0]!, co)) return 0;
+    }
+    const oppId = cfg.script[d.round % cfg.script.length] ?? cfg.script[0]!;
+    const pool = ((cfg.rules === "v2" ? d.hand : loadout).map(id => co(id))).filter(c => !c.trap);
+    const pick = pool.filter(c => c.suit === "势").sort((a, b) => (b.power ?? 0) - (a.power ?? 0))[0]
+      ?? pool.sort((a, b) => (b.power ?? 0) - (a.power ?? 0))[0];
+    if (!pick) return 0;
+    const before = d.hpOpponent;
+    if (!playPressure(d, pick, oppId, co)) return 0;
+    return before - d.hpOpponent;
+  };
+  return Math.max(tryLine(false), cfg.gambit ? tryLine(true) : 0);
 }
 
 for (const sc of ALL) {
@@ -446,11 +487,33 @@ for (const sc of ALL) {
     if (cfg.unwinnable && cfg.gambit) fail(`对局 ${cfg.id} 设计性死局开启了 gambit —— 必败演出不得含押注/破招（W-5 护栏）`);
     const scripts = cfg.scriptVariants?.length ? cfg.scriptVariants : [cfg.script];
     if (!cfg.script.length) { fail(`对局 ${cfg.id} script 为空`); continue; }
+    // M1 门禁：非死局压制局的首回合极限伤害不得超过 TURN_DAMAGE_CAP(6)——蓄势×势 OTK 回潮即红
+    if (cfg.mode === "pressure" && !cfg.unwinnable) {
+      const ftPool = cfg.rules === "v2" ? v2Loadout(sc) : cfg.deck;
+      const maxD = firstTurnMaxDamage(sc, cfg, ftPool);
+      if (maxD > 6) fail(`对局 ${cfg.id} 首回合极限伤害 ${maxD} > 6（TURN_DAMAGE_CAP 门禁）`);
+    }
     for (const id of cfg.deck) if (!sc.cards.find(c => c.id === id) && !cfg.oppCards?.find(c => c.id === id)) fail(`对局 ${cfg.id} deck 引用不存在的卡牌 ${id}`);
     if (cfg.mode === "pressure") for (const s of scripts) for (const id of s) if (!sc.cards.find(c => c.id === id) && !cfg.oppCards?.find(c => c.id === id)) fail(`对局 ${cfg.id} script(变体) 引用不存在的卡牌 ${id}`);
     const vLabel = (i: number) => scripts.length > 1 ? `[变体${i + 1}/${scripts.length}] ` : "";
     if (cfg.mode === "emotion") {
       for (const s of scripts) for (const x of s) if (!SUITS.includes(x as Suit)) fail(`对局 ${cfg.id} 脚本(变体)含非法花色 ${x}`);
+      // M6 策略审计（信息性探针）：「永远反着出」零风险口诀线是否仍在预算内可胜——
+      // 审计第七篇 2.1 的结论回归用例：虚张去周期化后该线应在 goal≥6 局被言力预算封住
+      if (cfg.rules !== "v2" && !cfg.unwinnable) {
+        const d0 = initDuel(cfg, cfg.deck, sc.cards); revealEmotion(d0);
+        let played = 0;
+        while (!d0.finished && played < 12) {
+          const shown = d0.opponentShown!;
+          const counter = (Object.entries(RESTRAIN).find(([, v]) => v === shown)?.[0]) as Suit;
+          const pool = cfg.deck.map(id => sc.cards.find(c => c.id === id)!).filter(c => c && (c.layer ?? "成术") === "成术");
+          const pick = pool.find(c => c.suit === counter);
+          if (!pick || !playEmotion(d0, pick)) break;
+          played++;
+          if (!d0.finished) revealEmotion(d0);
+        }
+        console.log(`    [策略审计] ${cfg.id}: ${d0.finished === "win" ? `零风险口诀线仍可胜（${played}手）` : `零风险口诀线被预算/卡组封住（${played}手）`}`);
+      }
       const pool = cfg.rules === "v2" ? v2Loadout(sc) : cfg.deck;
       for (let vi = 0; vi < scripts.length; vi++) {
         const vc = scripts.length > 1 ? { ...cfg, script: scripts[vi]! } : cfg;

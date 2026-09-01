@@ -48,6 +48,11 @@ export const touming: Scenario = {
       opponent: { name: "老者", desc: "为国举士的老臣，茶壶里煮的是帝王心术。" },
       goal: 5,
       script: ["策", "势", "策", "策", "势", "策", "策"],
+      scriptVariants: [
+      ["策", "势", "策", "策", "势", "策", "策"],
+      ["势", "策", "策", "势", "策", "策", "策"],
+      ["策", "策", "势", "策", "策", "策", "势"]
+      ], // M3 反背板全量部署：轮转变体（verify 逐变体穷举可胜性）
       // A-1 番外钥匙卡：t_ciji（辞疾请辞·策3）/t_yinji（引路灯笼·策2）为 power≤3 弱卡，补入茶局可用牌组——
       // 既补 script 策位花色缺口，又保证携带≥need(2) 胜局可解锁番外「梁家铺子」（touming 全剧本原无任何钥匙卡可达）
       deck: ["t_wen", "t_kuang", "t_li", "t_qing", "t_yuye", "t_haohan", "t_zhenwei", "t_ciji", "t_yinji"],
@@ -63,6 +68,11 @@ export const touming: Scenario = {
       opponent: { name: "李大人", desc: "坐镇苏州的老臣，书卷后藏着一支笑。" },
       goal: 5,
       script: ["策", "策", "势", "策", "策", "策", "势"],
+      scriptVariants: [
+      ["策", "策", "势", "策", "策", "策", "势"],
+      ["策", "势", "策", "策", "策", "势", "策"],
+      ["势", "策", "策", "策", "势", "策", "策"]
+      ], // M3 反背板全量部署：轮转变体（verify 逐变体穷举可胜性）
       deck: ["t_wen", "t_kuang", "t_li", "t_qing", "t_yuye", "t_haohan", "t_zhenwei"],
       winScene: "ch3_li_win",
       loseScene: "ch3_li_lose",
@@ -70,7 +80,10 @@ export const touming: Scenario = {
     {
       id: "d_ambush",
       mode: "pressure",
+      turnSchema: "phased",
       unwinnable: true,
+      // M4：剧情杀专用「无情 AI」——不蓄力不埋伏不宣言，只按脚本出招（死战之局不容情，且保 unwinnable 断言不腐烂）
+      ai: { finisherCharge: false, defensiveHpPct: 0, counterRepeat: false, oppTraps: false },
       title: "梁家铺子 · 截杀",
       intro: "绊马索起，火把四合。二十骑亲兵对上千人伏兵——这一局，本来就没有胜算。",
       opponent: { name: "伏兵", desc: "火把、弓箭、长枪。以及黑暗里看不见的人。" },

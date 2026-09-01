@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef, type ReactNode, type CSSProperties } from "react";
 import type { Scenario, CardDef, Suit } from "./engine/types";
 import { initState, findScene, visibleChoices, applyEffects, registerScenarios, checkCond, resolveSceneLines, type RunState } from "./engine/runtime";
-import { initDuel, revealEmotion, playEmotion, playPressure, endTurn, readEmotion, chargeUp, breakMove, cardCost, duelSpend, DEFAULT_GOAL, type DuelState, type DuelBoosts } from "./engine/duel";
+import { initDuel, revealEmotion, playEmotion, playPressure, endTurn, readEmotion, chargeUp, breakMove, cardCost, duelSpend, respondOpponent, DEFAULT_GOAL, type DuelState, type DuelBoosts } from "./engine/duel";
 import {
   saveGame, loadGame, clearSave, unlockEnding, getGallery, recordTreeVisit, getTree, recordCardsSeen, getCardSeen,
   settleEmpire, spendInk, gainBoost, consumeBoosts, unlockTheme, setTheme as saveTheme, addRetinue, recordWarLoss, buyPeaceDeal, bumpCounter, getCounter, END_MILES, setTotalEnds, getTotalEnds, buyLuggageSlot, exchangeSilver, grantTitle, consumeSpareSilver, claimMile,
@@ -67,13 +67,21 @@ const _END_ART = import.meta.glob("./assets/endings/*.{png,jpg,jpeg}", { eager: 
 /** 成就图标：assets/achievements/ach_<id>.{jpg,png}（无图时 UI 用 SVG 纹章兜底） */
 const _ACH_ART = import.meta.glob("./assets/achievements/*.{png,jpg,jpeg}", { eager: true, import: "default" }) as Record<string, string>;
 const achArt = (id: string) => _ACH_ART[`./assets/achievements/ach_${id}.jpg`] ?? _ACH_ART[`./assets/achievements/ach_${id}.png`];
-/** 五类卡框图（2026-08-30 v2）：颜色=品质——assets/frames/frame_{fan,liang,jing,chuan,gu}.png
- *  按稀有度挂框（凡/良/精/传/孤品），花色不带颜色只靠背景图区分；缺图返回 undefined（不叠框） */
+/** 品质卡框图（颜色=品质）：assets/frames/frame_{fan,liang,jing,chuan,gu}.png
+ *  按稀有度挂框（凡/良/精/传/孤品），缺图返回 undefined（不叠框） */
 const _FRAME_ART = import.meta.glob("./assets/frames/*.png", { eager: true, import: "default" }) as Record<string, string>;
 function frameOf(c: CardDef): string | undefined {
   const m: Record<string, string> = { "凡": "fan", "良": "liang", "精": "jing", "传": "chuan", "孤品": "gu" };
   const key = m[c.rarity ?? "凡"];
   return key ? _FRAME_ART[`./assets/frames/frame_${key}.png`] : undefined;
+}
+/** 类型花纹框（花纹=类型，统一古铜暗调）：assets/frames/frame_suit_{ce,shi,qi,yin,gu}.png
+ *  按花色（策/势/器/隐/孤）挂花纹框，与品质色框双层叠加；缺图返回 undefined（不叠框） */
+function suitFrameOf(suit?: string): string | undefined {
+  if (!suit) return undefined;
+  const m: Record<string, string> = { "策": "ce", "势": "shi", "器": "qi", "隐": "yin", "孤": "gu" };
+  const key = m[suit];
+  return key ? _FRAME_ART[`./assets/frames/frame_suit_${key}.png`] : undefined;
 }
 /** F-13：成就图标缺失时的 SVG 纹章兜底——已达成=金星章，未达成=虚线锁章（U-7 去字化语言，不再回落 emoji） */
 function AchSeal({ on, hidden }: { on: boolean; hidden?: boolean }) {
@@ -367,12 +375,14 @@ function TCard({ c, unknown, onClick, corner, footer, cardCls }: {
   corner?: ReactNode; footer?: ReactNode; cardCls?: string;
 }) {
   const src = cardArt(c.id);
-  // 卡框：图片框（frame_*.png）优先——CSS 框已废弃（app.css 保留作无图后备）
+  // 卡框双层：下层=类型花纹框（古铜暗调，花纹辨类型），上层=品质色框（颜色辨稀有度）
+  const suitFrameSrc = suitFrameOf(c.suit);
   const frameSrc = frameOf(c);
   const cls = `tcard rarity-${c.rarity ?? "凡"} ${c.suit ? `suit-${c.suit}` : ""} ${unknown ? "card-unknown" : ""} ${onClick ? "clickable" : ""} ${cardCls ?? ""}`;
   return (
     <div className={cls} onClick={onClick}>
       <div className="tcard-art">{!unknown && src ? <img src={src} alt={c.name} loading="lazy" /> : null}</div>
+      {suitFrameSrc && <img className="suit-frame-img" src={suitFrameSrc} alt="" aria-hidden="true" />}
       {frameSrc && <img className="card-frame-img" src={frameSrc} alt="" aria-hidden="true" />}
       {c.suit && <SuitGlyph suit={c.suit} />}
       {corner && <span className="tcard-corner">{corner}</span>}
@@ -606,12 +616,13 @@ export default function App() {
         : duel.cfg.loseScene2 && checkCond(duel.cfg.loseScene2.cond, st)
           ? duel.cfg.loseScene2.scene
           : duel.cfg.loseScene;
-      // 押注结算：胜得两倍、败失本金（钳制不为负），随战果一并入账
+      // 押注结算（M1 风控，审计 4.3）：胜 1.6 倍、败失本金；每周目限 3 次——
+      // 旧「两倍+无限次」在对局确定可胜的前提下是无风险双倍返（审计 W-1 同类经济裂缝）
       let base = st;
       if (wager > 0) {
-        const gain = duel.finished === "win" ? wager * 2 : -wager;
-        base = { ...st, silver: Math.max(0, st.silver + gain) };
-        setToast(duel.finished === "win" ? `押注得手：本金 ${wager} 两，连本带利入账 ${wager * 2} 两` : `押注失手，${wager} 两银子打了水漂`);
+        const gain = duel.finished === "win" ? Math.round(wager * 1.6) : -wager;
+        base = { ...st, silver: Math.max(0, st.silver + gain), wagers: (st.wagers ?? 0) + 1 };
+        setToast(duel.finished === "win" ? `押注得手：本金 ${wager} 两，连彩头入账 ${Math.round(wager * 1.6)} 两` : `押注失手，${wager} 两银子打了水漂`);
         setWager(0);
       }
       // 剧本级 usedCards：本剧进过 deck 的卡并入（弱卡点名成就判定依据；与上面的 base 副本合并）
@@ -1210,7 +1221,7 @@ export default function App() {
 
   // ---------- 对局 ----------
   if (phase === "duel" && duel) {
-    return <DuelView sc={sc} duel={duel} setDuel={setDuel} toast={setToast} silver={st?.silver ?? 0} wager={wager} onWager={setWager} />;
+    return <DuelView sc={sc} duel={duel} setDuel={setDuel} toast={setToast} silver={st?.silver ?? 0} wager={wager} onWager={setWager} wagersLeft={3 - (st?.wagers ?? 0)} />;
   }
 
   // ---------- 三选一翻牌 ----------
@@ -1745,10 +1756,12 @@ function ShopView({ sc, st, shop, onLeave, toast }: {
 // ============================================================
 // 对局视图（v2：手牌 / 行动力 / 道具 / 被动；classic：原样）
 // ============================================================
-function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager }: {
+function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft }: {
   sc: Scenario; duel: DuelState; setDuel: (d: DuelState) => void; toast: (m: string) => void;
   silver: number;
   wager: number; onWager: (n: number) => void;
+  /** M1 押注风控：本周目剩余押注次数 */
+  wagersLeft: number;
 }) {
   const cardOf = (id: string): CardDef => {
     const c = sc.cards.find((x) => x.id === id) ?? duel.cfg.oppCards?.find((x) => x.id === id) ?? getGlobalCard(id);
@@ -1758,6 +1771,10 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager }: {
 
   const gambit = !!duel.cfg.gambit;
   const v2 = duel.rules === "v2";
+  /** M2 交替回合：phased=真回合结构；inOppTurn=对手回合（等待我方应手）；light=轻回合（classic 压制局） */
+  const phased = (duel.turnSchema ?? "legacy") === "phased";
+  const inOppTurn = phased && duel.phase === "oppTurn";
+  const light = !!duel.light;
   /** W-2：言力预算（情绪制）——另一 agent 注入 DuelState.yanli/yanliMax；字段不存在（undefined）则隐藏不报错 */
   const duelExtra = duel as DuelState & { yanli?: number; yanliMax?: number };
   const yanliShown = duelExtra.yanli !== undefined && duelExtra.yanliMax !== undefined;
@@ -1791,6 +1808,29 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager }: {
     return mood[duel.opponentShown];
   }, [duel.mode, duel.opponentShown]);
 
+  // M5 对手小动作：情绪制每一手他在做什么（纯质感层，随对局与回合确定性取词——他的"回合"看得见）
+  /** M6 预演用：解析人物被动对该花色的加成（只读，与引擎 suitBonus 同口径） */
+  const suitBonusOf = (d: DuelState, c: CardDef): number => {
+    if (!c.suit) return 0;
+    return (d.passives ?? []).filter((pp) => pp.suit === c.suit).reduce((s, pp) => s + pp.power, 0);
+  };
+
+  const oppActionText = useMemo(() => {
+    if (duel.mode !== "emotion" || duel.finished) return null;
+    let h = 5381;
+    const s = duel.cfg.id + "@" + duel.round;
+    for (let i = 0; i < s.length; i++) h = (Math.imul(h, 33) ^ s.charCodeAt(i)) >>> 0;
+    const acts = [
+      "他呷了口茶，慢慢开口——轮到你接了。",
+      "他指节在案上敲了两下，眼睛望着你。",
+      "他笑了一声，话锋忽然一转。",
+      "他沉默片刻，目光在你脸上停了停。",
+      "他往椅背上一靠，抱起了手臂。",
+      "他抬手止住话头，先问了一句闲话。",
+    ];
+    return acts[h % acts.length]!;
+  }, [duel.mode, duel.finished, duel.cfg.id, duel.round]);
+
   const passiveText = duel.passives.length
     ? duel.passives.map((p) => `${p.suit ? `${p.suit}牌+${p.power}` : ""}${p.qi ? ` 气力上限+${p.qi}` : ""}${p.draw ? ` 多抽${p.draw}` : ""}`.trim()).join("；")
     : null;
@@ -1803,6 +1843,11 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager }: {
     const d = structuredClone(duel);
     if (d.mode === "emotion") {
       if (!d.opponentShown) return;
+      // M1：观X物品在情绪局无消费路径（引擎已拒绝），提前给出人话提示
+      if ((card.layer ?? "成术") === "物品" && (card.itemEffect === "观牌" || card.itemEffect === "观色" || card.itemEffect === "观点")) {
+        toast("对谈局里，这件观牌物件派不上用场——留着压制局再用。");
+        return;
+      }
       const ok = playEmotion(d, card);
       if (!ok) { toast("人物卡是被动，不能打出"); return; }
       const kind = d.lastResult?.kind;
@@ -1812,6 +1857,13 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager }: {
       else if (kind === "win") sfx.win();
       else if (kind === "lose") sfx.lose();
       if (d.finished !== "win") revealEmotion(d);
+    } else if (inOppTurn) {
+      // M2：对手回合——从手牌/整副选一张「应手」接他的主攻（守方+1）
+      if ((card.layer ?? "成术") !== "成术" || card.trap) { toast("物品与陷阱牌做不得应手——出一招成术接他。"); return; }
+      const ok = respondOpponent(d, card, cardOf);
+      if (!ok) { toast("此刻接不下这一手"); return; }
+      if (d.finished) (d.finished === "win" ? sfx.win : sfx.lose)();
+      else sfx.press();
     } else {
       const oppId = d.cfg.script[d.round % d.cfg.script.length] ?? d.cfg.script[0]!;
       const ok = playPressure(d, card, oppId, cardOf);
@@ -1857,7 +1909,7 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager }: {
   };
 
   // ---- 随从动作（刺探/收买，压制制；须携带斥候/内应随从，只消耗次数不耗银两） ----
-  const doSpend = (kind: "scout" | "insider") => {
+  const doSpend = (kind: "scout" | "insider" | "scoutTrap") => {
     const d = structuredClone(duel);
     const r = duelSpend(d, kind);
     if (!r.ok) { toast(r.log ?? "无法行动"); return; }
@@ -1868,9 +1920,9 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager }: {
   };
 
   const handIds = v2 ? duel.hand : duel.cfg.deck;
-  /** 押注窗口：仅开局未出手时可押；选过「不押」后不再追问 */
+  /** 押注窗口：仅开局未出手时可押；选过「不押」后不再追问；M1：每周目限 3 次 */
   const [wagerDismissed, setWagerDismissed] = useState(false);
-  const wagerOpen = gambit && !duel.finished && !wagerDismissed && wager === 0 && duel.round === 0 && !duel.lastResult;
+  const wagerOpen = gambit && !duel.finished && !wagerDismissed && wager === 0 && duel.round === 0 && !duel.lastResult && wagersLeft > 0;
   /** W-6：押注档位随身家浮动——10%/25%/50%，取整到 5 两；F-17：不足 5 两的档位直接不渲染（旧实现渲染成「0 两（不足）」死按钮） */
   const wagerTiers: { pct: number; n: number; ok: boolean }[] = [0.1, 0.25, 0.5]
     .map((pct) => {
@@ -1909,16 +1961,19 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager }: {
           <div className="wager-bar">
             <span className="st-label">押注此局？胜得两倍，败失本金</span>
             {wagerTiers.map(({ pct, n }) => (
-              <button key={pct} className="wager-btn" onClick={() => { sfx.coin(); onWager(n); toast(`押下 ${n} 两——此局胜则入账 ${n * 2} 两`); }}>{n} 两</button>
+              <button key={pct} className="wager-btn" onClick={() => { sfx.coin(); onWager(n); toast(`押下 ${n} 两——此局胜则连彩头入账 ${Math.round(n * 1.6)} 两`); }}>{n} 两</button>
             ))}
             <span className="fix-wager-note muted">档位随身家浮动</span>
             <button className="wager-btn skip" onClick={() => { sfx.choice(); setWagerDismissed(true); }}>不押</button>
           </div>
         )}
-        {wager > 0 && <div className="wager-on muted">已押 {wager} 两 · 胜入 {wager * 2} 两</div>}
+        {wager > 0 && <div className="wager-on muted">已押 {wager} 两 · 胜入 {Math.round(wager * 1.6)} 两</div>}
       </div>
 
       <div className="duel-status">
+        {phased && duel.mode === "pressure" && (
+          <span className="turn-banner"><span className="st-label">回合</span>第 {duel.turnNo ?? 1} 回合 · {inOppTurn ? "对手行动" : "我方行动"}</span>
+        )}
         {duel.mode === "emotion" ? (
           <>
             <span className="rapport-dots">
@@ -1928,7 +1983,7 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager }: {
               ))}
             </span>
             <span><span className="st-label">防备</span>{duel.guard}</span>
-            <span><span className="st-label">气力</span><QiBar cur={duel.qi} max={10} /></span>
+            <span><span className="st-label">气力</span><QiBar cur={duel.qi} max={duel.qiMax ?? 10} /></span>
             {yanliShown && <span><span className="st-label">言力</span>{duelExtra.yanli}/{duelExtra.yanliMax}</span>}
           </>
         ) : (
@@ -1939,7 +1994,9 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager }: {
         )}
         {v2 && duel.mode === "pressure" && <span><span className="st-label">行动力</span>{duel.ap}</span>}
         {duel.mode === "pressure" && duel.charge > 0 && <span><span className="st-label">蓄势</span>{duel.charge} 层（下张+{duel.charge * 2}）</span>}
-        {duel.mode === "pressure" && duel.foresuit && <span><span className="st-label">破招宣言</span>敌出「{duel.foresuit}」</span>}
+        {duel.mode === "pressure" && (duel.oppCharge ?? 0) > 0 && <span className="trap-on"><span className="st-label">敌方蓄势</span>{duel.oppCharge} 层</span>}
+        {duel.mode === "pressure" && (duel.oppForesuit) && <span className="trap-on"><span className="st-label">敌方宣言</span>你必出「{duel.oppForesuit}」——被他押中则该手作废</span>}
+        {duel.mode === "pressure" && duel.foresuit && <span><span className="st-label">破招宣言</span>{inOppTurn ? "其主攻" : "敌出"}「{duel.foresuit}」</span>}
         {duel.mode === "pressure" && duel.trap && <span className="trap-on"><span className="st-label">盖牌</span>「{duel.trap.name}」扣在案上（{duel.trap.effect}）</span>}
         {v2 && <span className="muted">牌库 {duel.library.length} · 手牌 {duel.hand.length} · 弃牌 {duel.discard.length}</span>}
       </div>
@@ -1953,8 +2010,18 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager }: {
           </div>
         )}
         {duel.mode === "emotion" && !duel.opponentShown && moodText && <p className="opp-line">{moodText}</p>}
-        {duel.mode === "pressure" && !v2 && (
-          <p className="opp-line">对手蓄势待发……出牌比点，点高者伤敌；势牌点数翻倍，但反噬自身一点气力。</p>
+        {duel.mode === "emotion" && oppActionText && !duel.finished && <p className="opp-line opp-action">{oppActionText}</p>}
+        {duel.mode === "pressure" && !v2 && !phased && (
+          <p className="opp-line">对手蓄势待发……出牌比点，点高者伤敌；势牌基础点数×1.5（反噬自身一点气力）；单次点差至多伤 6。</p>
+        )}
+        {duel.mode === "pressure" && light && (
+          <p className="opp-line">轻回合：每回合你可走一个主行动（出牌 / 蓄势 / 破招 / 盖放），随后对手行动。你的主攻享先手 +1；他主攻时你选牌「应手」，守方 +1、反击差值减半；单次点差至多伤 6。</p>
+        )}
+        {inOppTurn && duel.oppIntent?.kind === "attack" && (
+          <p className="opp-line opp-attack-turn">
+            他抢攻了——<b>从手牌选一张「应手」接招（守方 +1）</b>。
+            <span className="edge-hint">应手不引发挥牌位与蓄力；盖放中的陷阱会在这一刻发动。</span>
+          </p>
         )}
         {v2 && duel.mode === "pressure" && !oppHidden && !gambit && (
           <p className="opp-line">
@@ -2004,7 +2071,13 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager }: {
           </p>
         )}
         {duel.mode === "emotion" && gambit && duel.opponentShown && (
-          <p className="opp-line gambit-hint">这局他嘴上未必老实——亮出的色可能是虚张，跟错了要撞枪口（气力-2）；拿不准时，可【读牌】验一验（气力-1）。</p>
+          <p className="opp-line gambit-hint">这局他嘴上未必老实——亮出的色十之有三是虚张，跟错了要撞枪口（气力-2）；拿不准时，可【读牌】验一验（气力-1）。</p>
+        )}
+        {phased && duel.oppTrap && !duel.seeTrap && (
+          <p className="opp-line trap-on">他袖手一掩，案下似有异动——你的下一手主攻可能撞上暗算。出张废牌喂掉它，或【刺探·案下】、【揭底】破之。</p>
+        )}
+        {phased && duel.oppTrap && duel.seeTrap && (
+          <p className="opp-line trap-on peek-line">〔刺探〕他的暗算：「{duel.oppTrap.name}」（{duel.oppTrap.effect}）——下一手主攻若撞上便落空。出张废牌喂掉它，或用【揭底】拆了。</p>
         )}
         {gambit && !duel.finished && (
           <div className="gambit-bar">
@@ -2015,9 +2088,9 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager }: {
               </button>
             ) : (
               <>
-                <button className="gambit-btn" disabled={duel.charge >= 2 || (v2 && duel.ap < 1)} onClick={doCharge}>蓄势{duel.charge > 0 && `（${duel.charge}层）`}（下张+2/层{v2 ? "，耗1行动力" : "，硬接敌一招"}）</button>
+                <button className="gambit-btn" disabled={inOppTurn || duel.charge >= 2 || (v2 && duel.ap < 1)} onClick={doCharge}>蓄势{duel.charge > 0 && `（${duel.charge}层）`}（下张+2/层{light ? "，交先手" : v2 ? "，耗1行动力" : "，硬接敌一招"}）</button>
                 {(["策", "器", "势", "隐"] as const).map((s) => (
-                  <button key={s} className={`gambit-btn break-${s} ${knownSuit === s ? "peek-hit" : ""}`} disabled={!!duel.foresuit || (v2 && duel.ap < 1)} onClick={() => doBreak(s)}>破「{s}」</button>
+                  <button key={s} className={`gambit-btn break-${s} ${knownSuit === s ? "peek-hit" : ""}`} disabled={inOppTurn || !!duel.foresuit || (v2 && duel.ap < 1)} onClick={() => doBreak(s)}>{inOppTurn ? "" : "破"}「{s}」{phased && !inOppTurn ? "（宣言其主攻）" : ""}</button>
                 ))}
               </>
             )}
@@ -2028,10 +2101,20 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager }: {
             <span className="retinue-tag" title="随从：斥候看破敌手，内应买通敌阵">
               {duel.retinueNames.join("、")}
             </span>
-            <button className="gambit-btn" disabled={duel.scoutLeft <= 0} onClick={() => doSpend("scout")}>刺探（余 {duel.scoutLeft} 次）</button>
-            <button className="gambit-btn" disabled={duel.insiderLeft <= 0} onClick={() => doSpend("insider")}>收买（余 {duel.insiderLeft} 次）</button>
+            {phased && <>
+              <button className="gambit-btn" disabled={inOppTurn || duel.scoutLeft <= 0} onClick={() => doSpend("scout")}>刺探·下一手（余 {duel.scoutLeft}）</button>
+              <button className="gambit-btn" disabled={inOppTurn || duel.scoutLeft <= 0} onClick={() => doSpend("scoutTrap")}>刺探·案下暗算（余 {duel.scoutLeft}）</button>
+            </>}
+            {!phased && <button className="gambit-btn" disabled={inOppTurn || duel.scoutLeft <= 0} onClick={() => doSpend("scout")}>刺探（余 {duel.scoutLeft} 次）</button>}
+            <button className="gambit-btn" disabled={inOppTurn || duel.insiderLeft <= 0} onClick={() => doSpend("insider")}>收买（余 {duel.insiderLeft} 次）</button>
             {duel.sharedTotal > 0 && <span className="muted">随从合计还可动用 {Math.max(0, duel.sharedTotal - duel.sharedUsed)} 次</span>}
           </div>
+        )}
+        {duel.log && duel.log.length > 0 && (
+          <details className="duel-history">
+            <summary>战报（近 {duel.log.length} 手）</summary>
+            {duel.log.map((l, i) => <p key={i} className={`duel-log hist ${l.kind}`}>「第{l.round + 1}手」{l.text}</p>)}
+          </details>
         )}
         {duel.lastResult && <p className={`duel-log ${duel.lastResult.kind}`}>{duel.lastResult.text}</p>}
         {duel.lastPlay && duel.mode === "pressure" && !duel.lastResult?.kind.includes("item") && (
@@ -2039,26 +2122,61 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager }: {
             {duel.lastPlay.stale && "（招式用老，点数-2！）"}
             {duel.lastPlay.edge === 1 && "（克敌牌色，点数+1）"}
             {duel.lastPlay.edge === -1 && "（被敌牌色所克，点数-1）"}
-            你打出「{duel.lastPlay.playerCard?.name}」（{duel.lastPlay.playerCard?.power}{duel.lastPlay.playerCard?.suit === "势" ? "×2" : ""}{duel.lastPlay.stale ? "-2" : ""}{duel.lastPlay.edge ? (duel.lastPlay.edge > 0 ? "+1" : "-1") : ""}），他打出「{duel.lastPlay.oppCard?.name}」（{duel.lastPlay.oppCard?.power}）——
+            你打出「{duel.lastPlay.playerCard?.name}」（{duel.lastPlay.playerCard?.power}{duel.lastPlay.playerCard?.suit === "势" ? "×1.5" : ""}{duel.lastPlay.stale ? "-2" : ""}{duel.lastPlay.edge ? (duel.lastPlay.edge > 0 ? "+1" : "-1") : ""}），他打出「{duel.lastPlay.oppCard?.name}」（{duel.lastPlay.oppCard?.power}）——
             {duel.lastPlay.to === "o"
               ? `他折了 ${duel.lastPlay.damage} 点气力！`
               : duel.lastPlay.to === "p"
                 ? `你折了 ${duel.lastPlay.damage} 点气力！`
                 : "两败俱伤。"}
+            {duel.lastPlay.selfBroke && "（你的招被他看破了！）"}
+            {duel.lastPlay.trapNote && <span className="trap-on">（{duel.lastPlay.trapNote}）</span>}
           </p>
         )}
         {duel.finished && (
           <p className={`duel-log ${duel.finished}`}>{duel.finished === "win" ? "—— 此局，胜。" : "—— 此局，败。"}</p>
         )}
-        {v2 && !duel.finished && duel.mode === "pressure" && (
-          <button className="btn-main end-turn-btn" onClick={doEndTurn}>换气（结束本回合，补牌+行动力）</button>
+        {v2 && !duel.finished && duel.mode === "pressure" && !inOppTurn && (
+          <button className="btn-main end-turn-btn" onClick={doEndTurn}>{phased ? "结束回合（交出先手——他将有所动作）" : "换气（结束本回合，补牌+行动力）"}</button>
         )}
       </div>
 
       <div className="hand">
         {handIds.map((id, i) => {
+          // M6 结算预演：对手下一手可知（明牌/已洞察）时，卡面直接给出比点预告（引擎为准，此处只读展示）
+          const preview = (() => {
+            if (duel.finished || duel.mode !== "pressure" || !oppNext) return null;
+            const show = !oppHidden || knownLevel === "card";
+            if (!show) return null;
+            const c = cardOf(id);
+            if ((c.layer ?? "成术") !== "成术" || c.trap) return null;
+            const base = (c.power ?? 1) + suitBonusOf(duel, c);
+            let p = base + duel.buffPower + duel.charge * 2;
+            if (c.suit === "势") p = Math.floor(base * 1.5) + (p - base);
+            if (c.suit && oppNext.suit) {
+              if (RESTRAIN_UI[c.suit] === oppNext.suit) p += 1;
+              else if (RESTRAIN_UI[oppNext.suit] === c.suit) p -= 1;
+            }
+            if (c.situational && oppNext.suit === c.situational.suit) p += c.situational.bonus;
+            if (c.sacrifice) p += c.sacrifice * 2;
+            if (duel.lastCardId === c.id) p -= 2;
+            let o = oppNext.power ?? 1;
+            if (inOppTurn) {
+              p += 1; // 守方应手
+              o += (duel.oppCharge ?? 0) * 2;
+              if (p > o) return `≈反伤他${Math.min(Math.max(1, Math.floor((p - o) / 2)), 6)}`;
+              if (o > p) return `≈挡不住（你-${Math.min(o - p, 6)}）`;
+              return "≈平（各-1）";
+            }
+            if (p > o) return `≈伤他${Math.min(p - o, 6)}`;
+            if (o > p) return `≈你损${Math.min(o - p, 6)}`;
+            return "≈平（各-1）";
+          })();
           const c = cardOf(id);
-          const disabled = !!duel.finished || (duel.mode === "emotion" && !duel.opponentShown) || (v2 && duel.mode === "pressure" && duel.ap < cardCost(c));
+          // M2：对手回合手牌=应手候选（只允许成术非陷阱）；我方主阶段维持行动力门槛
+          const disabled = !!duel.finished
+            || (duel.mode === "emotion" && !duel.opponentShown)
+            || (inOppTurn && ((c.layer ?? "成术") !== "成术" || !!c.trap))
+            || (!inOppTurn && v2 && duel.mode === "pressure" && duel.ap < cardCost(c));
           const isChar = (c.layer ?? "成术") === "人物";
           const d = i - (handIds.length - 1) / 2;
           const isTop = raisedId ? raisedId === id : i === centerIdx;
@@ -2084,8 +2202,9 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager }: {
                 <CardBand c={c} extra={v2 && duel.mode === "pressure" ? <span className="cost-tag">费{cardCost(c)}</span> : undefined} />
               </div>
               <div className="pc-text">{c.text}</div>
+              {preview && <div className="pc-preview">{preview}</div>}
               {c.trap && c.suit === "隐" && <div className="pc-power trap-tag">陷阱 · 盖放（{c.trap}）</div>}
-              {c.power !== undefined && !c.trap && <div className="pc-power">点数 {c.power}{c.suit === "势" ? "×2（反噬1）" : ""}</div>}
+              {c.power !== undefined && !c.trap && <div className="pc-power">点数 {c.power}{c.suit === "势" ? "×1.5（反噬1）" : ""}</div>}
               {isChar && <div className="pc-power">被动 · 不可打出</div>}
             </button>
           );
@@ -2097,10 +2216,12 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager }: {
             ? "v2 规则：出牌不耗行动力；打出的牌进弃牌堆，每轮补牌至 4 张。同色=共鸣+1；克色（策克势·势克器·器克隐·隐克策）=破防备；被克=失言气力-2，错色=失言气力-1。"
             : "规则：同色接话=共鸣+1；克色（策克势·势克器·器克隐·隐克策）=破其防备；被克=失言气力-2，错色=失言气力-1。共鸣满则胜，气力尽则败。"
           : v2
-            ? "v2 规则：每牌耗费 1 行动力，点差即伤害；克敌牌色+1、被克-1；势×2反噬1；连出同张「招式用老」-2；物品卡一锤定音。"
-            : "规则：每回合各出一牌比点，点差即伤害；势牌×2但反噬1；连出同一张牌招式用老-2。先打空对方气力者胜。"}
+            ? "v2 规则：每牌耗费 1 行动力，点差即伤害（单次至多 6）；克敌牌色+1、被克-1；势牌基础点×1.5反噬1；连出同张「招式用老」-2；物品卡一锤定音。"
+            : light
+            ? "轻回合规则：每回合一个主行动；主攻先手+1，应手守方+1、反击差减半（保底1）；势牌基础点×1.5（应手不反噬）。"
+            : "规则：每回合各出一牌比点，点差即伤害（单次至多 6）；势牌基础点×1.5但反噬1；连出同一张牌招式用老-2。先打空对方气力者胜。"}
         {gambit && (duel.mode === "emotion"
-          ? " 博弈：对手每三招亮一次假色；【读牌】耗 1 气力验色，虚张则拆穿亮真色。"
+          ? " 博弈：他亮出的色十之有三是虚张（无法由回合数推算）；【读牌】耗 1 气力验色，虚张则拆穿亮真色。"
           : " 博弈：【蓄势】叠蓄力层（上限2，下张每层+2）；【破招】宣言敌招花色，押中则该招作废。")}
       </p>
     </div>
@@ -2330,7 +2451,7 @@ function effectLines(c: CardDef): string[] {
   if (layer === "成术") {
     const bits: string[] = [];
     if (c.suit) bits.push(`花色「${c.suit}」——克「${RESTRAIN_UI[c.suit]}」、被「${Object.entries(RESTRAIN_UI).find(([, v]) => v === c.suit)?.[0]}」克`);
-    if (c.power !== undefined) bits.push(`点数 ${c.power}${c.suit === "势" ? "（×2，反噬 1 气）" : ""}`);
+    if (c.power !== undefined) bits.push(`点数 ${c.power}${c.suit === "势" ? "（基础点×1.5，反噬 1 气）" : ""}`);
     if (c.cost !== undefined) bits.push(`费 ${c.cost} 行动力`);
     if (c.reveal === "card") bits.push("打出后看破对手下一手（全牌）");
     else if (c.reveal === "suit") bits.push("打出后看破对手下一手（花色）");

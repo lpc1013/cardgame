@@ -92,6 +92,11 @@ export const qiuwei: Scenario = {
       opponent: { name: "笑面虎守卫", desc: "面皮白净、笑意温润的底层守卫，整座贡院的「规矩」本身。" },
       goal: 5,
       script: ["策", "势", "策", "隐", "策", "势", "策"],
+      scriptVariants: [
+      ["策", "势", "策", "隐", "策", "势", "策"],
+      ["势", "策", "隐", "策", "势", "策", "策"],
+      ["策", "隐", "策", "势", "策", "策", "势"]
+      ], // M3 反背板全量部署：轮转变体（verify 逐变体穷举可胜性）
       deck: ["w_wei_chi", "w_wei_ning", "w_li_guan", "w_li_yi", "w_qing_tong", "w_qing_jia", "w_li_gui", "w_li_fen"],
       winScene: "d1_win",
       loseScene: "d1_lose",

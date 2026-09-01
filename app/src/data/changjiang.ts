@@ -54,6 +54,11 @@ export const changjiang: Scenario = {
       opponent: { name: "柴将军", desc: "落子慢，从不悔棋。你那个没头没尾的问题，他一直没答。" },
       goal: 5,
       script: ["策", "势", "策", "策", "势", "策", "策"],
+      scriptVariants: [
+      ["策", "势", "策", "策", "势", "策", "策"],
+      ["势", "策", "策", "势", "策", "策", "策"],
+      ["策", "策", "势", "策", "策", "策", "势"]
+      ], // M3 反背板全量部署：轮转变体（verify 逐变体穷举可胜性）
       // A-1 番外钥匙卡：c_jingyi/c_guoshi/c_yulao（power2 弱卡）下发进对局可用牌组，帝王线胜局可解锁番外「渔老夜话」
       deck: ["c_qi_gong", "c_qi_shou", "c_qi_jie", "c_qi_qi", "c_jiangjiao", "c_chenchen", "c_shaijun", "c_jingyi", "c_guoshi", "c_yulao"],
       winScene: "q_win",
@@ -63,12 +68,18 @@ export const changjiang: Scenario = {
       id: "d_junxi",
       gambit: true,
       mode: "pressure",
+      turnSchema: "phased",
       war: true,
       title: "金陵城下 · 围魏救赵",
       intro: "京城被围，回援已来不及。那就——不去。大军反向，直捣敌军腹地，逼他自己退。",
       opponent: { name: "围城敌军主力", desc: "顿兵坚城之下，锐气已堕，最怕后院起火。" },
       hp: { player: 10, opponent: 12 },
       script: ["j_cheng", "j_ying", "j_liang", "j_cheng", "j_ying", "j_liang"],
+      scriptVariants: [
+      ["j_cheng", "j_ying", "j_liang", "j_cheng", "j_ying", "j_liang"],
+      ["j_ying", "j_liang", "j_cheng", "j_ying", "j_liang", "j_cheng"],
+      ["j_liang", "j_cheng", "j_ying", "j_liang", "j_cheng", "j_ying"]
+      ], // M3 反背板全量部署：轮转变体（verify 逐变体穷举可胜性）
       // A-1 番外钥匙卡：c_jingyi/c_guoshi/c_yulao（power2 弱卡）下发进对局可用牌组，剑线胜局可解锁番外「渔老夜话」
       deck: ["c_ben_xi", "c_ben_duan", "c_ben_fu", "c_ben_yi", "c_ben_zhen", "c_jingyi", "c_guoshi", "c_yulao"],
       oppCards: [
@@ -83,12 +94,18 @@ export const changjiang: Scenario = {
       id: "d_tuchu",
       gambit: true,
       mode: "pressure",
+      turnSchema: "phased",
       war: true,
       title: "金陵城下 · 突围",
       intro: "城门在黎明前打开。太子一身玄甲，带着三千亲卫，像一把刀，直插敌阵。",
       opponent: { name: "围城敌军", desc: "顿兵坚城之下，阵脚已散——他们想不到，会有人开门杀出来。" },
       hp: { player: 8, opponent: 12 },
       script: ["j_wei", "j_yun", "j_gong", "j_wei", "j_yun", "j_gong"],
+      scriptVariants: [
+      ["j_wei", "j_yun", "j_gong", "j_wei", "j_yun", "j_gong"],
+      ["j_yun", "j_gong", "j_wei", "j_yun", "j_gong", "j_wei"],
+      ["j_gong", "j_wei", "j_yun", "j_gong", "j_wei", "j_yun"]
+      ], // M3 反背板全量部署：轮转变体（verify 逐变体穷举可胜性）
       deck: ["c_qi_gong", "c_qi_jie", "c_qi_qi", "c_ben_zhen", "c_chenchen", "c_shaijun", "c_jingyi"],
       oppCards: [
         { id: "j_wei", name: "铁壁合围", suit: "势", power: 5, text: "一层一层围上来，像海。", lore: "" },
@@ -107,6 +124,11 @@ export const changjiang: Scenario = {
       opponent: { name: "新帝", desc: "执白。落子比先帝快，悔棋也比先帝快——他还在学。" },
       goal: 5,
       script: ["策", "势", "策", "隐", "器", "策"],
+      scriptVariants: [
+      ["策", "势", "策", "隐", "器", "策"],
+      ["势", "策", "隐", "器", "策", "策"],
+      ["策", "隐", "器", "策", "策", "势"]
+      ], // M3 反背板全量部署：轮转变体（verify 逐变体穷举可胜性）
       deck: ["c_ben_xi", "c_ben_duan", "c_ben_fu", "c_ben_yi"],
       winScene: "ch_weichi_win",
       loseScene: "ch_weichi_lose",

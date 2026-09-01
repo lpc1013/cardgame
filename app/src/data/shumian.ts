@@ -53,12 +53,18 @@ export const shumian: Scenario = {
       id: "d_xinggu",
       gambit: true,
       mode: "pressure",
+      turnSchema: "phased",
       war: true,
       title: "陉谷 · 卸甲之敌",
       intro: "数百精锐只着皮甲，战马解了护胸，散坐谷底——一支主动卸了壳的猛虎，卧在你的陷阱里。战机在瞬息之间。",
       opponent: { name: "卸甲先锋", desc: "无甲胄拖累，动作比重甲在身时快三。" },
       hp: { player: 10, opponent: 12 },
       script: ["g_jie", "g_qiang", "g_jia", "g_jie", "g_qiang", "g_jia"],
+      scriptVariants: [
+      ["g_jie", "g_qiang", "g_jia", "g_jie", "g_qiang", "g_jia"],
+      ["g_qiang", "g_jia", "g_jie", "g_qiang", "g_jia", "g_jie"],
+      ["g_jia", "g_jie", "g_qiang", "g_jia", "g_jie", "g_qiang"]
+      ], // M3 反背板全量部署：轮转变体（verify 逐变体穷举可胜性）
       // A-1 番外钥匙卡：s_yuxin/s_wujiang/s_liangcai（power2 弱卡）下发进对局可用牌组，保证携带≥need 胜局可解锁番外「乌江夜」
       deck: ["m_ji", "m_wen", "m_jue", "m_fang", "m_chong", "s_yuxin", "s_wujiang", "s_liangcai"],
       oppCards: [
@@ -73,12 +79,18 @@ export const shumian: Scenario = {
       id: "d_taopao",
       gambit: true,
       mode: "pressure",
+      turnSchema: "phased",
       war: true,
       title: "夜破 · 亡命西驰",
       intro: "营门被撕开，黑色甲胄的精锐如潮水般咬来——他们的目标，从一开始就是你。马车已备好，只看能不能冲出这条火巷。",
       opponent: { name: "夜袭精锐", desc: "火把连成一条火蛇，笔直朝王帐碾来。" },
       hp: { player: 9, opponent: 13 },
       script: ["y_tu", "y_qiang", "y_huo", "y_tu", "y_qiang", "y_huo"],
+      scriptVariants: [
+      ["y_tu", "y_qiang", "y_huo", "y_tu", "y_qiang", "y_huo"],
+      ["y_qiang", "y_huo", "y_tu", "y_qiang", "y_huo", "y_tu"],
+      ["y_huo", "y_tu", "y_qiang", "y_huo", "y_tu", "y_qiang"]
+      ], // M3 反背板全量部署：轮转变体（verify 逐变体穷举可胜性）
       deck: ["m_shou", "m_tao", "m_wen", "m_fang", "m_chong", "s_yuxin", "s_wujiang", "s_liangcai"],
       oppCards: [
         { id: "y_tu", name: "甲士冲杀", suit: "器", power: 5, text: "兵刃相撞的脆响一路朝王帐碾来。", lore: "" },
@@ -97,6 +109,11 @@ export const shumian: Scenario = {
       opponent: { name: "楚军军心", desc: "饿了三日、渴了两日，依旧按鼓点换岗的疲惫之师。" },
       goal: 5,
       script: ["势", "策", "势", "策", "势", "策", "势"],
+      scriptVariants: [
+      ["势", "策", "势", "策", "势", "策", "势"],
+      ["策", "势", "策", "势", "策", "势", "势"],
+      ["势", "策", "势", "策", "势", "势", "策"]
+      ], // M3 反背板全量部署：轮转变体（verify 逐变体穷举可胜性）
       // A-1 番外钥匙卡：s_yuxin/s_wujiang/s_liangcai（power2 弱卡）下发进对局可用牌组，保证携带≥need 胜局可解锁番外「乌江夜」；
       // m_chong（势）为 W-2 言力预算（情绪制限 8 次出牌）下的可胜性兜底——纯策/器/隐池在 8 步内凑不满 5 共鸣
       deck: ["m_ge", "m_hao", "m_jiang", "m_zun", "m_chong", "s_yuxin", "s_wujiang", "s_liangcai"],
@@ -106,8 +123,11 @@ export const shumian: Scenario = {
     {
       id: "d_baiyu",
       mode: "pressure",
+      turnSchema: "phased",
       war: true,
       unwinnable: true,
+      // M4：剧情杀专用「无情 AI」——不蓄力不埋伏不宣言，只按脚本出招（死战之局不容情，且保 unwinnable 断言不腐烂）
+      ai: { finisherCharge: false, defensiveHpPct: 0, counterRepeat: false, oppTraps: false },
       title: "彭城故道 · 遇霸王",
       intro: "项羽亲率精骑三千，截我归路。列阵已毕，马蹄声起——这一战，正面是打不赢的。",
       opponent: { name: "项羽", desc: "西楚霸王。三万精骑破汉军五十万的传说，就在他手上。" },
@@ -125,8 +145,11 @@ export const shumian: Scenario = {
     {
       id: "d_tuoxiang",
       mode: "pressure",
+      turnSchema: "phased",
       war: true,
       unwinnable: true,
+      // M4：剧情杀专用「无情 AI」——不蓄力不埋伏不宣言，只按脚本出招（死战之局不容情，且保 unwinnable 断言不腐烂）
+      ai: { finisherCharge: false, defensiveHpPct: 0, counterRepeat: false, oppTraps: false },
       title: "荥阳城外 · 拖",
       intro: "项羽亲统大军压境。正面迎上去是送死——这一仗，不打胜，打拖。",
       opponent: { name: "项羽大军", desc: "彭城之败后，汉军见项字旗而胆寒。" },
@@ -144,8 +167,11 @@ export const shumian: Scenario = {
     {
       id: "d_guling",
       mode: "pressure",
+      turnSchema: "phased",
       war: true,
       unwinnable: true,
+      // M4：剧情杀专用「无情 AI」——不蓄力不埋伏不宣言，只按脚本出招（死战之局不容情，且保 unwinnable 断言不腐烂）
+      ai: { finisherCharge: false, defensiveHpPct: 0, counterRepeat: false, oppTraps: false },
       title: "固陵 · 反手一击",
       intro: "和约墨迹未干，我已在追击的路上。张良说：此时不击，遗患无穷。可追到固陵，来的只有项羽——韩信没来，彭越也没来。",
       opponent: { name: "项羽", desc: "三万精骑破汉军五十万的西楚霸王。这一次，他是回头咬人的猛虎。" },

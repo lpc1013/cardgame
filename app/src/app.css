@@ -2091,13 +2091,28 @@ button { font-family: inherit; }
 .tree-legend-toggle:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
 /* ============================================================
-   卡框体系（2026-08-30）：策 / 势 / 器 / 隐 / 孤 五类
-   v2 · 图片框：assets/frames/frame_{ce,shi,qi,yin,gu}.png（Pillow 程序化生成，
-        720×960 透明中心）——TCard 与对局手牌按「花色→四色框、孤品→孤框」叠
-        <img.card-frame-img>。换框 = 换 assets/frames 下的 PNG，零代码。
-        生成器：scripts/gen_card_frames.py（调参数重跑即可）
-   v1 的 .cframe-* 纯 CSS 框已废弃不再挂载（下方规则保留作无图后备，不会被命中）。
+   卡框体系（2026-09-01 v3 · 双轴双层）：
+   下层 · 类型花纹框：frame_suit_{ce,shi,qi,yin,gu}.png（AI 生成 + Pillow 合成圆章，
+        统一古铜暗调，花纹辨类型，圆章凸出左上）——<img.suit-frame-img>
+   上层 · 品质色框：frame_{fan,liang,jing,chuan,gu}.png（Pillow 程序化生成，
+        颜色辨稀有度）——<img.card-frame-img>
+   换框 = 换 assets/frames 下的 PNG，零代码。
+   合成器：scripts/compose_suit_frames.py（调参数重跑即可）
    ============================================================ */
+.suit-frame-img {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  /* 圆章凸出左上，允许溢出显示 */
+  transform: translate(-3.7%, -3%);
+  pointer-events: none; z-index: 5; border-radius: inherit;
+  /* 花纹框不参与品质上色，保持古铜暗调 */
+  mix-blend-mode: normal;
+}
+/* 图鉴/背包的 tcard 需要允许左上溢出显示圆章 */
+.tcard { overflow: visible; }
+.tcard > .tcard-art { overflow: hidden; }
+
 .card-frame-img {
   position: absolute; inset: 0; width: 100%; height: 100%;
   pointer-events: none; z-index: 6; border-radius: inherit;
@@ -2177,3 +2192,14 @@ button { font-family: inherit; }
   inset: 8px; border: 1.5px solid rgba(224,176,112,.45);
 }
 .cframe-孤 { box-shadow: 0 0 14px rgba(224,116,90,.22); }
+
+/* ---- M2/M6 对战玩法重生：回合横幅 / 应手提示 / 小动作 / 预演 / 战报历史 ---- */
+.turn-banner { color: var(--gold); font-size: 13px; letter-spacing: 1px; }
+.turn-banner .st-label { margin-right: 6px; }
+.opp-attack-turn { color: #d9a05a; }
+.opp-attack-turn b { color: var(--gold); }
+.opp-action { color: #8a8375; font-size: 13px; }
+.pc-preview { font-size: 12px; color: var(--gold); border-top: 1px dashed rgba(190,160,90,.35); margin-top: 4px; padding-top: 3px; }
+.duel-history { font-size: 12px; color: #9a927f; margin-top: 6px; }
+.duel-history summary { cursor: pointer; color: #b0a88f; }
+.duel-history .duel-log.hist { font-size: 12px; margin: 2px 0; opacity: .85; }

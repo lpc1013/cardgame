@@ -50,6 +50,7 @@ export const jieyu: Scenario = {
     {
       id: "d_defense",
       mode: "pressure",
+      turnSchema: "phased",
       title: "德胜门 · 守城",
       intro: "瓦剌铁骑压城，箭如飞蝗，云梯蚁附，骑兵分路冲击九门。七日，用血肉填。",
       opponent: { name: "也先大军", desc: "黑纛狂舞，弯刀映着沙尘。" },
@@ -74,11 +75,14 @@ export const jieyu: Scenario = {
     {
       id: "d_deliver",
       mode: "pressure",
+      turnSchema: "phased",
       unwinnable: true,
+      // M4：剧情杀专用「无情 AI」——不蓄力不埋伏不宣言，只按脚本出招（死战之局不容情，且保 unwinnable 断言不腐烂）
+      ai: { finisherCharge: false, defensiveHpPct: 0, counterRepeat: false, oppTraps: false },
       title: "官道 · 五日驰援",
       intro: "二十骑，一封蜡封密信，从京师到河北。遇敌只突围，不恋战——撑到总兵府就是胜。",
       opponent: { name: "瓦剌游骑", desc: "十几人一队的散骑，四处游弋截杀。" },
-      hp: { player: 9, opponent: 16 },
+      hp: { player: 7, opponent: 20 }, // M2 调参：轻回合经济下重设剧情杀防线（原 9/16 被守方应手+先手加成打穿）
       script: ["w_you", "w_fu", "w_you", "w_he", "w_fu", "w_you", "w_he", "w_fu"],
       deck: ["j_ben", "j_bi", "j_sheng", "j_yuan"],
       oppCards: [
@@ -92,6 +96,7 @@ export const jieyu: Scenario = {
     {
       id: "d_deliver_fast",
       mode: "pressure",
+      turnSchema: "phased",
       title: "官道 · 单骑突围",
       intro: "只剩一骑。前方三十里是总兵府——追兵咬在身后，密信在怀里，还是热的。",
       opponent: { name: "瓦剌游骑", desc: "数骑散骑，缠着你不放。" },
@@ -114,6 +119,11 @@ export const jieyu: Scenario = {
       opponent: { name: "南迁派百官", desc: "「天命已去，唯南迁可以避祸。」" },
       goal: 5,
       script: ["策", "势", "策", "策", "势", "策", "策"],
+      scriptVariants: [
+      ["策", "势", "策", "策", "势", "策", "策"],
+      ["势", "策", "策", "势", "策", "策", "策"],
+      ["策", "策", "势", "策", "策", "策", "势"]
+      ], // M3 反背板全量部署：轮转变体（verify 逐变体穷举可胜性）
       deck: ["j_jue", "j_nai", "j_ren", "j_yuan"],
       winScene: "p3_win",
       loseScene: "p3_lose",
@@ -127,6 +137,11 @@ export const jieyu: Scenario = {
       opponent: { name: "也先先锋", desc: "他们已经登上了城墙。他们登不上的是人心。" },
       goal: 6,
       script: ["势", "器", "势", "隐", "器", "势"],
+      scriptVariants: [
+      ["势", "器", "势", "隐", "器", "势"],
+      ["器", "势", "隐", "器", "势", "势"],
+      ["势", "隐", "器", "势", "势", "器"]
+      ], // M3 反背板全量部署：轮转变体（verify 逐变体穷举可胜性）
       deck: ["j_hou", "j_tu", "j_yuan", "j_min", "j_shi", "j_ling", "j_lei", "j_gucheng", "j_haojiao", "j_xuncheng"],
       winScene: "end_bancheng",
       loseScene: "end_withcity",
@@ -140,6 +155,11 @@ export const jieyu: Scenario = {
       opponent: { name: "也先铁骑", desc: "退兵前的孤注一掷。他们不信，一座城能挡住他们两回。" },
       goal: 6,
       script: ["势", "器", "势", "隐", "器", "势", "隐"],
+      scriptVariants: [
+      ["势", "器", "势", "隐", "器", "势", "隐"],
+      ["器", "势", "隐", "器", "势", "隐", "势"],
+      ["势", "隐", "器", "势", "隐", "势", "器"]
+      ], // M3 反背板全量部署：轮转变体（verify 逐变体穷举可胜性）
       deck: ["j_hou", "j_tu", "j_yuan", "j_min", "j_shi", "j_ling", "j_lei", "j_gucheng", "j_haojiao", "j_xuncheng"],
       winScene: "ru_qinggong",
       loseScene: "end_withcity",
@@ -153,6 +173,11 @@ export const jieyu: Scenario = {
       opponent: { name: "徐珵与南迁派", desc: "「天命已去，惟南迁可以纾难！」" },
       goal: 5,
       script: ["策", "势", "策", "策", "势", "策", "策"],
+      scriptVariants: [
+      ["策", "势", "策", "策", "势", "策", "策"],
+      ["势", "策", "策", "势", "策", "策", "策"],
+      ["策", "策", "势", "策", "策", "策", "势"]
+      ], // M3 反背板全量部署：轮转变体（verify 逐变体穷举可胜性）
       deck: ["j_shi", "j_ling", "j_sheji", "j_lei", "j_gucheng", "j_haojiao", "j_xuncheng", "j_shoujiu", "j_hou", "j_tu"],
       winScene: "ru_daoge_nan",
       loseScene: "end_wumen",
@@ -166,6 +191,11 @@ export const jieyu: Scenario = {
       opponent: { name: "也先铁骑", desc: "退兵前的孤注一掷。而你，连他们从哪边来都不知道。" },
       goal: 6,
       script: ["势", "器", "势", "隐", "器", "势", "隐", "器"],
+      scriptVariants: [
+      ["势", "器", "势", "隐", "器", "势", "隐", "器"],
+      ["器", "势", "隐", "器", "势", "隐", "器", "势"],
+      ["势", "隐", "器", "势", "隐", "器", "势", "器"]
+      ], // M3 反背板全量部署：轮转变体（verify 逐变体穷举可胜性）
       deck: ["j_hou", "j_tu", "j_yuan", "j_min", "j_shi", "j_ling", "j_lei", "j_gucheng", "j_haojiao", "j_xuncheng"],
       winScene: "end_wanjing",
       loseScene: "end_withcity",

@@ -42,12 +42,18 @@ export const jianfeng: Scenario = {
       id: "d_gucheng",
       gambit: true,
       mode: "pressure",
+      turnSchema: "phased",
       war: true,
       title: "孤城 · 汛期",
       intro: "端午汛潮，连日大雨，上游堤坝告急。护城河十余丈宽，绊马坑、刺桩、火箭、滚油——强攻是拿人命填。但你还有一样他们没有的武器：水。",
       opponent: { name: "孤城", desc: "两千五百守军，数月不降。老人妇孺，皆已被食。" },
       hp: { player: 10, opponent: 12 },
       script: ["u_qiang", "u_jian", "u_you", "u_qiang", "u_jian", "u_you"],
+      scriptVariants: [
+      ["u_qiang", "u_jian", "u_you", "u_qiang", "u_jian", "u_you"],
+      ["u_jian", "u_you", "u_qiang", "u_jian", "u_you", "u_qiang"],
+      ["u_you", "u_qiang", "u_jian", "u_you", "u_qiang", "u_jian"]
+      ], // M3 反背板全量部署：轮转变体（verify 逐变体穷举可胜性）
       // A-1 番外钥匙卡：jf_junzhou/jf_chengzhou/jf_dongwu（power2 弱卡）下发进对局可用牌组，胜局可解锁番外「暗室密议」
       deck: ["j_hong", "j_wei", "j_qu", "jf_shi", "j_quan", "j_ye", "jf_junzhou", "jf_chengzhou", "jf_dongwu"],
       oppCards: [

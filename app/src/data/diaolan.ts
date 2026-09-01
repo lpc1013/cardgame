@@ -39,11 +39,14 @@ export const diaolan: Scenario = {
     {
       id: "d_piancoup",
       mode: "pressure",
+      turnSchema: "phased",
       unwinnable: true,
+      // M4：剧情杀专用「无情 AI」——不蓄力不埋伏不宣言，只按脚本出招（死战之局不容情，且保 unwinnable 断言不腐烂）
+      ai: { finisherCharge: false, defensiveHpPct: 0, counterRepeat: false, oppTraps: false },
       title: "政变之夜 · 九门",
       intro: "旅贲军已动，京兆尹封了西市。龙武军与右骁卫的立场，是今夜唯一的变数。",
       opponent: { name: "朱将军亲军", desc: "肥头大耳的将军豢养的死士，正从四面八方涌来。" },
-      hp: { player: 9, opponent: 12 },
+      hp: { player: 7, opponent: 14 }, // M2 调参：轻回合经济下重设剧情杀防线（原 9/12 被穷举打穿）
       script: ["z_men", "z_sha", "z_huo", "z_men", "z_sha", "z_huo"],
       // A-1 番外钥匙卡：d_duanbi/d_manshu/d_tui（power2 弱卡）下发进对局可用牌组（本局为设计性死局，钥匙卡入组以满足数据可达）
       deck: ["d_zhen", "d_wen", "d_shou", "d_en", "d_duanbi", "d_manshu", "d_tui"],

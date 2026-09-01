@@ -49,6 +49,11 @@ export const xingxing: Scenario = {
       opponent: { name: "委员", desc: "深夜伏案的人。白天刚跟军长拍过桌子。" },
       goal: 5,
       script: ["势", "策", "势", "策", "策", "势", "策"],
+      scriptVariants: [
+      ["势", "策", "势", "策", "策", "势", "策"],
+      ["策", "势", "策", "策", "势", "策", "势"],
+      ["势", "策", "策", "势", "策", "势", "策"]
+      ], // M3 反背板全量部署：轮转变体（verify 逐变体穷举可胜性）
       // A-1 番外钥匙卡：x_gesheng/x_tiankan/x_jiutui（power2 弱卡）下发进对局可用牌组，胜局可解锁番外「夜校一灯」
       deck: ["g_li_shi", "g_qing_huo", "g_qing_xiang", "g_li_zheng", "g_wei_zhi", "g_li_huo", "x_gesheng", "x_tiankan", "x_jiutui"],
       winScene: "gb_win",
@@ -58,6 +63,8 @@ export const xingxing: Scenario = {
       id: "d_city",
       mode: "emotion",
       unwinnable: true,
+      // M4：剧情杀专用「无情 AI」——不蓄力不埋伏不宣言，只按脚本出招（死战之局不容情，且保 unwinnable 断言不腐烂）
+      ai: { finisherCharge: false, defensiveHpPct: 0, counterRepeat: false, oppTraps: false },
       title: "赣州城下 · 强攻",
       intro: "李德的命令：攻打赣州。三个团对敌人一个师——这一仗，是拿血肉去撞城墙。",
       opponent: { name: "赣州守军", desc: "城高壕深，火力凶猛。强攻，是李德的意思。" },

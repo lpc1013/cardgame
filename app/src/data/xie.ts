@@ -92,6 +92,11 @@ export const xie: Scenario = {
       opponent: { name: "织妇", desc: "僻处市井边角的沉默旁观者，看遍街巷往来众生。" },
       goal: 4,
       script: ["策", "策", "隐", "势", "策", "策", "策"],
+      scriptVariants: [
+      ["策", "策", "隐", "势", "策", "策", "策"],
+      ["策", "隐", "势", "策", "策", "策", "策"],
+      ["隐", "势", "策", "策", "策", "策", "策"]
+      ], // M3 反背板全量部署：轮转变体（verify 逐变体穷举可胜性）
       deck: [],
       winScene: "night_win",
       loseScene: "night_lose",

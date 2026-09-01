@@ -21,6 +21,8 @@ export interface RunState {
   boosts: string[];       // 本局生效的帝国开局加成 id（出征时消耗）
   retinue: string[];      // 本局随从（斥候/内应人物卡，进 deck 场外生效，占用随身位）
   usedCards: string[];    // 本剧所有进过 deck 的卡（对局开始时并入）——剧本级成就判定（弱卡点名）依据
+  /** M1 押注风控：本周目已押注次数（上限 3；旧档缺省视为 0） */
+  wagers?: number;
 }
 
 export function initState(sc: Scenario, viewpointId?: string): RunState {
@@ -47,6 +49,7 @@ export function initState(sc: Scenario, viewpointId?: string): RunState {
     boosts: [],
     retinue: [],
     usedCards: [],
+    wagers: 0,
   };
 }
 

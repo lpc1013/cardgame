@@ -16,20 +16,20 @@ export const changhen: Scenario = {
     { key: "junchen", name: "君臣之分", init: 50 },
   ],
   cards: [
-    { id: "h_rang", name: "让棋一子", suit: "策", power: 2, sacrifice: 1, text: "赢棋的帝王很多，会输棋的帝王很少——让一子，示敌以弱（自伤 1，本张 +2）。", lore: "「爱卿又让了我一局了。」——老狐狸俯身低头，你看不见他的脸。" }, // C-4 机制位扩编
-    { id: "h_shi", name: "敲打", suit: "策", power: 4, text: "嫡子违法的把柄，拍在棋盘上。", lore: "恩威并施，乃驭人之道。但敲打，着实耗费精力。" },
-    { id: "h_yong", name: "恩宠有加", suit: "势", power: 3, situational: { suit: "器", bonus: 2 }, text: "加九锡，赐几杖，抬起来用——他有器物之功，我自加倍厚待。", lore: "要用他，先喂他。喂到天下人都看见君臣和睦。" }, // C-4 机制位扩编
-    { id: "h_fang", name: "外放夺权", suit: "隐", power: 3, situational: { suit: "势", bonus: 2 }, text: "调离中枢，去边关打仗——他势大一分，你便外放一着。", lore: "没有他，统一要等到何年？可有了他……" }, // C-4 机制位扩编
+    { id: "h_rang", name: "让棋一子", suit: "策", power: 2, sacrifice: 1, topics: ["示弱", "让棋"], text: "赢棋的帝王很多，会输棋的帝王很少——让一子，示敌以弱（自伤 1，本张 +2）。", lore: "「爱卿又让了我一局了。」——老狐狸俯身低头，你看不见他的脸。" }, // C-4 机制位扩编
+    { id: "h_shi", name: "敲打", suit: "策", power: 4, topics: ["敲打", "把柄"], text: "嫡子违法的把柄，拍在棋盘上。", lore: "恩威并施，乃驭人之道。但敲打，着实耗费精力。" },
+    { id: "h_yong", name: "恩宠有加", suit: "势", power: 3, situational: { suit: "器", bonus: 2 }, topics: ["恩宠", "怀柔"], text: "加九锡，赐几杖，抬起来用——他有器物之功，我自加倍厚待。", lore: "要用他，先喂他。喂到天下人都看见君臣和睦。" }, // C-4 机制位扩编
+    { id: "h_fang", name: "外放夺权", suit: "隐", power: 3, situational: { suit: "势", bonus: 2 }, topics: ["外放", "权柄"], text: "调离中枢，去边关打仗——他势大一分，你便外放一着。", lore: "没有他，统一要等到何年？可有了他……" }, // C-4 机制位扩编
     { id: "h_chi", name: "急宣回京", suit: "器", power: 3, drawOnPlay: 1, text: "金牌令箭，便宜行事——八百里快马，一路带回新消息（抽 1 张）。", lore: "「如果他不听号令，你可便宜行事。」" }, // C-4 机制位扩编
     { id: "h_huan", name: "以情留之", suit: "隐", power: 3, text: "先帝托孤之语，一句一句说给他听。", lore: "父亲的手，也是这样冷下去的。" },
       { id: "h_jiange", name: "建章宫阙", suit: "势", power: 3, text: "宫阙巍峨，压得住人心。", lore: "雪落重檐，帝王的肩也沉。" },
     { id: "h_taiwei", name: "太尉兵符", suit: "器", power: 3, text: "兵符合一，虎符在手。", lore: "两半铜虎，分则不安。" },
     { id: "h_tongji", name: "铜雀台阁", suit: "器", power: 2, text: "铜雀台高，风起檐铃。", lore: "台高百尺，望不见的东西更多。" },
     { id: "h_jiangzuo", name: "江左羽檄", suit: "策", power: 3, text: "羽檄星驰，军情如火。", lore: "三根鸡毛，一根比一根急。" },
-    { id: "h_qiuzhuang", name: "秋装试冠", suit: "势", power: 2, text: "秋试冠冕，旧梦重温。", lore: "冠是新的，人是旧的。" },
-    { id: "h_lingjun", name: "陵寝松柏", suit: "器", power: 2, text: "陵寝松柏，岁岁常青。", lore: "碑前松柏，比碑记得久。" },
+    { id: "h_qiuzhuang", name: "秋装试冠", suit: "势", power: 2, topics: ["冠冕", "旧梦"], text: "秋试冠冕，旧梦重温。", lore: "冠是新的，人是旧的。" },
+    { id: "h_lingjun", name: "陵寝松柏", suit: "器", power: 2, topics: ["陵寝", "身后"], text: "陵寝松柏，岁岁常青。", lore: "碑前松柏，比碑记得久。" },
     { id: "h_wuji", name: "空榻帷幔", suit: "隐", power: 3, text: "空榻帷幔，人已先冷。", lore: "被褥折痕还在，人没了。" },
-    { id: "h_zaici", name: "御赐棋枰", suit: "策", power: 2, text: "御赐棋枰，残局未收。", lore: "枰上的棋，走到一半没人下了。" },
+    { id: "h_zaici", name: "御赐棋枰", suit: "策", power: 2, topics: ["棋", "旧物"], text: "御赐棋枰，残局未收。", lore: "枰上的棋，走到一半没人下了。" },
     { id: "h_miling", name: "密令夜出", suit: "隐", power: 2, text: "密令夜出，信鸽振翅。", lore: "蜡封的筒子，比刀快。" },
     { id: "h_guanshi", name: "观史残卷", suit: "势", power: 2, text: "观史残卷，朱批如血。", lore: "史书翻到某一页，总要停一停。" },
     { id: "h_changdong", name: "长东", suit: "势", rarity: "传", power: 4, endingReward: true, text: "你熬赢了所有对手，独独输给了身后事。", lore: "人生长恨水长东。" },
@@ -46,6 +46,13 @@ export const changhen: Scenario = {
       opponent: { name: "司马懿", desc: "俯身低首的老者。你看不见他的脸，他看得见你所有的底牌。" },
       goal: 5,
       script: ["策", "势", "策", "策", "策", "势", "策"],
+      // M5 内容化参照实现：每一手的「话头」——卡牌话题命中即算接话（花色层照常并行）
+      emotionTopics: [["敲打"], ["恩宠"], ["棋"], ["敲打"], ["示弱"], ["恩宠"], ["棋"]],
+      scriptVariants: [
+      ["策", "势", "策", "策", "策", "势", "策"],
+      ["势", "策", "策", "策", "势", "策", "策"],
+      ["策", "策", "策", "势", "策", "策", "势"]
+      ], // M3 反背板全量部署：轮转变体（verify 逐变体穷举可胜性）
       // A-1 番外钥匙卡：h_zaici/h_lingjun/h_qiuzhuang（power2 弱卡）下发进对局可用牌组，胜局可解锁番外「棋枰私话」
       deck: ["h_rang", "h_shi", "h_yong", "h_fang", "h_zaici", "h_lingjun", "h_qiuzhuang"],
       winScene: "sima_win",

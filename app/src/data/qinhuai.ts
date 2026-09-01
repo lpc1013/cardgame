@@ -92,6 +92,11 @@ export const qinhuai: Scenario = {
       opponent: { name: "周莽", desc: "市井游民之首，重伤初愈，眼里全是怕。" },
       goal: 5,
       script: ["势", "隐", "策", "策", "势", "策", "策"],
+      scriptVariants: [
+      ["势", "隐", "策", "策", "势", "策", "策"],
+      ["隐", "策", "策", "势", "策", "策", "势"],
+      ["策", "策", "势", "策", "策", "势", "隐"]
+      ], // M3 反背板全量部署：轮转变体（verify 逐变体穷举可胜性）
       deck: ["h_wei_zhang", "h_li_yin", "h_li_zhang", "h_qing_mu", "h_li_lun"],
       winScene: "dzm_win",
       loseScene: "dzm_lose",
@@ -106,6 +111,11 @@ export const qinhuai: Scenario = {
       opponent: { name: "苏十娘", desc: "秦淮画舫之主，常年承官宦宴饮，滴水不漏。" },
       goal: 5,
       script: ["策", "策", "策", "隐", "势", "策", "策"],
+      scriptVariants: [
+      ["策", "策", "策", "隐", "势", "策", "策"],
+      ["策", "策", "隐", "势", "策", "策", "策"],
+      ["策", "隐", "势", "策", "策", "策", "策"]
+      ], // M3 反背板全量部署：轮转变体（verify 逐变体穷举可胜性）
       deck: ["h_qing_nv", "h_li_tui", "h_wei_chen", "h_li_zhang", "h_li_lun"],
       winScene: "dss_win",
       loseScene: "dss_lose",

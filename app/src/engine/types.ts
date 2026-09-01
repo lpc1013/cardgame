@@ -24,7 +24,19 @@ export type ItemEffect =
   | "抽牌"   // 立即再抽 2 张手牌
   | "观牌"   // 压制制：揭示对手下一手（牌名+点数+花色）
   | "观色"   // 压制制：仅揭示对手下一手花色
-  | "观点";  // 压制制：仅揭示对手下一手点数
+  | "观点"   // 压制制：仅揭示对手下一手点数
+  | "揭底";  // M4 压制制：拆除对手盖放的陷阱，且本局他不得再盖
+
+/** M4 陷阱触发条件（缺省 always=对手下一手主攻即触发） */
+export type TrapTrigger =
+  | { kind: "always" }
+  | { kind: "oppSuit"; suit: Suit }        // 对手主攻为该花色时触发
+  | { kind: "oppPowerAtLeast"; n: number } // 对手主攻点数 ≥ n 时触发
+  | { kind: "selfHpBelow"; n: number };    // 我方气力 ≤ n 时触发
+
+/** M4 陷阱效果：反伤(触发即伤敌2)/抵消(其招作废)/蓄锋(我方下张+2)/落空(其招作废·条件型)/
+ *  借力(其点数一半加给我方下张)/回生(我方回4点·保命) */
+export type TrapEffect = "反伤" | "抵消" | "蓄锋" | "落空" | "借力" | "回生";
 
 /** 人物卡被动 */
 export interface PassiveDef {
@@ -77,8 +89,12 @@ export interface CardDef {
   drawOnPlay?: number;
   /** 成术卡·机制位·牺牲：打出时自伤 N 点、本张 +2N（零交互；负向换强） */
   sacrifice?: number;
-  /** 隐色陷阱卡：打出=盖放（台面下），下一轮对手出牌时自动触发——反伤(伤害弹回)/抵消(本轮作废)/蓄锋(本张牌+2)；盖位限 1 张 */
-  trap?: "反伤" | "抵消" | "蓄锋";
+  /** 隐色陷阱卡：打出=盖放（台面下），满足触发条件时生效——反伤(伤敌2)/抵消(其招作废)/蓄锋(下张+2)/
+   *  落空(其招作废)/借力(其点数一半入我方下张)/回生(回4点保命)；盖位限 1 张。
+   *  M4：phased 局中陷阱伏击「对手的主攻」；trigger 缺省=下一手即触发（旧卡兼容）。 */
+  trap?: TrapEffect;
+  /** M4 陷阱触发条件（配合 trap；缺省 always） */
+  trapTrigger?: TrapTrigger;
   /** 物品/人物：背包持有即生效 —— 1=复盘时标出核心线索；2=复盘时标出全部真线索 */
   clueReveal?: 1 | 2;
   /** 物品：持有后市集卡包页出现「先验一封」 */
@@ -95,6 +111,8 @@ export interface CardDef {
   image?: string;
   /** 门类（乙·双轴方案的可视主类目；缺省按 cardThemes 查表） */
   theme?: string;
+  /** M5 情绪制内容化：这张卡「能接住」的话题词（与对局 emotionTopics 求交；命中则视为同色接话） */
+  topics?: string[];
 }
 
 /** 线索定义（线索表） */
@@ -142,6 +160,9 @@ export interface DuelConfig {
   hp?: { player: number; opponent: number };
   /** 对手出牌序列（按回合索引循环取用），为 suit 或 cardId */
   script: string[];
+  /** M5 情绪制内容化：每一手的「话头」话题词（按回合索引循环；与卡牌 topics 求交）。
+   *  配置后：卡牌话题命中话头 → 无论花色都算接话成功（卡名第一次参与结算）。 */
+  emotionTopics?: string[][];
   /** script 变体池（常驻扰动）：开局随机选一个作为实际 script——玩家背板失效，斥候/破招价值凸显；verify 对每个变体穷举可胜性 */
   scriptVariants?: string[][];
   /** 可用卡牌（卡池子集；经典模式直接全用） */
@@ -150,6 +171,13 @@ export interface DuelConfig {
   oppCards?: CardDef[];
   /** 对局规则：v2=手牌+行动力+道具+被动；缺省 classic（旧剧本兼容） */
   rules?: "classic" | "v2";
+  /** M2 回合制结构：phased=交替回合（我方主阶段→对手回合主行动）；缺省 legacy（按出手推进，旧局兼容）。
+   *  仅压制局有意义；classic 压制局在 phased 下自动进入「轻回合」（无手牌无行动力，每回合一个主行动）。 */
+  turnSchema?: "legacy" | "phased";
+  /** M3 对手 AI 条件规则集（phased 局生效；缺省全开）。
+   *  finisherCharge=蓄力满 2 层必放杀招；defensiveHpPct=自身气力低于该比例且未满蓄力时转入蓄势（0=关闭）；
+   *  counterRepeat=我方连出两手同色则宣言破招该色（缺省随 gambit 开关）。 */
+  ai?: { finisherCharge?: boolean; defensiveHpPct?: number; counterRepeat?: boolean; oppTraps?: boolean };
   /** 博弈开关（第三批）：启用后解锁心理博弈动作——
    *  情绪制：对手虚张（周期性亮假色）+ 玩家读牌（耗气拆穿）；
    *  压制制：蓄势（蓄力层加成下张）+ 破招（宣言敌色，押中作废敌招）。

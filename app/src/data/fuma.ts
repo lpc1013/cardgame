@@ -22,21 +22,21 @@ export const fuma: Scenario = {
   ],
   cards: [
     // ---------- 成术卡（对局四色：策/器/势/隐） ----------
-    { id: "c_wei_yamen", name: "官威压顶", layer: "成术", rarity: "凡", suit: "势", power: 3, text: "抬出大理寺与圣旨限期，教他不敢造次。", lore: "大理寺的朱漆大门，一年开不了几回。开一回，京畿便要掉几顶乌纱。", price: 18 },
-    { id: "c_wei_liang", name: "亮出铁证", layer: "成术", rarity: "传", suit: "器", power: 4, text: "将物证拍在案上，以实据夺人。", lore: "证物不入卷宗，便只是死物；入了卷宗，便是刀。", price: 34 },
+    { id: "c_wei_yamen", cost: 2, name: "官威压顶", layer: "成术", rarity: "凡", suit: "势", power: 3, text: "抬出大理寺与圣旨限期，教他不敢造次。", lore: "大理寺的朱漆大门，一年开不了几回。开一回，京畿便要掉几顶乌纱。", price: 18 },
+    { id: "c_wei_liang", cost: 2, name: "亮出铁证", layer: "成术", rarity: "传", suit: "器", power: 4, text: "将物证拍在案上，以实据夺人。", lore: "证物不入卷宗，便只是死物；入了卷宗，便是刀。", price: 34 },
     { id: "c_li_qian", name: "银钱开路", layer: "成术", rarity: "凡", suit: "器", power: 3, text: "许以好处，买一句真话。", lore: "顺天府的差役月俸不过二两。银子递过去的时候，没人问它从哪来。", price: 18 },
     { id: "c_li_mian", name: "抬出靠山", layer: "成术", rarity: "凡", suit: "势", power: 2, text: "点破他背后的人，教他掂量轻重。", lore: "京中市井，人人头上有主子。点破主子的名头，比刀架脖子还管用。", price: 12 },
     { id: "c_qing_tong", name: "将心比心", layer: "成术", rarity: "凡", suit: "策", power: 2, text: "说一句市井小民的难处，松他的口风。", lore: "王满财在酒家后堂数了三十年铜钱，每一枚都浸着油烟气。", price: 12 },
     { id: "c_qing_nv", name: "诉之亲情", layer: "成术", rarity: "凡", suit: "隐", power: 3, text: "问他家中妻小，唤他的怕与悔。", lore: "李三家中有个瞎眼老母。他说起时，手里的抹布拧出了水。", price: 18 },
     { id: "c_li_lun", name: "条分缕析", layer: "成术", rarity: "凡", suit: "策", power: 3, text: "把案情掰开揉碎，讲给他自己听。", lore: "人心里的谎，最怕的不是刑具，是一条一条捋顺的逻辑。", price: 18 },
-    { id: "c_li_falv", name: "晓明律法", layer: "成术", rarity: "良", suit: "策", power: 4, text: "讲清知情不举与从犯的分别，给他指一条活路。", lore: "《大明律》：知情不举者，减一等。差这一等，就是流放与杖责的天壤。", price: 34 },
+    { id: "c_li_falv", cost: 2, name: "晓明律法", layer: "成术", rarity: "良", suit: "策", power: 4, text: "讲清知情不举与从犯的分别，给他指一条活路。", lore: "《大明律》：知情不举者，减一等。差这一等，就是流放与杖责的天壤。", price: 34 },
     // ---------- 物品卡（对局道具 / 剧情钥匙） ----------
-    { id: "i_xin", name: "太皇太后密信", layer: "物品", suit: "器", rarity: "孤品", itemEffect: "破防", text: "对局中亮出：黄锦封皮，亲笔手书——任何人见了都要跪。", lore: "「即刻压下风波。」——这六个字，比十万两银票更重。" },
+    { id: "i_xin", cost: 2, name: "太皇太后密信", layer: "物品", suit: "器", rarity: "孤品", itemEffect: "破防", text: "对局中亮出：黄锦封皮，亲笔手书——任何人见了都要跪。", lore: "「即刻压下风波。」——这六个字，比十万两银票更重。" },
     { id: "i_yu", name: "龙凤玉珏", layer: "物品", suit: "器", rarity: "精", itemEffect: "共鸣", text: "对局中出示：御赐之物，见珏如见公主。", lore: "死者衣襟夹层里搜出的东西。它认得的主人，已经不在了。", price: 22 },
     { id: "i_dao", name: "无指纹的短匕", layer: "物品", suit: "器", rarity: "凡", itemEffect: "破防", text: "对局中掷出：刀柄无掌纹的凶器，一掷便破一切伪装。", lore: "刀不会说谎。会说的是握过它又放下它的手。", price: 20 },
     { id: "i_zhu", name: "翻倒的烛台", layer: "物品", suit: "器", rarity: "凡", itemEffect: "共鸣", text: "对局中出示：新旧交错的灼痕，最有力的开场白。", lore: "半截燃尽的蜡烛，一段没烧完的谎。", price: 16 },
     { id: "i_shu", name: "《无欲则刚》拓片", layer: "物品", suit: "器", rarity: "孤品", itemEffect: "回气", text: "对局中使用：先父手书四字，抚之可定心神。（+3）", lore: "匾额还在堂上。字是拓下来的，骨头是爹给的。" },
-    { id: "i_yinpiao", name: "十万两银票", layer: "物品", suit: "器", rarity: "孤品", itemEffect: "强牌", text: "对局中使用：内廷行贿铁证在手，下一言掷地有声。（成术+3）", lore: "千金权重，尽藏一纸。你可以收下它，也可以烧了它。" },
+    { id: "i_yinpiao", cost: 2, name: "十万两银票", layer: "物品", suit: "器", rarity: "孤品", itemEffect: "强牌", text: "对局中使用：内廷行贿铁证在手，下一言掷地有声。（成术+3）", lore: "千金权重，尽藏一纸。你可以收下它，也可以烧了它。" },
     // ---------- 人物卡（携带被动） ----------
     { id: "r_li_sanj", name: "诚仆李三", layer: "人物", suit: "势", rarity: "凡", passive: { bonusSuit: "策", bonusPower: 1 }, text: "携带：策牌 +1。那个替主家守了二十年秘密的老实人。", lore: "「小的看得真切。」——他这一生，就真切过这一回。", price: 18 },
     { id: "r_zhang", name: "同窗张彦", layer: "人物", suit: "势", rarity: "凡", passive: { bonusSuit: "隐", bonusPower: 1 }, text: "携带：隐牌 +1。驸马的同窗，最先冲上二楼的人。", lore: "他到现在还记得那声巨响。也记得门缝里的血。", price: 18 },
@@ -47,21 +47,26 @@ export const fuma: Scenario = {
     { id: "s_yin10", name: "纹银十两", layer: "资源", suit: "器", rarity: "凡", resource: 10, text: "资源卡：翻到即入钱袋。", lore: "白花花的，谁都认得。" },
     { id: "s_yin30", name: "官银三十两", layer: "资源", suit: "器", rarity: "良", resource: 30, text: "资源卡：翻到即入钱袋。", lore: "带着官铸火印。来路嘛，不问也罢。" },
     // ---------- 成术 · 机制位（2026-08-27 卡牌审计 C-4 扩编） ----------
-    { id: "c_yin_shu", name: "翻供伏笔", layer: "成术", suit: "隐", rarity: "凡", power: 2, trap: "抵消", text: "陷阱：扣案待变——供词里早埋了岔口，到期翻脸，敌招作废。", lore: "市井的规矩：话说三分，留七分在袖里。剩下那七分，是退路。", price: 14 },
-    { id: "c_quan_jiang", name: "苦主陈情", layer: "成术", suit: "策", rarity: "凡", power: 3, situational: { suit: "器", bonus: 2 }, text: "传苦主到堂，一句「人命关天」压下去——对方亮出银钱货利时，最是戳心。", lore: "堂上辩的是律法，堂下跪的是活人。陪审的百姓比状纸更沉。", price: 18 },
-    { id: "c_she_duan", name: "舍供换证", layer: "成术", suit: "势", rarity: "凡", power: 3, sacrifice: 1, text: "舍弃一处旁支口供，换主线铁证坐实（自伤 1，本张 +2）。", lore: "断腕的账他早算过：小案结得快，大案要人命——他要的是大案。", price: 20 },
-    { id: "c_wen_xing", name: "仵作同行", layer: "成术", suit: "势", rarity: "凡", power: 2, drawOnPlay: 1, text: "请同行老仵作过目尸格，旁证一多，话就多了（抽 1 张）。", lore: "验尸的行当认行当。同一份尸单，他看出了三处没写的地方。", price: 16 },
-      { id: "f_diantang", name: "金殿玉墀", suit: "策", rarity: "传", power: 4, price: 30, text: "玉墀之上，一字千斤——借天威压势。", lore: "绯袍拾级而上，宫门如渊。" },
-    { id: "f_tangji", name: "堂审机锋", suit: "策", rarity: "凡", power: 2, price: 10, text: "惊堂木落，言辞转锋。", lore: "明镜高悬，案下有人发抖。" },
-    { id: "f_yeyan", name: "夜宴眼色", suit: "隐", rarity: "凡", power: 1, price: 10, text: "杯盏之间，一个眼色递过。", lore: "满堂灯火，只有一角是暗的。" },
+    { id: "c_yin_shu", cost: 0, name: "翻供伏笔", layer: "成术", suit: "隐", rarity: "凡", power: 2, trap: "抵消", text: "陷阱：扣案待变——供词里早埋了岔口，到期翻脸，敌招作废。", lore: "市井的规矩：话说三分，留七分在袖里。剩下那七分，是退路。", price: 14 },
+    { id: "c_quan_jiang", cost: 2, name: "苦主陈情", layer: "成术", suit: "策", rarity: "凡", power: 3, situational: { suit: "器", bonus: 2 }, text: "传苦主到堂，一句「人命关天」压下去——对方亮出银钱货利时，最是戳心。", lore: "堂上辩的是律法，堂下跪的是活人。陪审的百姓比状纸更沉。", price: 18 },
+    { id: "c_she_duan", cost: 2, name: "舍供换证", layer: "成术", suit: "势", rarity: "凡", power: 3, sacrifice: 1, text: "舍弃一处旁支口供，换主线铁证坐实（自伤 1，本张 +2）。", lore: "断腕的账他早算过：小案结得快，大案要人命——他要的是大案。", price: 20 },
+    { id: "c_wen_xing", cost: 0, name: "仵作同行", layer: "成术", suit: "势", rarity: "凡", power: 2, drawOnPlay: 1, text: "请同行老仵作过目尸格，旁证一多，话就多了（抽 1 张）。", lore: "验尸的行当认行当。同一份尸单，他看出了三处没写的地方。", price: 16 },
+      { id: "f_diantang", cost: 2, name: "金殿玉墀", suit: "策", rarity: "传", power: 4, price: 30, text: "玉墀之上，一字千斤——借天威压势。", lore: "绯袍拾级而上，宫门如渊。" },
+    { id: "f_tangji", cost: 0, name: "堂审机锋", suit: "策", rarity: "凡", power: 2, price: 10, text: "惊堂木落，言辞转锋。", lore: "明镜高悬，案下有人发抖。" },
+    { id: "f_yeyan", cost: 0, name: "夜宴眼色", suit: "隐", rarity: "凡", power: 1, price: 10, text: "杯盏之间，一个眼色递过。", lore: "满堂灯火，只有一角是暗的。" },
     { id: "f_gongnei", name: "宫墙内线", suit: "隐", rarity: "良", power: 3, price: 18, text: "宫墙夹道，字条易手。", lore: "提灯的手，半明半暗。" },
-    { id: "f_anxiang", name: "暗香袖底", suit: "隐", rarity: "凡", power: 2, price: 10, text: "袖底暗香，来处不明。", lore: "香炉青烟，绕不出这座宅子。" },
+    { id: "f_anxiang", cost: 0, name: "暗香袖底", suit: "隐", rarity: "凡", power: 2, price: 10, text: "袖底暗香，来处不明。", lore: "香炉青烟，绕不出这座宅子。" },
     { id: "f_yandu", name: "以言为钩", suit: "策", rarity: "良", power: 3, price: 18, text: "一言为饵，钓其破绽。", lore: "茶烟横隔，话里有钩子。" },
     { id: "i_jinzan", name: "鎏金酒筹", layer: "物品", suit: "器", rarity: "良", itemEffect: "强牌", price: 24, text: "对局中使用：鎏金筹出，成术+3。", lore: "刻痕清晰，烛光下泛金。" },
     { id: "i_guici", name: "碎瓷玉片", layer: "物品", suit: "器", rarity: "凡", itemEffect: "强牌", price: 15, text: "对局中使用：瓷片断口，成术+3。", lore: "断口锋利，边缘一抹胭脂。" },
     { id: "r_cuiping", name: "宫人翠屏", layer: "人物", suit: "势", rarity: "良", passive: {"bonusSuit":"隐","bonusPower":1}, price: 30, text: "携带：隐牌+1。洒扫宫人，见过宫墙内的事。", lore: "拂尘垂着，裙角微湿。" },
     { id: "s_huangcai", name: "宫造银锭", layer: "资源", suit: "器", rarity: "凡", resource: 10, price: 10, text: "资源卡：翻到即入钱袋。", lore: "官铸火印，灰暗库房光线。" },
-    { id: "f_renxin", name: "人心沟壑", suit: "隐", rarity: "传", power: 4, endingReward: true, text: "案上的字断了案。案下的人心，断了案卷。", lore: "人心沟壑，填不平。" },
+    { id: "f_renxin", cost: 2, name: "人心沟壑", suit: "隐", rarity: "传", power: 4, endingReward: true, text: "案上的字断了案。案下的人心，断了案卷。", lore: "人心沟壑，填不平。" },
+    { id: "t_youji", name: "诱敌深入", layer: "成术", rarity: "精", suit: "隐", power: 2, trap: "落空", trapTrigger: { kind: "oppSuit", suit: "势" }, text: "对局中使用：盖于案下——他若仗势强攻，正好诱他扑空（其主攻势牌时触发：该手作废）。", lore: "「他势大，便让他扑个空。」", price: 22 },
+    { id: "t_jieli", name: "借力打力", layer: "成术", rarity: "凡", suit: "隐", power: 2, trap: "借力", trapTrigger: { kind: "oppPowerAtLeast", n: 4 }, text: "对局中使用：盖于案下——他这一击越重，越是替你蓄力（其主攻点数≥4 时触发：其点数一半入你下一手）。", lore: "四两拨千斤，先得有那四两。", price: 18 },
+    { id: "t_huosheng", name: "金蝉脱壳", layer: "成术", rarity: "良", suit: "隐", power: 2, trap: "回生", trapTrigger: { kind: "selfHpBelow", n: 3 }, text: "对局中使用：盖于案下——气力将尽时暗扣一按，缓回 4 点（我方气力≤3 时触发）。", lore: "壳留在原地，人早走了。", price: 26 },
+    { id: "i_jiedi", name: "揭底签", layer: "物品", rarity: "良", suit: "器", itemEffect: "揭底", text: "对局中使用：探遍案下——拆掉他的暗算，且他本局再盖不成。", lore: "老仵作验尸的小签，挑得开死人衣领，也挑得开活人的袖口。", price: 24 },
+
 ],
   clues: [
     { id: "x1", name: "人为倾倒的碎酒罐", kind: "true", desc: "残酒尽数流向死者倒伏方位，非争执泼洒，乃人为布置。" },
@@ -93,6 +98,11 @@ export const fuma: Scenario = {
       opponent: { name: "王满财", desc: "如意酒家店主，市井圆滑，避重就轻。" },
       goal: 5,
       script: ["策", "势", "策", "隐", "势", "策", "策"],
+      scriptVariants: [
+      ["策", "势", "策", "隐", "势", "策", "策"],
+      ["势", "策", "隐", "势", "策", "策", "策"],
+      ["策", "隐", "势", "策", "策", "策", "势"]
+      ], // M3 反背板全量部署：轮转变体（verify 逐变体穷举可胜性）
       deck: [],
       winScene: "a_duel_win",
       loseScene: "a_duel_lose",
@@ -101,17 +111,23 @@ export const fuma: Scenario = {
       id: "d_shen",
       gambit: true,
       mode: "pressure",
+      turnSchema: "phased",
       rules: "v2",
       title: "朝堂对质 · 沈砚发难",
       intro: "主事沈砚当堂逐条质询，你必须用编好的话术撑住每一处物证破绽。",
       opponent: { name: "沈砚", desc: "大理寺新晋主事，年少刚正，不通权术。" },
       hp: { player: 10, opponent: 8 },
       script: ["p_shen_1", "p_shen_2", "p_shen_3", "p_shen_1", "p_shen_3"],
+      scriptVariants: [
+      ["p_shen_1", "p_shen_2", "p_shen_3", "p_shen_1", "p_shen_3"],
+      ["p_shen_2", "p_shen_3", "p_shen_1", "p_shen_3", "p_shen_1"],
+      ["p_shen_3", "p_shen_1", "p_shen_3", "p_shen_1", "p_shen_2"]
+      ], // M3 反背板全量部署：轮转变体（verify 逐变体穷举可胜性）
       deck: [],
       oppCards: [
         { id: "p_shen_1", name: "「勒痕为何均匀？」", suit: "器", power: 3, text: "若系斗殴勒毙，挣扎之痕岂会平整如尺？", lore: "" },
         { id: "p_shen_2", name: "「刀柄指纹安在？」", suit: "器", power: 2, text: "行凶之刃，柄上竟无半枚掌纹，大人作何解？", lore: "" },
-        { id: "p_shen_3", name: "「贿银来路何解？」", suit: "隐", power: 4, text: "内廷密信与十万两银票，下官已誊录在册！", lore: "" },
+        { id: "p_shen_3", cost: 2, name: "「贿银来路何解？」", suit: "隐", power: 4, text: "内廷密信与十万两银票，下官已誊录在册！", lore: "" },
       ],
       winScene: "end_b_win",
       loseScene: "end_b_lose",
@@ -380,7 +396,7 @@ export const fuma: Scenario = {
       shop: {
         name: "金陵夜市",
         desc: "文萃堂的书、货郎摊的消息、当铺死当的物件——只要带够了银子。",
-        stock: ["c_qing_nv", "c_li_mian", "c_wei_liang", "c_li_falv", "i_zhu", "i_dao", "i_yu", "r_wang", "r_zhang", "r_zhou", "c_quan_jiang", "c_she_duan", "c_wen_xing"],
+        stock: ["c_qing_nv", "c_li_mian", "c_wei_liang", "c_li_falv", "i_zhu", "i_dao", "i_yu", "r_wang", "r_zhang", "r_zhou", "c_quan_jiang", "c_she_duan", "c_wen_xing", "t_youji", "t_jieli", "t_huosheng", "i_jiedi"],
         packs: [
           { id: "pack_msg", name: "线人消息包", price: 25, pool: ["c_li_mian", "c_qing_tong", "i_zhu", "s_yin10", "s_yin30"], draws: 2 },
           { id: "pack_relic", name: "当铺死当包", price: 40, pool: ["i_dao", "i_yu", "i_zhu", "c_wei_yamen", "s_yin10", "c_yin_shu"], draws: 2 },

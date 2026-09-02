@@ -1888,7 +1888,7 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
   const doRead = () => {
     sfx.choice();
     const d = structuredClone(duel);
-    if (!readEmotion(d)) { toast("气力不足，读不动牌了"); return; }
+    if (!readEmotion(d)) { toast("言力已尽，读不动牌了"); return; }
     setDuel(d);
   };
   const doCharge = () => {
@@ -2071,7 +2071,7 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
           </p>
         )}
         {duel.mode === "emotion" && gambit && duel.opponentShown && (
-          <p className="opp-line gambit-hint">这局他嘴上未必老实——亮出的色十之有三是虚张，跟错了要撞枪口（气力-2）；拿不准时，可【读牌】验一验（气力-1）。</p>
+          <p className="opp-line gambit-hint">这局他嘴上未必老实——亮出的色三成是虚张，且未必是老式反色（反着出也要赌，撞枪口气力-2）；拿不准时，【读牌】验一验（言力-1）。</p>
         )}
         {phased && duel.oppTrap && !duel.seeTrap && (
           <p className="opp-line trap-on">他袖手一掩，案下似有异动——你的下一手主攻可能撞上暗算。出张废牌喂掉它，或【刺探·案下】、【揭底】破之。</p>
@@ -2082,9 +2082,9 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
         {gambit && !duel.finished && (
           <div className="gambit-bar">
             {duel.mode === "emotion" ? (
-              <button className="gambit-btn" disabled={!duel.opponentShown || duel.qi < 1} onClick={doRead}>
-                {/* F-17：最后一口气读牌即败（finishCheck 气尽判负先于一切）——qi=1 时明示赌命 */}
-                {duel.qi <= 1 ? "读牌（这是最后一口气——读毕即败，除非已然共鸣圆满）" : "读牌（气力-1，验其虚实）"}
+              <button className="gambit-btn" disabled={!duel.opponentShown || (duelExtra.yanli ?? 0) <= 0} onClick={doRead}>
+                {/* M5.2：读牌改价言力——虚张不可反推后它是唯一可靠验色手段 */}
+                {(duelExtra.yanli ?? 0) <= 0 ? "读牌（言力已尽——只能凭眼力赌了）" : "读牌（言力-1，验其虚实）"}
               </button>
             ) : (
               <>
@@ -2213,15 +2213,15 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
       <p className="duel-rule muted">
         {duel.mode === "emotion"
           ? v2
-            ? "v2 规则：出牌不耗行动力；打出的牌进弃牌堆，每轮补牌至 4 张。同色=共鸣+1；克色（策克势·势克器·器克隐·隐克策）=破防备；被克=失言气力-2，错色=失言气力-1。"
-            : "规则：同色接话=共鸣+1；克色（策克势·势克器·器克隐·隐克策）=破其防备；被克=失言气力-2，错色=失言气力-1。共鸣满则胜，气力尽则败。"
+            ? "v2 规则：出牌不耗行动力；打出的牌进弃牌堆，每轮补牌至 4 张。同色=共鸣+1；克色=破防备（破防伤神，气力-1）；被克=失言气力-2，错色=失言气力-1。"
+            : "规则：同色接话=共鸣+1；克色=破其防备（破防伤神，气力-1）；被克=失言气力-2，错色=失言气力-1。共鸣满则胜，气力尽则败。"
           : v2
             ? "v2 规则：每牌耗费 1 行动力，点差即伤害（单次至多 6）；克敌牌色+1、被克-1；势牌基础点×1.5反噬1；连出同张「招式用老」-2；物品卡一锤定音。"
             : light
             ? "轻回合规则：每回合一个主行动；主攻先手+1，应手守方+1、反击差减半（保底1）；势牌基础点×1.5（应手不反噬）。"
             : "规则：每回合各出一牌比点，点差即伤害（单次至多 6）；势牌基础点×1.5但反噬1；连出同一张牌招式用老-2。先打空对方气力者胜。"}
         {gambit && (duel.mode === "emotion"
-          ? " 博弈：他亮出的色十之有三是虚张（无法由回合数推算）；【读牌】耗 1 气力验色，虚张则拆穿亮真色。"
+          ? " 博弈：他亮出的色三成是虚张（不可由回合数或环序反推）；【读牌】耗 1 言力验色，虚张则拆穿亮真色。"
           : " 博弈：【蓄势】叠蓄力层（上限2，下张每层+2）；【破招】宣言敌招花色，押中则该招作废。")}
       </p>
     </div>

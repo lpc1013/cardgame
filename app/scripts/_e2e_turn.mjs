@@ -74,9 +74,18 @@ async function runCase(browser, name, save) {
     r.steps.previewCount = await page.locator(".pc-preview").count();
     r.steps.historyCount = await page.locator(".duel-history").count();
     await page.screenshot({ path: `E:/CardGame/app/scripts/_e2e_turn_${name}.png`, fullPage: true });
-    // v2 局：出牌后不自动交先手（行动力内自由出牌），「结束回合」按钮负责交出；
-    // 轻回合：出完自动交先手，应手后进入第 2 回合
-    if (save.expectEndTurnBtn) {
+    // 情绪局：所求横幅 + 对手小动作 + 读牌按钮在位；出牌后有结算反馈
+    if (save.expectEmotion) {
+      const moodOk = (await page.locator(".mood-banner").count()) > 0;
+      const actionOk = (await page.locator(".opp-action").count()) > 0;
+      const readBtnOk = (await page.locator(".gambit-btn", { hasText: "读牌" }).count()) > 0;
+      const readBtnText = (await page.locator(".gambit-btn", { hasText: "读牌" }).first().innerText().catch(() => ""));
+      await playOne();
+      await page.waitForTimeout(400);
+      const logOk = (await page.locator(".duel-log").count()) > 0;
+      r.steps.emotion = { moodOk, actionOk, readBtnOk, readBtnText, logOk };
+      r.ok = r.steps.duelEntered && moodOk && actionOk && readBtnOk && logOk;
+    } else if (save.expectEndTurnBtn) {
       r.ok =
         r.steps.duelEntered &&
         /第 1 回合/.test(r.steps.bannerStart) &&
@@ -132,8 +141,25 @@ const fumaSave = {
 };
 fumaSave.expectEndTurnBtn = true;
 
+const changhenSave = {
+  version: 4,
+  scenarioId: "changhen",
+  state: {
+    scenarioId: "changhen", sceneId: "duel_intro", lineIndex: 0,
+    flags: [], clues: [],
+    stats: { shouming: 30, junchen: 50 },
+    bag: ["h_rang", "h_shi", "h_yong", "h_fang", "h_zaici", "h_lingjun", "h_qiuzhuang"],
+    deck: ["h_rang", "h_shi", "h_yong", "h_fang", "h_zaici", "h_lingjun", "h_qiuzhuang"],
+    silver: 0, boosts: [], retinue: [], usedCards: [], visited: [], wagers: 0,
+  },
+  duel: undefined,
+  savedAt: Date.now(),
+};
+changhenSave.expectEmotion = true;
+
 const browser = await chromium.launch();
 await runCase(browser, "light_jieyu", jieyuSave);
 await runCase(browser, "v2_fuma", fumaSave);
+await runCase(browser, "emotion_changhen", changhenSave);
 await browser.close();
 console.log(JSON.stringify({ results, pageErrors }, null, 2));

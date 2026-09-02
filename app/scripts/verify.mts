@@ -137,7 +137,7 @@ function emotionCanWin(sc: Scenario, cfg: (typeof sc.duels)[number], loadout: st
       const key = stateKey(nd, isV2);
       if (!seen.has(key)) { seen.add(key); q.push({ d: nd, steps: steps + 1 }); }
     }
-    if (cfg.gambit && d.opponentShown && d.qi >= 1) {
+    if (cfg.gambit && d.opponentShown && (d.yanli ?? 0) >= 1) {
       const nd = cloneD(d);
       if (readEmotion(nd)) {
         const key = stateKey(nd, isV2);
@@ -149,7 +149,7 @@ function emotionCanWin(sc: Scenario, cfg: (typeof sc.duels)[number], loadout: st
   // 贪心兜底（同色 > 克色 > 中性 > 被克），用于超上限时的近似判断；虚张时先读牌拆穿（保气力底线）
   const d = initDuel(cfg, loadout, sc.cards); revealEmotion(d);
   for (let i = 0; !d.finished && i < 400; i++) {
-    if (cfg.gambit && d.bluffed && d.qi >= 2 && readEmotion(d)) continue;
+    if (cfg.gambit && d.bluffed && (d.yanli ?? 0) >= 1 && readEmotion(d)) continue;
     const shown = d.opponentShown!;
     const pool = (isV2 ? [...d.hand] : loadout).map(id => co(id)).filter(c => (c.layer ?? "成术") === "成术");
     const pick =

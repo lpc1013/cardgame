@@ -306,16 +306,25 @@ function opponentSuitAt(cfg: DuelConfig, round: number): Suit {
   return s as Suit;
 }
 
+const ALL_SUITS: Suit[] = ["策", "器", "势", "隐"];
+
 /** M5 虚张去周期化（审计 2.1/P1-2）：以 (对局id, 回合) 为种子的伪随机虚张——
  *  玩家无法再由回合数推算真色（原 round%3 周期被免费模运算破解，读牌被支配），虚张概率约 1/3。 */
-function isBluffRound(cfgId: string, round: number): boolean {
+function seedHash(s: string): number {
   let h = 2166136261;
-  const s = cfgId + "|" + round;
   for (let i = 0; i < s.length; i++) {
     h ^= s.charCodeAt(i);
     h = Math.imul(h, 16777619) >>> 0;
   }
-  return h % 100 < 33;
+  return h >>> 0;
+}
+function isBluffRound(cfgId: string, round: number): boolean {
+  return seedHash(cfgId + "|" + round) % 100 < 33;
+}
+/** M5.2：该虚张轮是否作老式虚张（二八开——偶有「亮真色所克之色」的经典虚张保留
+ *  「跟假撞枪口-2」的教学时刻；多数亮无关假色，环序反推失效，反着出对半赌撞枪口）。 */
+function isClassicFeint(cfgId: string, round: number): boolean {
+  return seedHash(cfgId + "#" + round) % 100 < 20;
 }
 
 /** 情绪匹配制：开局/每招后亮出对手情绪（博弈局：按种子伪随机虚张——亮其真色所克之色，跟假色即撞枪口）。
@@ -326,14 +335,21 @@ export function revealEmotion(st: DuelState): void {
   const bluff = !!st.cfg.gambit && isBluffRound(st.cfg.id, st.round);
   st.opponentTrue = truth;
   st.bluffed = bluff;
-  st.opponentShown = bluff ? RESTRAIN[truth] : truth;
+  if (!bluff) { st.opponentShown = truth; return; }
+  const feint = RESTRAIN[truth];
+  if (isClassicFeint(st.cfg.id, st.round)) { st.opponentShown = feint; return; }
+  // 无关假色：既非真色、也非真色所克之色——反推与反打都成了赌
+  const wild = ALL_SUITS.filter((s) => s !== truth && s !== feint);
+  st.opponentShown = wild[seedHash(st.cfg.id + "%" + st.round) % 2]!;
 }
 
-/** 博弈·读牌（情绪制）：耗 1 气力验色——是虚张则拆穿亮真色，无虚张则确认无误；不推进回合。气尽则败。 */
+/** 博弈·读牌（情绪制）：耗 1 言力验色——是虚张则拆穿亮真色，无虚张则确认无误；不推进回合。
+ *  M5.2：虚张不可反推后，读牌是唯一可靠验色手段，改价言力（与额外出牌共享预算）——
+ *  知情线（读+接）在 goal5/6 下 10~12 点言力内可胜；无脑反打线被气力风险与预算两头挤死。 */
 export function readEmotion(st: DuelState): boolean {
   if (st.mode !== "emotion" || st.finished || !st.cfg.gambit || !st.opponentShown) return false;
-  if (st.qi < 1) return false;
-  st.qi -= 1;
+  if ((st.yanli ?? 0) <= 0) return false;
+  st.yanli -= 1;
   const wasBluff = st.bluffed;
   st.opponentShown = st.opponentTrue;
   st.bluffed = false;
@@ -391,7 +407,11 @@ export function playEmotion(st: DuelState, card: CardDef): boolean {
     if (st.guard <= 0) {
       st.guard = 3;
       st.rapport += 1;
-      st.lastResult.text += "他绷不住了，话说到了兴头上。";
+      // M5.1（审计第七篇 2.1 收尾）：破防伤神——硬掰开他的防备也要耗自己的气力。
+      // 「永远反着出」的零风险口诀线依赖 2~3 次破防凑共鸣，3 点起始气力自此成为真实约束；
+      // 知情线（同色接话）不经过破防，零气耗不受影响。
+      st.qi -= 1;
+      st.lastResult.text += "他绷不住了，话说到了兴头上。（破防伤神，气力-1）";
     }
   } else if (card.suit && RESTRAIN[shown] === card.suit) {
     st.qi -= 2;

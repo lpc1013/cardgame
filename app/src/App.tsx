@@ -4,7 +4,7 @@ import { initState, findScene, visibleChoices, applyEffects, registerScenarios, 
 import { initDuel, revealEmotion, playEmotion, playPressure, endTurn, readEmotion, chargeUp, breakMove, cardCost, duelSpend, respondOpponent, passResponse, forfeitDuel, EMOTION_FREE_PLAYS, EMOTION_YANLI_MAX, DEFAULT_AP, DEFAULT_GOAL, type DuelState, type DuelBoosts } from "./engine/duel";
 import {
   saveGame, loadGame, clearSave, unlockEnding, getGallery, recordTreeVisit, getTree, recordCardsSeen, getCardSeen,
-  settleEmpire, spendInk, gainBoost, consumeBoosts, unlockTheme, setTheme as saveTheme, addRetinue, recordWarLoss, buyPeaceDeal, bumpCounter, getCounter, END_MILES, setTotalEnds, getTotalEnds, buyLuggageSlot, exchangeSilver, grantTitle, consumeSpareSilver, claimMile,
+  settleEmpire, spendInk, gainBoost, consumeBoosts, unlockTheme, setTheme as saveTheme, addRetinue, canAddRetinue, removeRetinue, recordWarLoss, buyPeaceDeal, bumpCounter, getCounter, END_MILES, setTotalEnds, getTotalEnds, buyLuggageSlot, exchangeSilver, grantTitle, consumeSpareSilver, claimMile,
   registerGlobalCards, getGlobalCard, getGlobalCards, INK_PER_ENDING,
   unsealScenario, UNSEAL_COST,
   getBonuses, unlockBonus,
@@ -1288,7 +1288,7 @@ export default function App() {
   // ---------- 市集 ----------
   if (phase === "shop") {
     const scene = findScene(sc, st.sceneId);
-    return <ShopView sc={sc} st={st} shop={scene.shop!} onLeave={afterShop} toast={setToast} />;
+    return <ShopView sc={sc} st={st} shop={scene.shop!} onLeave={afterShop} onSync={setSt} toast={setToast} />;
   }
 
   // ---------- 结案复盘 ----------
@@ -1605,11 +1605,15 @@ function BagView({ sc, st, onClose, onMutate, toast, readOnly }: {
 // ============================================================
 // 市集：买卡 / 卖卡 / 卡包 / 编组
 // ============================================================
-function ShopView({ sc, st, shop, onLeave, toast }: {
+function ShopView({ sc, st, shop, onLeave, onSync, toast }: {
   sc: Scenario; st: RunState; shop: NonNullable<Scenario["scenes"][number]["shop"]>;
-  onLeave: (s: RunState) => void; toast: (m: string) => void;
+  onLeave: (s: RunState) => void;
+  /** M8（审计 P0-1）：市集每笔成交即时回写全局 RunState——旧「离市才落账」让刷新一键撤销赌坊亏损 */
+  onSync: (s: RunState) => void;
+  toast: (m: string) => void;
 }) {
-  const [local, setLocal] = useState<RunState>({ ...st, bag: [...st.bag], deck: [...st.deck] });
+  const [local, setLocalState] = useState<RunState>({ ...st, bag: [...st.bag], deck: [...st.deck] });
+  const setLocal = (next: RunState) => { setLocalState(next); onSync(next); };
   const [opened, setOpened] = useState<{ ids: string[]; dup: Set<string> } | null>(null);
   const [tab, setTab] = useState<"buy" | "pack" | "deck" | "dice">("buy");
   const def = (id: string) => sc.cards.find((c) => c.id === id);
@@ -1638,16 +1642,15 @@ function ShopView({ sc, st, shop, onLeave, toast }: {
       toast(net >= 0 ? `「${c.name}」兑成现银（+${net} 两）` : `购得「${c.name}」（${net} 两）`);
       return;
     }
+    // 随从卡（斥候/内应被动的人物卡）购买后入帝国随从池（全局 ≤3，供跨剧本出征携带）
+    const isRetinue = (c.layer ?? "成术") === "人物" && ((c.passive?.scout ?? 0) > 0 || (c.passive?.insider ?? 0) > 0);
+    // M8（审计 P0-2）：先查册再花钱——旧序是银货两讫后才被告知满员退不掉
+    if (isRetinue && !canAddRetinue(id)) { toast("随从册已满员（最多 3 人）——先辞退一人，再来买。"); return; }
     const next = { ...local, silver: local.silver - price, bag: [...local.bag, id], deck: local.deck.length < limit ? [...local.deck, id] : local.deck };
     sfx.card();
     setLocal(next);
-    // 随从卡（斥候/内应被动的人物卡）购买后入帝国随从池（全局 ≤3，供跨剧本出征携带）
-    if ((c.layer ?? "成术") === "人物" && ((c.passive?.scout ?? 0) > 0 || (c.passive?.insider ?? 0) > 0)) {
-      if (!addRetinue(id)) toast(`「${c.name}」入了随从册——但随从已满员（最多 3 人），需辞退一人才能随行。`);
-      else toast(`购得「${c.name}」（-${price} 两），已入随从册（跨剧本可携带）`);
-    } else {
-      toast(`购得「${c.name}」（-${price} 两）`);
-    }
+    if (isRetinue) { addRetinue(id); toast(`购得「${c.name}」（-${price} 两），已入随从册（跨剧本可携带）`); }
+    else toast(`购得「${c.name}」（-${price} 两）`);
   };
   const sell = (id: string) => {
     const c = def(id);
@@ -1658,28 +1661,37 @@ function ShopView({ sc, st, shop, onLeave, toast }: {
     const next = { ...local, silver: local.silver + gain, bag: local.bag.filter((x) => x !== id), deck: local.deck.filter((x) => x !== id) };
     sfx.choice();
     setLocal(next);
+    // M8（审计 P0-2）：随从卡出手即出册——银两收回去了，人不能再白留着
+    if ((c.layer ?? "成术") === "人物" && ((c.passive?.scout ?? 0) > 0 || (c.passive?.insider ?? 0) > 0)) removeRetinue(id);
     toast(`卖出「${c.name}」（+${gain} 两）`);
   };
+  /** M8（审计 P2-4）：试珠验出的结果被锁定——「先验一封」与随后开包各摇各的，等于给玩家假样本诱导消费 */
+  const [peeked, setPeeked] = useState<Record<string, string[]>>({});
   const openPack = (packId: string) => {
     const p = shop.packs?.find((x) => x.id === packId);
     if (!p) return;
     if (local.silver < p.price) { toast("银两不足"); return; }
+    const plan = peeked[packId];
+    if (plan) setPeeked((m) => { const n = { ...m }; delete n[packId]; return n; });
     const got: string[] = [];
     const dup = new Set<string>();
     const next = { ...local, silver: local.silver - p.price, bag: [...local.bag], deck: [...local.deck] };
     for (let i = 0; i < p.draws; i++) {
-      const id = p.pool[Math.floor(Math.random() * p.pool.length)]!;
+      const id = (plan && plan[i]) ?? p.pool[Math.floor(Math.random() * p.pool.length)]!;
       const c = def(id);
       if (c?.resource) next.silver += c.resource;
       else if (!next.bag.includes(id)) { next.bag.push(id); if (next.deck.length < limit) next.deck.push(id); }
-      else dup.add(id); // 重复开出：不入袋，开包结果上角标提示，避免静默吞银
+      else {
+        dup.add(id); // M8（审计 P2-3）：重复卡不再白吞——按售价半价折银
+        next.silver += Math.floor((c?.price ?? 10) / 2);
+      }
       got.push(id);
     }
     sfx.win();
     setLocal(next);
     setOpened({ ids: got, dup });
   };
-  /** 琉璃试珠：先验一封（只展示开出结果，不动银两/背包；看完再决定买不买） */
+  /** 琉璃试珠：先验一封（只展示开出结果，不动银两/背包；看完再决定买不买——所见即所得） */
   const canPeek = local.bag.some((id) => def(id)?.shopPeek);
   const peekPack = (packId: string) => {
     const p = shop.packs?.find((x) => x.id === packId);
@@ -1692,8 +1704,9 @@ function ShopView({ sc, st, shop, onLeave, toast }: {
       if (local.bag.includes(id)) dup.add(id);
     }
     sfx.card();
+    setPeeked((m) => ({ ...m, [packId]: got }));
     setOpened({ ids: got, dup });
-    toast("琉璃试珠验了一封——看个究竟，再决定掏不掏银子。");
+    toast("琉璃试珠验了一封——这一封的结果已替你定下，买它就开出这些。");
   };
   /** 暗柜（隐藏货架）：持有账房先生等密钥才陈列 */
   const hidden = (shop.hiddenStock ?? []).filter((h) =>
@@ -2244,7 +2257,7 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
             {duel.lastPlay.stale && "（招式用老，点数-2！）"}
             {duel.lastPlay.edge === 1 && "（克敌牌色，点数+1）"}
             {duel.lastPlay.edge === -1 && "（被敌牌色所克，点数-1）"}
-            你打出「{duel.lastPlay.playerCard?.name}」（{duel.lastPlay.playerCard?.power}{duel.lastPlay.playerCard?.suit === "势" ? "×1.5" : ""}{duel.lastPlay.stale ? "-2" : ""}{duel.lastPlay.edge ? (duel.lastPlay.edge > 0 ? "+1" : "-1") : ""}），他打出「{duel.lastPlay.oppCard?.name}」（{duel.lastPlay.oppCard?.power}）——
+            你打出「{duel.lastPlay.playerCard?.name}」（{duel.lastPlay.playerCard?.power}{duel.lastPlay.playerCard?.suit === "势" ? "×1.5" : ""}{duel.lastPlay.stale ? "-2" : ""}{duel.lastPlay.edge ? (duel.lastPlay.edge > 0 ? "+1" : "-1") : ""}），他打出「{duel.redactLog || (v2 && gambit) ? "▓▓" : duel.lastPlay.oppCard?.name}」（{duel.redactLog || (v2 && gambit) ? "▓" : duel.lastPlay.oppCard?.power}）——
             {duel.lastPlay.to === "o"
               ? `他折了 ${duel.lastPlay.damage} 点气力！`
               : duel.lastPlay.to === "p"
@@ -2290,9 +2303,11 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
               // 引擎口径（resolveOppAttack）：守方+1、势按基础点×1.5；不引强牌/蓄力/牺牲/招式用老
               const p = (c.suit === "势" ? Math.floor(base * 1.5) : base) + 1 + edge + situ;
               const o = oppDead ? 0 : (oppNext.power ?? 1) + (duel.oppCharge ?? 0) * 2;
-              if (p > o) return `≈反伤他${Math.min(Math.max(1, Math.floor((p - o) / 2)), 6)}`;
-              if (o > p) return `≈挡不住（你-${Math.min(o - p, 6)}）`;
-              return "≈平（各-1）";
+              // M8（审计 P2-1）：轻回合免 AP 的破招押空额外赔 1 点，三种结果都要如实报
+              const gambleMiss = !!duel.breakGamble && !!duel.foresuit && !!oppNext.suit && duel.foresuit !== oppNext.suit;
+              if (p > o) return `≈反伤他${Math.min(Math.max(1, Math.floor((p - o) / 2)), 6)}${gambleMiss ? "·破招押空你-1" : ""}`;
+              if (o > p) return `≈挡不住（你-${Math.min(o - p, 6) + (gambleMiss ? 1 : 0)}）`;
+              return `≈平（各-1${gambleMiss ? "，押空再-1" : ""}）`;
             }
             let p = base + duel.buffPower + duel.charge * 2 + edge + situ;
             if (c.sacrifice) p += c.sacrifice * 2;

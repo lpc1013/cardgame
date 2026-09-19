@@ -339,6 +339,22 @@ export function addRetinue(id: string): boolean {
   return true;
 }
 
+/** M8（审计 P0-2）：购买前预检——满员且不在册则不该花这笔银 */
+export function canAddRetinue(id: string): boolean {
+  const e = settleEmpire();
+  return e.retinue.includes(id) || e.retinue.length < 3;
+}
+
+/** M8（审计 P0-2）：随从卡出售后同步出册——银两收回去了，人不能再白留着 */
+export function removeRetinue(id: string): void {
+  const e = settleEmpire();
+  const i = e.retinue.indexOf(id);
+  if (i >= 0) {
+    e.retinue.splice(i, 1);
+    writeEmpire(e);
+  }
+}
+
 /** 记录一场战争对局失败（败过才解锁「岁币之约」购买） */
 export function recordWarLoss(scenarioId: string): void {
   const e = settleEmpire();

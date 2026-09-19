@@ -77,6 +77,7 @@ export interface DuelState {
   hpMax: number;         // 我方气力上限（含加成）：回气钳制与气力条显示共用
   charge: number;        // 蓄势层（下张成术每层 +2，上限 2）
   foresuit: Suit | null; // 破招宣言（押中敌方本招花色则敌招作废）
+  breakGamble?: boolean; // M8（审计 P2-1）：轻回合免 AP 的破招宣言——押空则硬吃 1 点，不再是零成本白赌
   /** 隐色陷阱（盖放区，限 1 张）：M4 起伏击对手主攻，满足 trigger 条件时生效（缺省 always） */
   trap: { cardId: string; name: string; effect: TrapEffect; trigger?: TrapTrigger } | null;
   lastPlay: { playerCard?: CardDef; oppCard?: CardDef; damage: number; to: "p" | "o" | "none"; stale?: boolean; edge?: number; broke?: boolean; trapNote?: string; selfBroke?: boolean } | null;
@@ -475,6 +476,7 @@ export function endTurn(st: DuelState): void {
 function finishOppTurn(st: DuelState): void {
   st.oppIntent = null;
   st.foresuit = null;
+  st.breakGamble = false;
   st.phase = "pMain";
   st.turnNo = (st.turnNo ?? 1) + 1;
   if (!st.light) st.ap = st.baseAp;
@@ -506,7 +508,8 @@ function decideOppIntent(st: DuelState): void {
     st.oppIntent = { kind: "trap" };
     return;
   }
-  if (defPct > 0 && oc < 2 && st.hpOpponent > 0 && st.hpOpponent < oppHpMax * defPct) {
+  if (defPct > 0 && oc < 1 && st.hpOpponent > 0 && st.hpOpponent < oppHpMax * defPct) {
+    // M8（审计 P1-4）：防御蓄力至多一次一口气——旧条件 oc<2 等于白送两个不出手的回合，残血反而最赚
     st.oppIntent = { kind: "charge" };
     return;
   }
@@ -579,6 +582,8 @@ export function respondOpponent(st: DuelState, playerCard: CardDef, cardOf: (id:
   const intent = st.oppIntent;
   if (!intent || intent.kind !== "attack" || !intent.cardId) return false;
   if ((playerCard.layer ?? "成术") !== "成术" || playerCard.trap) return false;
+  // M8（审计 P2-2）注：非 v2（classic 轻回合）应手不消耗任何牌——手即整副牌，唯一天花板是「招式用老 -2」。
+  // phased+classic 的数值防线（如 d_deliver 的 7/20）必须按「守方可无限次免费接招」标定，勿按 v2 弃牌消耗假设调参。
   if (st.rules === "v2") {
     st.hand = st.hand.filter((c) => c !== playerCard.id);
     st.discard.push(playerCard.id);
@@ -632,10 +637,16 @@ function resolveOppAttack(st: DuelState, playerCard: CardDef | null, cardOf: (id
   }
   // 收买·内应：对手主攻作废（先于破招判定）
   if (st.insiderActive) { o = 0; broke = true; st.insiderActive = false; }
-  // 我方破招宣言：押中他主攻花色则该招作废
+  // 我方破招宣言：押中他主攻花色则该招作废；轻回合免 AP 的宣言押空赔 1 点（M8 P2-1）
   if (st.foresuit) {
     if (opp.suit === st.foresuit) { o = 0; broke = true; }
+    else if (st.breakGamble) {
+      st.hpPlayer -= 1;
+      if (st.hpPlayer <= 0) st.finished = "lose";
+      pushLog(st, "破招押空——他这一手不在你算的道上，硬刮着你 1 点气力。", "gambit");
+    }
     st.foresuit = null;
+    st.breakGamble = false;
   }
   if (trapZero) { o = 0; broke = true; }
   let edge = 0;
@@ -753,6 +764,7 @@ export function breakMove(st: DuelState, suit: Suit, oppCardId: string, cardOf: 
       st.ap -= 1;
     }
     st.foresuit = suit;
+    if (st.light) st.breakGamble = true; // M8（审计 P2-1）：免 AP 的轻回合宣言，押空赔 1 点气力
     st.lastResult = { text: `你眯起眼：「下一招，你必出『${suit}』。」`, kind: "gambit" };
     pushLog(st, st.lastResult.text, st.lastResult.kind);
     if (st.light) handOffToOpponent(st);
@@ -788,17 +800,21 @@ function afterTurn(st: DuelState): void {
 export function playItem(st: DuelState, card: CardDef): boolean {
   const eff = card.itemEffect;
   if (!eff) return false;
+  // M8（审计 P0-3）：剧情杀专用局封死道具——否则「必败演出」可被一叠物品打穿，unwinnable 断言与剧情双双失效
+  if (st.cfg.unwinnable) return false;
+  // M8（审计 P0-3）：物品一局限一张不再只靠 UI 自觉——classic 路径过去连 usedCards 都不记，可无限连拍
+  if (st.usedCards.includes(card.id)) { st.lastResult = { text: "「回气」之类的手段，一局使得一次。", kind: "miss" }; return false; }
   // M2：交替回合下物品只在我方主阶段可用（对手回合只允许应手）
   if ((st.turnSchema ?? "legacy") === "phased" && st.phase !== "pMain") return false;
   // M1（审计 4.2）：观牌/观色/观点/揭底只服务压制制情报层——情绪制无任何消费路径（UI 不渲染），
   // 旧实现照常结算=打出即死卡还倒贴一手牌。情绪局直接拒绝打出。
   if (st.mode === "emotion" && (eff === "观牌" || eff === "观色" || eff === "观点" || eff === "揭底")) return false;
+  if (st.rules === "v2" && st.mode === "pressure") {
+    if (st.ap < cardCost(card)) return false;
+    st.ap -= cardCost(card);
+  }
+  st.usedCards.push(card.id);
   if (st.rules === "v2") {
-    if (st.mode === "pressure") {
-      if (st.ap < cardCost(card)) return false;
-      st.ap -= cardCost(card);
-    }
-    st.usedCards.push(card.id);
     st.hand = st.hand.filter((c) => c !== card.id);
     st.library = st.library.filter((c) => c !== card.id);
   }
@@ -1080,5 +1096,9 @@ export function duelSpend(
   if (usedShared) st.sharedUsed += 1;
   else if (isScoutKind) st.indScoutLeft = (st.indScoutLeft ?? 0) - 1;
   else st.indInsiderLeft = (st.indInsiderLeft ?? 0) - 1;
-  return { ok: true, log: kind === "scout" ? "斥候探得军情——看清对手下一手。" : kind === "scoutTrap" ? "斥候摸清了案下的名堂。" : "内应已买通——对手下一招将成空。" };
+  const msg = kind === "scout" ? "斥候探得军情——看清对手下一手。" : kind === "scoutTrap" ? "斥候摸清了案下的名堂。" : "内应已买通——对手下一招将成空。";
+  // M8（审计 P1-5）：随从动作也算「已出手」——落 lastResult，押注窗口随之关闭，杜绝先刺探拿情报再决定押不押
+  st.lastResult = { text: msg, kind: "gambit" };
+  pushLog(st, msg, "gambit");
+  return { ok: true, log: msg };
 }

@@ -26,7 +26,7 @@ import { xingxing } from "../src/data/xingxing.ts";
 import { touming } from "../src/data/touming.ts";
 import { BONUS_SCENES } from "../src/data/bonus.ts";
 import type { Scenario, CardDef, Suit } from "../src/engine/types.ts";
-import { initDuel, revealEmotion, playEmotion, playPressure, setDuelShuffle, endTurn, readEmotion, chargeUp, breakMove, respondOpponent, RESTRAIN, type DuelState } from "../src/engine/duel.ts";
+import { initDuel, revealEmotion, playEmotion, playPressure, setDuelShuffle, endTurn, readEmotion, chargeUp, breakMove, respondOpponent, RESTRAIN, TURN_DAMAGE_CAP, type DuelState } from "../src/engine/duel.ts";
 
 setDuelShuffle((a) => a);
 const ALL: Scenario[] = [fuma, qiuwei, sichou, xie, qinhuai, jieyu, shumian, changjiang, diaolan, changhen, jianfeng, xingxing, touming];
@@ -76,6 +76,26 @@ function starterLoadout(sc: Scenario): string[] {
     }
   }
   return ids;
+}
+/** M8（审计 P1-3）「合法满编」：≤deckLimit 张、只取届时可获取的卡（初始+剧情必得+货架/暗柜/卡包池+翻牌），
+ *  排序取强：成术（点数降序）→ 物品 → 人物。旧 v2Loadout 拿全卡池无视上限制胜，证的是玩家组不出的牌堆。 */
+function legalLoadout(sc: Scenario): string[] {
+  const limit = sc.deckLimit ?? 12;
+  const obtainable = new Set<string>(starterLoadout(sc));
+  for (const s of sc.scenes) {
+    if (s.shop) {
+      for (const id of s.shop.stock) obtainable.add(id);
+      for (const h of s.shop.hiddenStock ?? []) obtainable.add(h.id);
+      for (const p of s.shop.packs ?? []) for (const id of p.pool) obtainable.add(id);
+    }
+    if (s.cardPick) for (const id of s.cardPick.options) obtainable.add(id);
+  }
+  const layerOf = (c: CardDef) => c.layer ?? "成术";
+  const rank = (c: CardDef) => (layerOf(c) === "成术" ? 0 : layerOf(c) === "物品" ? 1 : 2);
+  const pool = sc.cards
+    .filter((c) => layerOf(c) !== "资源" && obtainable.has(c.id))
+    .sort((a, b) => rank(a) - rank(b) || (b.power ?? 0) - (a.power ?? 0));
+  return pool.slice(0, limit).map((c) => c.id);
 }
 /** 四色覆盖检查 */
 function colorCoverage(sc: Scenario, ids: string[]): string {
@@ -224,27 +244,6 @@ function pressureBest(sc: Scenario, cfg: (typeof sc.duels)[number], loadout: str
     }
   }
   return best;
-}
-
-/** M1 门禁：首回合极限伤害（蓄势×2 + 最强牌）必须 ≤ TURN_DAMAGE_CAP —— 杜绝蓄势×势 OTK 回潮 */
-function firstTurnMaxDamage(sc: Scenario, cfg: (typeof sc.duels)[number], loadout: string[]): number {
-  const co = cardOf(sc, cfg.oppCards);
-  const tryLine = (withCharge: boolean): number => {
-    const d = initDuel(cfg, loadout, sc.cards);
-    if (withCharge) {
-      if (!chargeUp(d, cfg.script[0]!, co)) return 0;
-      if (!chargeUp(d, cfg.script[0]!, co)) return 0;
-    }
-    const oppId = cfg.script[d.round % cfg.script.length] ?? cfg.script[0]!;
-    const pool = ((cfg.rules === "v2" ? d.hand : loadout).map(id => co(id))).filter(c => !c.trap);
-    const pick = pool.filter(c => c.suit === "势").sort((a, b) => (b.power ?? 0) - (a.power ?? 0))[0]
-      ?? pool.sort((a, b) => (b.power ?? 0) - (a.power ?? 0))[0];
-    if (!pick) return 0;
-    const before = d.hpOpponent;
-    if (!playPressure(d, pick, oppId, co)) return 0;
-    return before - d.hpOpponent;
-  };
-  return Math.max(tryLine(false), cfg.gambit ? tryLine(true) : 0);
 }
 
 for (const sc of ALL) {
@@ -487,11 +486,13 @@ for (const sc of ALL) {
     if (cfg.unwinnable && cfg.gambit) fail(`对局 ${cfg.id} 设计性死局开启了 gambit —— 必败演出不得含押注/破招（W-5 护栏）`);
     const scripts = cfg.scriptVariants?.length ? cfg.scriptVariants : [cfg.script];
     if (!cfg.script.length) { fail(`对局 ${cfg.id} script 为空`); continue; }
-    // M1 门禁：非死局压制局的首回合极限伤害不得超过 TURN_DAMAGE_CAP(6)——蓄势×势 OTK 回潮即红
+    // M8（审计 P1-1）：旧「首回合极限伤害」测量走 playPressure 自身结算——clamp(6) 先抹平一切，门禁恒真。
+    // 改为真命题：普通压制局对手初始血量必须高于单手封顶伤害，否则一张牌一手猝死；
+    // 再低于 封顶+破防物品(4) 时标警——物品不读剧本携带限制，是 clamp 之外的合法补刀。
     if (cfg.mode === "pressure" && !cfg.unwinnable) {
-      const ftPool = cfg.rules === "v2" ? v2Loadout(sc) : cfg.deck;
-      const maxD = firstTurnMaxDamage(sc, cfg, ftPool);
-      if (maxD > 6) fail(`对局 ${cfg.id} 首回合极限伤害 ${maxD} > 6（TURN_DAMAGE_CAP 门禁）`);
+      const hpO = cfg.hp?.opponent ?? 10;
+      if (hpO <= TURN_DAMAGE_CAP) fail(`对局 ${cfg.id} 对手初始 ${hpO} ≤ 单手封顶 ${TURN_DAMAGE_CAP}——首回合一张牌即可猝死（M1 门禁真命题化）`);
+      else if (hpO <= TURN_DAMAGE_CAP + 4) warn(`对局 ${cfg.id} 对手初始 ${hpO} ≤ 封顶(6)+破防物品(4)——带物品者可首回合连击打死，血线余量偏薄`);
     }
     for (const id of cfg.deck) if (!sc.cards.find(c => c.id === id) && !cfg.oppCards?.find(c => c.id === id)) fail(`对局 ${cfg.id} deck 引用不存在的卡牌 ${id}`);
     if (cfg.mode === "pressure") for (const s of scripts) for (const id of s) if (!sc.cards.find(c => c.id === id) && !cfg.oppCards?.find(c => c.id === id)) fail(`对局 ${cfg.id} script(变体) 引用不存在的卡牌 ${id}`);
@@ -514,7 +515,8 @@ for (const sc of ALL) {
         }
         console.log(`    [策略审计] ${cfg.id}: ${d0.finished === "win" ? `零风险口诀线仍可胜（${played}手）` : `零风险口诀线被预算/卡组封住（${played}手）`}`);
       }
-      const pool = cfg.rules === "v2" ? v2Loadout(sc) : cfg.deck;
+      const legal = cfg.rules === "v2" ? legalLoadout(sc) : cfg.deck;
+      const full = cfg.rules === "v2" ? v2Loadout(sc) : cfg.deck;
       for (let vi = 0; vi < scripts.length; vi++) {
         // M7（审计 P1-6）：必须同时清掉 scriptVariants——否则 initDuel 会无视钉住的 script 重新随机选变体，穷举测的是随机剧本池
         const vc = scripts.length > 1 ? { ...cfg, script: scripts[vi]!, scriptVariants: undefined } : cfg;
@@ -525,12 +527,22 @@ for (const sc of ALL) {
           else if (!s0.win) console.log(`    ${vLabel(vi)}[裸卡组] ○ 设计性死局(必败走向败线)`);
           else console.log(`    ${vLabel(vi)}[裸卡组] ✓ 真实UI可胜(${s0.steps}步)`);
         }
-        const r = emotionCanWin(sc, vc, pool);
+        // M8（审计 P1-3）：先证「合法满编」（≤deckLimit/可得性约束）可胜；只有超法满编能胜时降级为警告（尺子校准期不炸数据）
+        let r = emotionCanWin(sc, vc, legal);
+        let legalShort = false;
+        if (!r.win && legal.join() !== full.join()) {
+          const r2 = emotionCanWin(sc, vc, full);
+          if (r2.win) { r = r2; legalShort = true; }
+        }
         if (!r.win && !vc.unwinnable) fail(`对局 ${vc.id}「${vc.title}」${vLabel(vi)}满编卡组在真实 UI 合同下不可胜`);
         else if (!r.win) console.log(`  ${vLabel(vi)}○ ${vc.title}: 设计性死局(必败走向败线)`);
         else if (vc.unwinnable && vc.winScene !== vc.loseScene) fail(`对局 ${vc.id}「${vc.title}」${vLabel(vi)}标记 unwinnable 却穷举可胜 —— 死局标记腐烂，剧情杀可能被打赢`);
         else if (vc.unwinnable && r.win) warn(`对局 ${vc.id}「${vc.title}」${vLabel(vi)}标记 unwinnable 却穷举可胜（winScene===loseScene 旧豁免）——App 结算端 finAs 已强制判负，但死局数值应回炉`);
-        else console.log(`  ${vLabel(vi)}✓ ${vc.title}: 真实UI合同可胜(${r.steps}步)`);
+        else {
+          if (legalShort) warn(`对局 ${vc.id}「${vc.title}」${vLabel(vi)}仅超法满编可胜（合法 ≤${sc.deckLimit ?? 12} 张不可胜）——卡组可得性/上限回潮（P1-3）`);
+          const omni = vc.gambit ? "〔全知上限：胜线假设看穿敌招〕" : "";
+          console.log(`  ${vLabel(vi)}✓ ${vc.title}: 真实UI合同可胜(${r.steps}步)${legalShort ? "·超法满编" : ""}${omni}`);
+        }
       }
     } else {
       for (let vi = 0; vi < scripts.length; vi++) {
@@ -540,15 +552,24 @@ for (const sc of ALL) {
           const best0 = pressureBest(sc, vc, starter);
           console.log(`    ${vLabel(vi)}[裸卡组${starter.length}张] ${best0 ? "可胜(" + best0.line.filter(x => x !== "(换气)").length + "步)" : "✗ 不可胜 —— 初始卡组无法通关,需调卡组或提示购买"}`);
         }
-        const loadout = vc.rules === "v2" ? v2Loadout(sc) : vc.deck;
-        const best = pressureBest(sc, vc, loadout);
+        // M8（审计 P1-3/P1-2）：先证合法满编可胜；仅超法牌池能胜降级为警告；gambit/藏牌局的胜线是全知上限，明示标注
+        const legal = vc.rules === "v2" ? legalLoadout(sc) : vc.deck;
+        const full = vc.rules === "v2" ? v2Loadout(sc) : vc.deck;
+        let best = pressureBest(sc, vc, legal);
+        let legalShort = false;
+        if (!best && legal.join() !== full.join()) {
+          const b2 = pressureBest(sc, vc, full);
+          if (b2) { best = b2; legalShort = true; }
+        }
         const total = vc.hp!.player;
         if (best && vc.unwinnable && vc.winScene !== vc.loseScene) fail(`对局 ${vc.id}「${vc.title}」${vLabel(vi)}标记 unwinnable 却穷举可胜 —— 死局标记腐烂（A-2 反向断言）`);
         else if (best && vc.unwinnable) warn(`对局 ${vc.id}「${vc.title}」${vLabel(vi)}标记 unwinnable 却穷举可胜（winScene===loseScene 旧豁免）——App 结算端 finAs 已强制判负，但死局数值应回炉`);
         if (best) {
+          if (legalShort && !vc.unwinnable) warn(`对局 ${vc.id}「${vc.title}」${vLabel(vi)}仅超法满编可胜（合法 ≤${sc.deckLimit ?? 12} 张不可胜）——卡组可得性/上限回潮（P1-3）`);
+          const omni = vc.gambit || vc.seeOpp === "hidden" ? " 〔全知上限：穷举默认看得见敌招〕" : "";
           const margin = best.d.hpPlayer;
           const tenseness = margin <= 2 ? "极高张力" : margin <= Math.ceil(total / 2) ? "中等" : "宽松";
-          console.log(`  ${vLabel(vi)}✓ ${vc.title}: ${best.d.round}步最优胜,剩${margin}/${total}气力(${tenseness}) 线:${best.line.map(x => x.startsWith("(") ? x.slice(1, -1) : cardOf(sc, vc.oppCards)(x).name).join("→")}`);
+          console.log(`  ${vLabel(vi)}✓ ${vc.title}: ${best.d.round}步最优胜,剩${margin}/${total}气力(${tenseness})${legalShort ? "·超法满编" : ""}${omni} 线:${best.line.map(x => x.startsWith("(") ? x.slice(1, -1) : cardOf(sc, vc.oppCards)(x).name).join("→")}`);
         } else if (!vc.unwinnable) {
           fail(`对局 ${vc.id}「${vc.title}」${vLabel(vi)}普通压制局穷举不可胜且未标 unwinnable —— 数值失准或漏标死局（A-2）`);
         } else {
@@ -633,5 +654,5 @@ for (const sc of ALL) {
   console.log(`番外可达性: ${BONUS_SCENES.length} 个番外校验完成`);
 }
 
-console.log(`\n========== ${failures} 失败 / ${warnings} 警告 ==========`);
+console.log(`\n========== ${failures} 失败 / ${warnings} 警告（警告不拦退出码——绿≠零隐患，明细见上） ==========`);
 process.exit(failures ? 1 : 0);

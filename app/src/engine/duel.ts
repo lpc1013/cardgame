@@ -120,7 +120,7 @@ export interface DuelState {
   breakGamble?: boolean; // M8（审计 P2-1）：轻回合免 AP 的破招宣言——押空则硬吃 1 点，不再是零成本白赌
   /** 隐色陷阱（盖放区，限 1 张）：M4 起伏击对手主攻，满足 trigger 条件时生效（缺省 always） */
   trap: { cardId: string; name: string; effect: TrapEffect; trigger?: TrapTrigger } | null;
-  lastPlay: { playerCard?: CardDef; oppCard?: CardDef; damage: number; to: "p" | "o" | "none"; stale?: boolean; edge?: number; broke?: boolean; trapNote?: string; selfBroke?: boolean } | null;
+  lastPlay: { playerCard?: CardDef; oppCard?: CardDef; damage: number; to: "p" | "o" | "none"; stale?: boolean; edge?: number; broke?: boolean; trapNote?: string; selfBroke?: boolean; oppSeen?: boolean } | null;
   finished: "win" | "lose" | null;
   /** M0：情绪制气力上限（含人物 bonusQi / 备战加成；旧档缺省按 10） */
   qiMax?: number;
@@ -661,6 +661,8 @@ export function forfeitDuel(st: DuelState): boolean {
 /** 对手主攻结算（playerCard=null 即不接招）；respondOpponent / passResponse 共用 */
 function resolveOppAttack(st: DuelState, playerCard: CardDef | null, cardOf: (id: string) => CardDef): void {
   const opp = cardOf(st.oppIntent!.cardId!);
+  // M9.5（P0-4 遗留）：这一手是否早已落在你眼里——观牌/斥候买到的情报兑现阶段，战报不再装看不见
+  const seen = st.seeNext === "card";
   // M4：陷阱按触发条件判定——条件未满足则保持盖放不消耗
   const trap = st.trap;
   const trapActive = !!trap && trapArmed(trap.trigger, st, opp);
@@ -705,7 +707,7 @@ function resolveOppAttack(st: DuelState, playerCard: CardDef | null, cardOf: (id
   // 对手蓄力层随主攻释放（每层 +2）
   const oc = st.oppCharge ?? 0;
   if (oc > 0) { o += oc * 2; st.oppCharge = 0; }
-  st.lastPlay = { playerCard: playerCard ?? undefined, oppCard: opp, damage: 0, to: "none", edge, broke };
+  st.lastPlay = { playerCard: playerCard ?? undefined, oppCard: opp, damage: 0, to: "none", edge, broke, oppSeen: seen };
   if (playerCard) st.lastCardId = playerCard.id;
   if (p > o) {
     // M2 调参：应手的反击差值减半（守势转换不如主攻高效）——否则玩家在我方与敌方两个回合都全额赚差值，
@@ -736,9 +738,10 @@ function resolveOppAttack(st: DuelState, playerCard: CardDef | null, cardOf: (id
   else if (st.hpPlayer <= 0) st.finished = "lose";
   {
     const lp = st.lastPlay;
-    const oppName = st.redactLog ? "▓▓" : opp.name;
+    const hide = st.redactLog && !lp?.oppSeen;
+    const oppName = hide ? "▓▓" : opp.name;
     const act = playerCard ? `你以「${playerCard.name}」应手` : "你护住门户，硬接不接";
-    const dest = lp?.to === "o" ? `他折了 ${lp?.damage} 点` : lp?.to === "p" ? `你折了 ${lp?.damage} 点` : lp && lp.damage === 0 ? "他这一手落了空" : "两败俱伤";
+    const dest = lp?.to === "o" ? `他折了 ${hide ? "▓" : lp?.damage} 点` : lp?.to === "p" ? `你折了 ${hide ? "▓" : lp?.damage} 点` : lp && lp.damage === 0 ? "他这一手落了空" : "两败俱伤";
     pushLog(st, `他主攻「${oppName}」，${act}——${dest}${trapNote ? `（${trapNote}）` : ""}`, "press");
   }
   finishOppTurn(st);
@@ -1074,7 +1077,7 @@ export function playPressure(st: DuelState, playerCard: CardDef, oppCardId: stri
   if (playerCard.drawOnPlay && st.rules === "v2" && playerCard.drawOnPlay > 0) {
     drawN(st, playerCard.drawOnPlay);
   }
-  st.lastPlay = { playerCard, oppCard: opp, damage: 0, to: "none", stale, edge, broke, selfBroke };
+  st.lastPlay = { playerCard, oppCard: opp, damage: 0, to: "none", stale, edge, broke, selfBroke, oppSeen: st.seeNext === "card" };
   st.lastCardId = playerCard.id;
   // M3 反背板数据源：记我方主攻花色（phased）
   if (phased && playerCard.suit) {
@@ -1118,8 +1121,9 @@ export function playPressure(st: DuelState, playerCard: CardDef, oppCardId: stri
     const lp = st.lastPlay;
     const note = trapNoteOpp ?? trapNote;
     if (note) st.lastPlay = { ...st.lastPlay, trapNote: note };
-    const dest = lp?.to === "o" ? `他折了 ${lp?.damage} 点` : lp?.to === "p" ? `你折了 ${lp?.damage} 点` : "两败俱伤";
-    pushLog(st, `你出「${playerCard.name}」，他出「${st.redactLog ? "▓▓" : opp.name}」——${dest}${note ? `（${note}）` : ""}`, "press");
+    const hide = st.redactLog && !lp?.oppSeen;
+    const dest = lp?.to === "o" ? `他折了 ${hide ? "▓" : lp?.damage} 点` : lp?.to === "p" ? `你折了 ${hide ? "▓" : lp?.damage} 点` : lp && lp.damage === 0 ? "空耗一手，没能伤他（封顶已尽）" : "两败俱伤";
+    pushLog(st, `你出「${playerCard.name}」，他出「${hide ? "▓▓" : opp.name}」——${dest}${note ? `（${note}）` : ""}`, "press");
   }
   // M2 轻回合：每回合一个主行动，出完自动交出先手（对局未结束时）
   if (phased && st.light && !st.finished) handOffToOpponent(st);

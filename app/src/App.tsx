@@ -1626,7 +1626,9 @@ function ShopView({ sc, st, shop, onLeave, onSync, toast }: {
   onSync: (s: RunState) => void;
   toast: (m: string) => void;
 }) {
-  const [local, setLocalState] = useState<RunState>({ ...st, bag: [...st.bag], deck: [...st.deck] });
+  // M9.5（P0-2 遗留）：旧写法只克隆 bag/deck，retinue/flags/boosts 等仍与全局 st 共享引用——
+  // 任何就地 push 都会绕过 onSync 偷写全局。整体 structuredClone，local 与 st 从此彻底两本账
+  const [local, setLocalState] = useState<RunState>(() => structuredClone(st));
   const setLocal = (next: RunState) => { setLocalState(next); onSync(next); };
   const [opened, setOpened] = useState<{ ids: string[]; dup: Set<string> } | null>(null);
   const [tab, setTab] = useState<"buy" | "pack" | "deck" | "dice">("buy");
@@ -2289,12 +2291,14 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
             {duel.lastPlay.stale && "（招式用老，点数-2！）"}
             {duel.lastPlay.edge === 1 && "（克敌牌色，点数+1）"}
             {duel.lastPlay.edge === -1 && "（被敌牌色所克，点数-1）"}
-            你打出「{duel.lastPlay.playerCard?.name}」（{duel.lastPlay.playerCard?.power}{duel.lastPlay.playerCard?.suit === "势" ? "×1.5" : ""}{duel.lastPlay.stale ? "-2" : ""}{duel.lastPlay.edge ? (duel.lastPlay.edge > 0 ? "+1" : "-1") : ""}），他打出「{oppPlayHidden ? "▓▓" : duel.lastPlay.oppCard?.name}」（{oppPlayHidden ? "▓" : duel.lastPlay.oppCard?.power}）——
+            你打出「{duel.lastPlay.playerCard?.name}」（{duel.lastPlay.playerCard?.power}{duel.lastPlay.playerCard?.suit === "势" ? "×1.5" : ""}{duel.lastPlay.stale ? "-2" : ""}{duel.lastPlay.edge ? (duel.lastPlay.edge > 0 ? "+1" : "-1") : ""}），他打出「{(oppPlayHidden && !duel.lastPlay.oppSeen) ? "▓▓" : duel.lastPlay.oppCard?.name}」（{(oppPlayHidden && !duel.lastPlay.oppSeen) ? "▓" : duel.lastPlay.oppCard?.power}）——
             {duel.lastPlay.to === "o"
-              ? `他折了 ${duel.lastPlay.damage} 点气力！`
+              ? `他折了 ${(oppPlayHidden && !duel.lastPlay.oppSeen) ? "▓" : duel.lastPlay.damage} 点气力！`
               : duel.lastPlay.to === "p"
-                ? `你折了 ${duel.lastPlay.damage} 点气力！`
-                : "两败俱伤。"}
+                ? `你折了 ${(oppPlayHidden && !duel.lastPlay.oppSeen) ? "▓" : duel.lastPlay.damage} 点气力！`
+                : duel.lastPlay.damage === 0
+                  ? "空耗一手，没能伤他（封顶已尽）。"
+                  : "两败俱伤。"}
             {duel.lastPlay.selfBroke && "（你的招被他看破了！）"}
             {duel.lastPlay.trapNote && <span className="trap-on">（{duel.lastPlay.trapNote}）</span>}
           </p>
@@ -2589,11 +2593,12 @@ function SicboPanel({ silver, onSilver }: { silver: number; onSilver: (delta: nu
   const [st, setSt] = useState<SicboState>(() => initSicbo());
   const [side, setSide] = useState<"大" | "小" | "豹">("大");
   const [cheat, setCheat] = useState(false);
-  // W-1：本次进店的出千次数——查获率随之递增（0.2 + n×0.05，封顶 1）
-  const [cheatCount, setCheatCount] = useState(0);
+  // W-1：出千次数——查获率随之递增（0.2 + n×0.05，封顶 1）。
+  // M9.5（P0-1 遗留）：账记在帝国档（achCounters）而非组件态——旧实现 F5 即清零，刷新可遁
+  const [cheatCount, setCheatCount] = useState(() => getCounter("sicbo_heat"));
   const roll = () => {
     if (st.bet <= 0 || st.bet > silver) { onSilver(0, "押注超过身家"); return; }
-    if (cheat) setCheatCount((c) => c + 1);
+    if (cheat) setCheatCount(bumpCounter("sicbo_heat"));
     const n = structuredClone(st);
     sicboRoll(n, side, cheat, cheat ? cheatCount : 0);
     const pay = sicboPayout(n);
@@ -2604,7 +2609,7 @@ function SicboPanel({ silver, onSilver }: { silver: number; onSilver: (delta: nu
   };
   return (
     <div className="story-panel" style={{ maxWidth: 640 }}>
-      <p className="muted">三枚骰盅，买定离手。大（11-17）/ 小（4-10）一赔一，豹子（三同）一赔五。出千七成胜面——但庄家的眼睛不瞎：同一晚千得越多次，被抓的概率越高（起始两成，每次递增半成），抓到输双倍。</p>
+      <p className="muted">三枚骰盅，买定离手。大（11-17）/ 小（4-10）一赔一，豹子（三同）一赔五。出千七成胜面——但庄家的眼睛不瞎：出千的账记在总簿上（关店刷新也不销），千得越多次，被抓的概率越高（起始两成，每次递增半成），抓到输双倍。</p>
       <div className="duel-status">
         <span>身家 {silver} 两</span>
         <span>押注 {st.bet} 两</span>

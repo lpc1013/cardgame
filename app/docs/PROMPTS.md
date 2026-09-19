@@ -834,8 +834,8 @@
 | xie | end_historian 史笔 | end_beam 房梁 |
 | qinhuai | end_lou 爰书上的名字 | end_qingyi 青衣人 |
 | jieyu·于谦 | p5_final 终章 ✔(j_sheji) | end_bancheng 半壁 ✔(j_shoujiu) |
-| jieyu·传令兵 | p2_win_hero 信在人心 | — |
-| jieyu·景泰帝 | end_kaihua 开花了 | — |
+| jieyu·石亨（原表作「传令兵」，视角实名石亨） | p2_win_hero 信在人心 ✔(j_xinren) | — |
+| jieyu·景泰帝 | end_kaihua 开花了 ✔(j_kaihua) | — |
 | shumian·韩信 | a3_final 属于我的时代 + end_jogou 狡兔死走狗烹 | end_lianggong 良弓未藏 |
 | shumian·主公 | end_xinren 信人不疑 | end_flag 旗 |
 | changjiang·帝王 | end_beiju 血色棋子 | end_qiyou 终局之局 + end_qinwang 亲往 |
@@ -845,6 +845,21 @@
 | jianfeng | end_iron 剑锋之上 | end_stone 无字之碑 |
 | xingxing | junzhuang 可以燎原 | end_xiansheng 先生 + end_yaohuilai 要回来的 |
 | touming | ch3_canon_final 羽箭最后的轻语 | ch3_breakout 血路 |
+
+**补登（2026-09-19 剧本逻辑审计·劫与烬条目）**：jieyu 共 13 结局，按本节规则只发 4 张奖励卡（j_sheji / j_shoujiu / j_xinren / j_kaihua），其余 9 结局**登记为不发卡**，勿再按「卡无出处」上报——出处链为 结局 → 成就（achievements.ts st_jieyu_*）→ 番外钥匙（bonus.ts unlockEndings）：
+
+| 结局 id | name · rank | desc |
+|---|---|---|
+| `end_withcity` | 与城同烬 · 败线结局·以身守城 | 城终究是破了。你把自己留在了城里，把清白留在了雪里。 |
+| `end_wumen` | 午门 · 败线结局·被刺 | 言南迁者，可斩也——说完这句，你倒在了午门前。第二天，城破了。 |
+| `end_wanjing` | 晚景 · 新世界线·贬所春秋 | 你守住了城，没守住官帽——可孩子们记住了你的骨头。 |
+| `end_unknown` | 无名 · 传令兵结局·送到了 | 信送到了，史书没有记下送信人的名字——像没有记下那二十匹马。 |
+| `end_twenty` | 差二十里 · 败线结局·驰援 | 信在石缝里等了三天，等来了总兵府——你没等来。 |
+| `end_shihou` | 忠国公 · 石亨结局·夺门 | 从龙第一功，换来诏狱里无人来探的十年后。那壶敌酒，喝与没喝，墙上的水珠都一样冷。 |
+| `end_bingzu` | 边关老卒 · 石亨结局·收手 | 那一夜你没有开城门。十年边关，风比京师硬，心比雪干净。 |
+| `end_duoyu` | 多余的那个 · 景泰帝结局·垂帘之后 | 他到底还是多余的那个——只是这一次，他替自己，开过一朵花。 |
+| `end_pian` | 偏院的尘 · 败线结局·失语 | 满殿都有事做——只有龙椅上的人，被轻轻搁在了一边。 |
+
 
 **31 张新卡卡表**（落位 `cards/<suit>/<id>.jpg`；挂接：卡定义入各剧本 `cards` 数组 + `endingReward: true`；场景 `ending.reward: "<id>"`）：
 
@@ -856,7 +871,7 @@
 | `x_shibi` | 史笔 | 势·传·4 | xie end_historian | 真相没能翻案——史册留下了名姓。/ 笔是直的，墨是冷的。 |
 | `q_yuanshu` | 爰书 | 器·传·4 | qinhuai end_lou | 爰书上的名字是真的。可你知道了——它不是全部的真。/ 一个名字，一座秦淮。 |
 | `j_xinren` | 信在人心 | 势·传·4 | jieyu p2_win_hero | 信送到了。城头有人举着火把，喊你的名字。/ 蜡封的密信，比命重；送信的人，比信轻。 |
-| `j_kaihua` | 开花了 | 势·传·4 | jieyu end_kaihua | 偏院那棵桃树，今年开了。/ 八年天子，一棵树记得。 |
+| `j_kaihua` | 开花了 | 势·传·4 | jieyu end_kaihua | 偏院墙角那朵不知名的花，今年开了。/ 八年天子，一朵花记得——它从一棵杂草，开成了一树。（2026-09-19 对齐正文：剧本通篇作「墙角一朵不知名的花」，§九 卡面图的「老桃树一树繁花」即其八年之后，与 lore 的「开成了一树」同源） |
 | `s_shidai` | 属于我的时代 | 策·传·4 | shumian a3_final | 十面埋伏，围的是霸王；最后的伏兵，埋在史书里。/ 属于我的时代——也是史书翻页的时代。 |
 | `s_jogou` | 狡兔死 | 隐·传·4 | shumian end_jogou | 递出去的刀，终究有人替你收鞘。/ 狡兔死，走狗烹；钟室灯，照功臣。 |
 | `s_xinren` | 信人不疑 | 势·传·4 | shumian end_xinren | 孤城那夜你失信了一刻——这一生，你把它还给了他。/ 疑人不用，信人不疑。 |

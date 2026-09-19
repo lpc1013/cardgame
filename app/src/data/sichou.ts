@@ -364,7 +364,7 @@ export const sichou: Scenario = {
         { text: "【怀瑾坊】账房对册——钱是怎么样流的", cond: { notFlag: "done_zhang" }, effects: [{ setFlag: "done_zhang" }], next: "zhang" },
         { text: "【提审山本一郎】海上——货是怎么样出的（对局）", cond: { notFlag: "done_yam" }, effects: [{ setFlag: "done_yam" }], next: "yam_intro" },
         { text: "【刑部大牢】对坐周书年——罪是怎么样认的（对局）", cond: { notFlag: "done_zhou" }, effects: [{ setFlag: "done_zhou" }], next: "zhou_intro" },
-        { text: "【重访证人】重访大牢与织造局，重查霜降暗锦与子夜内侍。", hint: "兜底 · 须先对坐过周书年，重查他指点的两处（限 2 次，暗锦锦角仍要亲自去取）", cond: { statAtLeast: { revisit_left: 1 }, flag: "done_zhou" }, effects: [{ stat: { revisit_left: -1 } }, { unlockClue: "t12" }, { unlockClue: "t13" }], next: "rv_sichou" },
+        { text: "【重访证人】重访大牢与织造局，重查霜降暗锦与子夜内侍。", hint: "兜底 · 对坐未成后亲自复查两处（限 2 次；暗锦锦角与深层线仍要赢下方能入怀）", cond: { statAtLeast: { revisit_left: 1 }, flag: "zhou_lost" }, effects: [{ stat: { revisit_left: -1 } }, { unlockClue: "t12" }, { unlockClue: "t13" }], next: "rv_sichou" },
         { text: "◆ 封笔定案（至少勘得五条线索）", cond: { cluesAtLeast: 5 }, next: "verdict" },
       ],
     },
@@ -611,6 +611,7 @@ export const sichou: Scenario = {
   "",
   "那扇铁门在身后合拢，锈声闷响。"
 ],
+      effects: [{ setFlag: "zhou_lost" }],
       next: "hub",
     },
     // ---------- 深层线 ----------

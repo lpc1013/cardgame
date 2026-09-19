@@ -14,7 +14,9 @@ import type { DuelConfig, CardDef, Suit, ItemEffect, TrapEffect, TrapTrigger } f
 //     牌库抽空调洗弃牌堆回填。人物卡不进牌库，开局即场外提供被动。
 //   - 情绪制：出牌不耗行动力（无限出牌），靠手牌轮换与四色克制博弈。
 //   - 压制制：每回合行动力 3 点，卡牌费用缺省 1；克制对手牌色 +1 点，被克 -1 点。
-//   - 物品卡：打出即触发 itemEffect，本局消耗（不进弃牌堆）。
+//   - 物品卡：打出即触发 itemEffect，本局每 id 限一张（不进弃牌堆）。M9 起物品是「一次出手」而非出手之外的
+//     白送：情绪制按 ITEM_YANLI_COST 扣言力并占一手（round 前进、当前亮色作废），
+//     压制制伤害型效果（破防/共鸣）并入 TURN_DAMAGE_CAP 的同窗口预算。
 //
 // 博弈机制（cfg.gambit，第三批；全部确定性可穷举，设计性死局禁用）：
 //   - 情绪制·虚张/读牌：对手每三招亮一次假色（亮其真色所克之色，跟假色即撞枪口）；
@@ -42,6 +44,24 @@ function pushLog(st: DuelState, text: string, kind: string): void {
   if (st.log.length > DUEL_LOG_CAP) st.log.splice(0, st.log.length - DUEL_LOG_CAP);
 }
 
+/** M9（第四轮审计 P0-3）：本交换窗口尚可对对手造成的伤害余量。
+ *  窗口键=round——round 未推进即同一次交换，物品（破防/共鸣）与紧随其后的交手共用一份封顶额度。
+ *  旧实现物品直接 hpOpponent -= 4/3，绕开 clamp 在封顶之上另开一栏爆发（M1 门禁形同虚设）。 */
+export function dmgRoom(st: DuelState): number {
+  if (st.dmgOutAt !== st.round) { st.dmgOutAt = st.round; st.dmgOut = 0; }
+  return Math.max(0, TURN_DAMAGE_CAP - (st.dmgOut ?? 0));
+}
+
+/** M9：对对手造成伤害的唯一出口——钳到本窗口余量并记账，返回实际造成的伤害（0=余量已尽）。 */
+function damageOpponent(st: DuelState, raw: number): number {
+  const d = Math.min(Math.max(0, raw), dmgRoom(st));
+  if (d > 0) {
+    st.dmgOut = (st.dmgOut ?? 0) + d;
+    st.hpOpponent -= d;
+  }
+  return d;
+}
+
 /** W-2 言力免费出牌数：情绪制前 N 张成术免费，第 N 张后每张耗 1 言力（防无限链出的轻预算）。
  *  N=5 + yanliMax=7 → 每局成术上限 12 手：覆盖最长情绪制胜线（赣州强攻 12 步），
  *  同时终结无限刷共鸣（原 9 手上限把赣州从可胜 12 步压成死局，故放宽——2026-08-27 复核）。 */
@@ -51,6 +71,22 @@ export const EMOTION_FREE_PLAYS = 5;
 export const EMOTION_TOPIC_MATCH_MAX = 3;
 /** M7：情绪制言力上限（W-2 预算）；App 续档归一化与 initDuel 共用同一口径 */
 export const EMOTION_YANLI_MAX = 7;
+/** M9（第四轮审计 P0-3）：情绪制物品言力定价——物品是「一次出手」而非出手之外的白送。
+ *  旧实现 playItem 在情绪制既不扣言力也不 round++，一叠「共鸣」可在 12 手预算与话题封顶之外
+ *  直灌 rapport，把 W-2/EMOTION_TOPIC_MATCH_MAX 两道闸门整体绕过。
+ *  定价按效果强度分档（口径：一张成术出手 ≈ 1 言力 + 1 手额度，且要担气力风险）：
+ *  - 共鸣 3：+2 共鸣且零风险零花色判定，是全游戏最猛的胜线推进器。定 2 时驸马局（共鸣×2+破防×2 弹药）
+ *    可用 6 言力买满 +5 共鸣、不出一张成术就打满 goal 5；定 3 后 7 言力预算最多买 +4，
+ *    「物品独吞胜线」自此不可能（verify 有同口径数据门禁守着这条不变量）；
+ *  - 破防 2：共鸣+1 且防备清零（省掉后续硬掰的气力代价），值两手成术；
+ *  - 强牌 1：下一手 +1 共鸣（有条件兑现，且要再占一手）；
+ *  - 回气 1：+3 气力（气力是败线时钟，但对胜线无直接贡献）；
+ *  - 抽牌 1：手牌冗余（不推进胜线）；
+ *  - 观牌/观色/观点/揭底 1：情绪制本无消费路径（playItem 已先行拒用），价格仅兜底。
+ *  物品不享 EMOTION_FREE_PLAYS 免单（那是成术的轻预算），但同样占 round——占一个免费手位。 */
+export const ITEM_YANLI_COST: Record<ItemEffect, number> = {
+  破防: 2, 共鸣: 3, 强牌: 1, 回气: 1, 抽牌: 1, 观牌: 1, 观色: 1, 观点: 1, 揭底: 1,
+};
 
 export interface DuelState {
   cfg: DuelConfig;
@@ -77,6 +113,10 @@ export interface DuelState {
   hpMax: number;         // 我方气力上限（含加成）：回气钳制与气力条显示共用
   charge: number;        // 蓄势层（下张成术每层 +2，上限 2）
   foresuit: Suit | null; // 破招宣言（押中敌方本招花色则敌招作废）
+  /** M9（审计 P0-3）：本交换窗口已对对手造成的伤害——物品（破防/共鸣）并入 TURN_DAMAGE_CAP 同一预算 */
+  dmgOut?: number;
+  /** M9：dmgOut 所属窗口（键=当时的 round；round 未推进即为同一次交换） */
+  dmgOutAt?: number;
   breakGamble?: boolean; // M8（审计 P2-1）：轻回合免 AP 的破招宣言——押空则硬吃 1 点，不再是零成本白赌
   /** 隐色陷阱（盖放区，限 1 张）：M4 起伏击对手主攻，满足 trigger 条件时生效（缺省 always） */
   trap: { cardId: string; name: string; effect: TrapEffect; trigger?: TrapTrigger } | null;
@@ -389,7 +429,8 @@ export function playEmotion(st: DuelState, card: CardDef): boolean {
   }
   // W-2 言力预算（情绪制防无限链出的轻预算；规则见 initDuel）：
   //   前 EMOTION_FREE_PLAYS 张成术免费；此后每出一张成术耗 1 言力；yanli 耗尽则不可再出。
-  //   物品不耗言力（上方已早退）；pressure 模式 yanliMax=0 且不走本函数，完全不受影响。
+  //   物品（上方早退走 playItem）M9 起同样耗言力——按 ITEM_YANLI_COST 定价且不享免单额度，
+  //   并占一次出手（round++）。pressure 模式 yanliMax=0 且不走本函数，完全不受影响。
   //   旧档无言力字段时保持旧行为不设限（typeof 守卫）。
   if (typeof st.yanli === "number") {
     if (st.round >= EMOTION_FREE_PLAYS) {
@@ -560,8 +601,13 @@ function applyTrapEffect(effect: TrapEffect, st: DuelState, opp: CardDef, byOppo
     case "落空":
       return { note: byOpponent ? "你的主攻撞上了他的暗算——这手落了空！" : "他的招式被你案下的暗牌废了！", o: 0, zero: true };
     case "反伤":
-      if (byOpponent) st.hpPlayer -= 2; else st.hpOpponent -= 2;
-      return { note: byOpponent ? "他反扣的暗刺划了你 2 点气力！" : "案下暗刺发难，他又折了 2 点气力！", o: 0, zero: false };
+      if (byOpponent) st.hpPlayer -= 2;
+      else {
+        // M9（审计 P0-3）：我方暗刺的 2 点同样并入本窗口封顶预算（与应手反击共用一份 TURN_DAMAGE_CAP 额度）
+        const back = damageOpponent(st, 2);
+        return { note: back > 0 ? `案下暗刺发难，他又折了 ${back} 点气力！` : "案下暗刺落空——他这一回合已经挨得够多了。", o: 0, zero: false };
+      }
+      return { note: "他反扣的暗刺划了你 2 点气力！", o: 0, zero: false };
     case "蓄锋":
       st.buffPower += 2;
       return { note: "暗牌蓄锋——你的下一手主攻 +2。", o: 0, zero: false };
@@ -663,9 +709,10 @@ function resolveOppAttack(st: DuelState, playerCard: CardDef | null, cardOf: (id
   if (playerCard) st.lastCardId = playerCard.id;
   if (p > o) {
     // M2 调参：应手的反击差值减半（守势转换不如主攻高效）——否则玩家在我方与敌方两个回合都全额赚差值，
-    // 轻回合局的张力崩塌，且剧情杀数值防线被守方加成击穿。赢 1 点差保底 1 伤（不许出现「折了 0 点」）。
-    const d = Math.min(Math.max(1, Math.floor((p - o) / 2)), TURN_DAMAGE_CAP);
-    st.hpOpponent -= d;
+    // 轻回合局的张力崩塌，且剧情杀数值防线被守方加成击穿。赢 1 点差保底 1 伤（差值下限；唯一例外是本窗口
+    // 封顶已被自己先前拍下的物品灌满——M9 之后那一次出手确实伤不着他了）。
+    // M9（审计 P0-3）：伤害走 damageOpponent 唯一出口——与本窗口内的物品伤害共用 TURN_DAMAGE_CAP 预算。
+    const d = damageOpponent(st, Math.max(1, Math.floor((p - o) / 2)));
     st.lastPlay = { ...st.lastPlay, damage: d, to: "o" };
   } else if (o > p) {
     const d = Math.min(o - p, TURN_DAMAGE_CAP);
@@ -676,8 +723,9 @@ function resolveOppAttack(st: DuelState, playerCard: CardDef | null, cardOf: (id
     st.lastPlay = { ...st.lastPlay, damage: 0, to: "none" };
   } else {
     st.hpPlayer -= 1;
-    st.hpOpponent -= 1;
-    st.lastPlay = { ...st.lastPlay, damage: 1, to: "none" };
+    // M9（审计 P0-3）：互耗的这一手同样记入本窗口封顶预算（同窗口对对手总输出 ≤ TURN_DAMAGE_CAP）
+    const tie = damageOpponent(st, 1);
+    st.lastPlay = { ...st.lastPlay, damage: tie, to: "none" };
   }
   if (trapNote) st.lastPlay = { ...st.lastPlay, trapNote };
   if (trapActive) st.seeTrap = false;
@@ -796,10 +844,16 @@ function afterTurn(st: DuelState): void {
   }
 }
 
-/** 物品卡：对局内使用（本局消耗；情绪制不耗行动力，压制制耗费） */
+/** 物品卡：对局内使用（本局每 id 限一张）。
+ *  M9（第四轮审计 P0-3）：物品不再是「对局节奏之外」的白送动作——
+ *  - 情绪制：按 ITEM_YANLI_COST 扣言力，并占一次出手（round+1、当前亮色作废、补至满手）：
+ *    与成术共用 W-2 轻预算与 12 手额度，旧实现「一叠共鸣绕开一切闸门灌血」被封死；
+ *  - 压制制：伤害型效果（破防/共鸣）并入 TURN_DAMAGE_CAP 的同窗口预算（见 damageOpponent/dmgRoom），
+ *    余量已尽则直接拒用——不白吞卡也不白吞行动力；增益/情报型（强牌/抽牌/观牌/观色/观点/揭底）不受封顶影响。
+ *  消耗检查一律先于消耗记账（M8 口径）。 */
 export function playItem(st: DuelState, card: CardDef): boolean {
   const eff = card.itemEffect;
-  if (!eff) return false;
+  if (!eff || st.finished) return false;
   // M8（审计 P0-3）：剧情杀专用局封死道具——否则「必败演出」可被一叠物品打穿，unwinnable 断言与剧情双双失效
   if (st.cfg.unwinnable) return false;
   // M8（审计 P0-3）：物品一局限一张不再只靠 UI 自觉——classic 路径过去连 usedCards 都不记，可无限连拍
@@ -809,6 +863,17 @@ export function playItem(st: DuelState, card: CardDef): boolean {
   // M1（审计 4.2）：观牌/观色/观点/揭底只服务压制制情报层——情绪制无任何消费路径（UI 不渲染），
   // 旧实现照常结算=打出即死卡还倒贴一手牌。情绪局直接拒绝打出。
   if (st.mode === "emotion" && (eff === "观牌" || eff === "观色" || eff === "观点" || eff === "揭底")) return false;
+  // M9：情绪制言力闸门（先于一切消耗）——物品按强度定价，付不起就什么也不扣
+  const yanliPrice = st.mode === "emotion" ? ITEM_YANLI_COST[eff] : 0;
+  if (st.mode === "emotion" && typeof st.yanli === "number" && st.yanli < yanliPrice) {
+    st.lastResult = { text: `「${card.name}」这一手要使 ${yanliPrice} 点言力才做得实——你话已穷了。`, kind: "miss" };
+    return false;
+  }
+  // M9：压制制伤害型物品的余量闸门（先于一切消耗）——本窗口封顶已被灌满则拒用
+  if (st.mode === "pressure" && (eff === "破防" || eff === "共鸣") && dmgRoom(st) <= 0) {
+    st.lastResult = { text: `他这一回合已经被你打得够多了——「${card.name}」再掷也伤不着他。`, kind: "miss" };
+    return false;
+  }
   if (st.rules === "v2" && st.mode === "pressure") {
     if (st.ap < cardCost(card)) return false;
     st.ap -= cardCost(card);
@@ -818,12 +883,23 @@ export function playItem(st: DuelState, card: CardDef): boolean {
     st.hand = st.hand.filter((c) => c !== card.id);
     st.library = st.library.filter((c) => c !== card.id);
   }
+  // M9：情绪制物品扣言力（压制制言力预算为 0，不参与）
+  if (st.mode === "emotion" && typeof st.yanli === "number") st.yanli -= yanliPrice;
   applyItemEffect(st, eff, card.name);
-  if (st.mode === "emotion") finishCheck(st, st.cfg.goal ?? DEFAULT_GOAL);
-  else {
+  if (st.mode === "emotion") {
+    // M9：把新成本写在脸上（旧档无言力字段时不扣费，也就不能谎报）
+    if (typeof st.yanli === "number" && st.lastResult) st.lastResult.text += `（言力-${yanliPrice}·占一手）`;
+    // M9（审计 P0-3）：物品占的是「这一次开口」——话头前进一步、当前亮色作废（下一手重读其色）、补至满手，
+    // 与 playEmotion 同序（round++ → 清亮色 → 胜负判定 → 补牌 → 战报）。旧实现这些全不做，物品是纯额外动作。
+    st.round += 1;
+    st.opponentShown = null;
+    finishCheck(st, st.cfg.goal ?? DEFAULT_GOAL);
+    afterTurn(st);
+  } else {
     if (st.hpOpponent <= 0 && st.hpPlayer > 0) st.finished = "win";
     else if (st.hpPlayer <= 0) st.finished = "lose";
   }
+  if (st.lastResult) pushLog(st, st.lastResult.text, st.lastResult.kind);
   return true;
 }
 
@@ -834,9 +910,10 @@ function applyItemEffect(st: DuelState, eff: ItemEffect, name: string): void {
         st.guard = 0; st.rapport += 1;
         st.lastResult = { text: `你亮出「${name}」。他脸色骤变，防备尽碎，话匣子再也关不上了。`, kind: "item" };
       } else {
-        st.hpOpponent -= 4;
-        st.lastResult = { text: `你掷出「${name}」——正中要害，他折了 4 点气力！`, kind: "item" };
-        st.lastPlay = { damage: 4, to: "o" };
+        // M9（审计 P0-3）：4 点伤害并入 TURN_DAMAGE_CAP 同窗口预算——不再「额外于封顶之上」
+        const d = damageOpponent(st, 4);
+        st.lastResult = { text: `你掷出「${name}」——正中要害，他折了 ${d} 点气力！${d < 4 ? "（这一回合的封顶已被你自己灌满）" : ""}`, kind: "item" };
+        st.lastPlay = { damage: d, to: "o" };
       }
       break;
     case "回气":
@@ -854,9 +931,10 @@ function applyItemEffect(st: DuelState, eff: ItemEffect, name: string): void {
         st.rapport += 2;
         st.lastResult = { text: `「${name}」一出，满座动容。共鸣大进！（+2）`, kind: "item" };
       } else {
-        st.hpOpponent -= 3;
-        st.lastResult = { text: `「${name}」掷出，他乱了阵脚！（-3 气力）`, kind: "item" };
-        st.lastPlay = { damage: 3, to: "o" };
+        // M9（审计 P0-3）：3 点伤害同样并入 TURN_DAMAGE_CAP 同窗口预算
+        const d = damageOpponent(st, 3);
+        st.lastResult = { text: `「${name}」掷出，他乱了阵脚！（-${d} 气力）${d < 3 ? "（这一回合的封顶已被你自己灌满）" : ""}`, kind: "item" };
+        st.lastPlay = { damage: d, to: "o" };
       }
       break;
     case "抽牌":
@@ -1003,8 +1081,8 @@ export function playPressure(st: DuelState, playerCard: CardDef, oppCardId: stri
     st.playerLeadSuits = [...(st.playerLeadSuits ?? []), playerCard.suit].slice(-4);
   }
   if (p > o) {
-    const d = Math.min(p - o, TURN_DAMAGE_CAP);
-    st.hpOpponent -= d;
+    // M9（审计 P0-3）：伤害并入 TURN_DAMAGE_CAP 同窗口预算（与物品破防/共鸣共用一份封顶额度）
+    const d = damageOpponent(st, p - o);
     st.lastPlay = { ...st.lastPlay, damage: d, to: "o" };
   } else if (o > p) {
     const d = Math.min(o - p, TURN_DAMAGE_CAP);
@@ -1012,16 +1090,20 @@ export function playPressure(st: DuelState, playerCard: CardDef, oppCardId: stri
     st.lastPlay = { ...st.lastPlay, damage: d, to: "p" };
   } else {
     st.hpPlayer -= 1;
-    st.hpOpponent -= 1;
-    st.lastPlay = { ...st.lastPlay, damage: 1, to: "none" };
+    // M9（审计 P0-3）：平手互耗的这一手同样记入本窗口预算（同窗口对对手总输出 ≤ TURN_DAMAGE_CAP 是真命题）
+    const tie = damageOpponent(st, 1);
+    st.lastPlay = { ...st.lastPlay, damage: tie, to: "none" };
   }
   // 反伤陷阱（M1 重做，审计 2.2）：旧实现把「输掉的差值」全额弹回对手——最优解变成故意出
   // 废牌送掉交换（激励倒置）。改为触发即对对手造成固定 2 点，交换本身照常结算。
+  // M9（审计 P0-3）：这 2 点同样并入本窗口封顶预算（余量已尽则暗刺落空，不再另开一栏爆发）。
   let trapNote: string | undefined;
   if (trap?.effect === "反伤") {
-    st.hpOpponent -= 2;
-    trapNote = "案下暗刺发难，他又折了 2 点气力！";
-    st.lastPlay = { ...st.lastPlay, trapNote };
+    const back = damageOpponent(st, 2);
+    if (back > 0) {
+      trapNote = `案下暗刺发难，他又折了 ${back} 点气力！`;
+      st.lastPlay = { ...st.lastPlay, trapNote };
+    }
   }
   st.hpPlayer -= selfHarm;
   st.round += 1;

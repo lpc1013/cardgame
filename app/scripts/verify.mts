@@ -26,7 +26,7 @@ import { xingxing } from "../src/data/xingxing.ts";
 import { touming } from "../src/data/touming.ts";
 import { BONUS_SCENES } from "../src/data/bonus.ts";
 import type { Scenario, CardDef, Suit } from "../src/engine/types.ts";
-import { initDuel, revealEmotion, playEmotion, playPressure, setDuelShuffle, endTurn, readEmotion, chargeUp, breakMove, respondOpponent, RESTRAIN, TURN_DAMAGE_CAP, type DuelState } from "../src/engine/duel.ts";
+import { initDuel, revealEmotion, playEmotion, playPressure, setDuelShuffle, endTurn, readEmotion, chargeUp, breakMove, respondOpponent, playItem, RESTRAIN, TURN_DAMAGE_CAP, ITEM_YANLI_COST, EMOTION_YANLI_MAX, DEFAULT_GOAL, type DuelState } from "../src/engine/duel.ts";
 
 setDuelShuffle((a) => a);
 const ALL: Scenario[] = [fuma, qiuwei, sichou, xie, qinhuai, jieyu, shumian, changjiang, diaolan, changhen, jianfeng, xingxing, touming];
@@ -129,7 +129,9 @@ function stateKey(d: DuelState, handAware: boolean): string {
 }
 
 /** 情绪制：真实 UI 合同下的穷举可胜性。
- *  真实可达动作 = 从手牌（v2）/全池（classic）打出一张牌；博弈局加「读牌」；情绪局无「换气」动作。 */
+ *  真实可达动作 = 从手牌（v2）/全池（classic）打出一张牌；博弈局加「读牌」；情绪局无「换气」动作。
+ *  M9（审计 P0-3）：v2 情绪局动作面必须含物品——旧实现只跑成术，可胜性系统性低估玩家上限，
+ *  unwinnable 断言也可能被物品打穿。物品受 M9 新约束（扣言力+占一手），穷举照实走引擎路由。 */
 function emotionCanWin(sc: Scenario, cfg: (typeof sc.duels)[number], loadout: string[]): { win: boolean; steps: number } {
   const co = cardOf(sc, cfg.oppCards);
   const isV2 = cfg.rules === "v2";
@@ -145,7 +147,11 @@ function emotionCanWin(sc: Scenario, cfg: (typeof sc.duels)[number], loadout: st
     const pool = isV2 ? [...d.hand] : loadout;
     for (const id of pool) {
       const c = co(id);
-      if ((c.layer ?? "成术") !== "成术") continue;
+      const layer = c.layer ?? "成术";
+      // M9：物品只随 v2 进动作面（引擎 rules!=="v2" 时不路由 playItem；classic 钥匙物品牌另说，
+      // 在模拟器里放它进弹药等于给「设计性死局」开新后门，故 classic 仍按成术面穷举）
+      if (layer === "物品" && !(isV2 && !!c.itemEffect)) continue;
+      if (layer !== "成术" && layer !== "物品") continue;
       const nd = cloneD(d);
       if (!playEmotion(nd, c)) continue;
       // UI 合同：出牌后、未 finish 前反馈文案必须非空（防「清 lastResult」类回归，历史 P1）
@@ -217,6 +223,8 @@ function pressureBest(sc: Scenario, cfg: (typeof sc.duels)[number], loadout: str
       continue;
     }
     for (const id of handIds) {
+      // M9（审计 P0-3）：物品牌同样进动作面——playPressure 在 v2 下把 layer==="物品" 路由给 playItem，
+      // 其伤害此后与交手共用 TURN_DAMAGE_CAP 预算（旧实现封顶管不到它，穷举自然也就看不见）。
       const nd = cloneD(d);
       if (!playPressure(nd, co(id), oppId, co)) continue;
       push(nd, [...line, id]);
@@ -486,13 +494,13 @@ for (const sc of ALL) {
     if (cfg.unwinnable && cfg.gambit) fail(`对局 ${cfg.id} 设计性死局开启了 gambit —— 必败演出不得含押注/破招（W-5 护栏）`);
     const scripts = cfg.scriptVariants?.length ? cfg.scriptVariants : [cfg.script];
     if (!cfg.script.length) { fail(`对局 ${cfg.id} script 为空`); continue; }
-    // M8（审计 P1-1）：旧「首回合极限伤害」测量走 playPressure 自身结算——clamp(6) 先抹平一切，门禁恒真。
-    // 改为真命题：普通压制局对手初始血量必须高于单手封顶伤害，否则一张牌一手猝死；
-    // 再低于 封顶+破防物品(4) 时标警——物品不读剧本携带限制，是 clamp 之外的合法补刀。
+    // M8（审计 P1-1）→ M9（审计 P0-3）：门禁口径收严为真命题——普通压制局对手初始血量必须高于
+    // 「单窗口（一次交手 ± 其间所拍物品）」的封顶伤害，否则一回合内一手即可猝死。
+    // M9 前旧实现另有「+破防物品(4)」的余量分支并标警：物品伤害当时绕开 clamp，血线 7~8 的局确实薄；
+    // 现破防/共鸣与交手共用 TURN_DAMAGE_CAP 预算（见 duel.damageOpponent），该假设已不成立，余量分支删除。
     if (cfg.mode === "pressure" && !cfg.unwinnable) {
       const hpO = cfg.hp?.opponent ?? 10;
-      if (hpO <= TURN_DAMAGE_CAP) fail(`对局 ${cfg.id} 对手初始 ${hpO} ≤ 单手封顶 ${TURN_DAMAGE_CAP}——首回合一张牌即可猝死（M1 门禁真命题化）`);
-      else if (hpO <= TURN_DAMAGE_CAP + 4) warn(`对局 ${cfg.id} 对手初始 ${hpO} ≤ 封顶(6)+破防物品(4)——带物品者可首回合连击打死，血线余量偏薄`);
+      if (hpO <= TURN_DAMAGE_CAP) fail(`对局 ${cfg.id} 对手初始 ${hpO} ≤ 单窗口封顶 ${TURN_DAMAGE_CAP}——一次交换（含其间物品）即可猝死（M1 门禁真命题化）`);
     }
     for (const id of cfg.deck) if (!sc.cards.find(c => c.id === id) && !cfg.oppCards?.find(c => c.id === id)) fail(`对局 ${cfg.id} deck 引用不存在的卡牌 ${id}`);
     if (cfg.mode === "pressure") for (const s of scripts) for (const id of s) if (!sc.cards.find(c => c.id === id) && !cfg.oppCards?.find(c => c.id === id)) fail(`对局 ${cfg.id} script(变体) 引用不存在的卡牌 ${id}`);
@@ -514,6 +522,22 @@ for (const sc of ALL) {
           if (!d0.finished) revealEmotion(d0);
         }
         console.log(`    [策略审计] ${cfg.id}: ${d0.finished === "win" ? `零风险口诀线仍可胜（${played}手）` : `零风险口诀线被预算/卡组封住（${played}手）`}`);
+      }
+      // M9（审计 P0-3）：情绪制物品弹药上界——把全剧本能直灌共鸣的物品（共鸣+2/破防+1）按性价比
+      // 降序在言力总预算内买满，所得共鸣仍必须严格低于 goal。否则「不出一张成术、纯掷物品」即可
+      // 零风险零花色判定地打满胜线（P0-3 的原始症状），W-2 言力预算与 EMOTION_TOPIC_MATCH_MAX 全废。
+      // 不入闸的效果：强牌（要再占一手、且须接话成功才兑现 +1）、回气/抽牌（不推进胜线）、观X/揭底（情绪制被引擎拒用）。
+      // 剧情杀局（unwinnable）引擎侧 playItem 直接拒用，无需数值上界。
+      if (cfg.rules === "v2" && !cfg.unwinnable) {
+        const ammo = sc.cards
+          .filter((c) => (c.layer ?? "成术") === "物品" && (c.itemEffect === "共鸣" || c.itemEffect === "破防"))
+          .map((c) => ({ id: c.id, gain: c.itemEffect === "共鸣" ? 2 : 1, price: ITEM_YANLI_COST[c.itemEffect!]! }))
+          .sort((a, b) => b.gain / b.price - a.gain / a.price);
+        let budget = EMOTION_YANLI_MAX, buy = 0;
+        const bought: string[] = [];
+        for (const a of ammo) if (a.price <= budget) { budget -= a.price; buy += a.gain; bought.push(a.id); }
+        const goal = cfg.goal ?? DEFAULT_GOAL;
+        if (buy >= goal) fail(`对局 ${cfg.id} 物品弹药超标：言力预算 ${EMOTION_YANLI_MAX} 内可零风险买满 +${buy} 共鸣（${bought.join("/")}）≥ goal ${goal}——物品独吞胜线，须抬 ITEM_YANLI_COST 或削该剧本的共鸣/破防卡（P0-3）`);
       }
       const legal = cfg.rules === "v2" ? legalLoadout(sc) : cfg.deck;
       const full = cfg.rules === "v2" ? v2Loadout(sc) : cfg.deck;
@@ -578,6 +602,79 @@ for (const sc of ALL) {
       }
     }
   }
+}
+
+// ============================================================
+// 6b) M9（第四轮审计 P0-3）引擎合同自测：物品卡必须踩在对局资源约束之内
+//   合成局不读剧本——防「这批数据恰好没弹药」造成假绿灯（旧 bug 正是数据层备好了 i_yinpiao2/i_mixin 等）。
+// ============================================================
+{
+  const mk = (c: Partial<CardDef> & { id: string }): CardDef => ({ name: c.id, text: "", lore: "", ...c });
+  const ST_PO = mk({ id: "st_po", layer: "物品", suit: "器", itemEffect: "破防" });
+  const ST_GONG = mk({ id: "st_gong", layer: "物品", suit: "器", itemEffect: "共鸣" });
+  const ST_GONG2 = mk({ id: "st_gong2", layer: "物品", suit: "器", itemEffect: "共鸣" });
+  const ST_HUI = mk({ id: "st_hui", layer: "物品", suit: "器", itemEffect: "回气" });
+  const ST_QIANG = mk({ id: "st_qiang", layer: "物品", suit: "器", itemEffect: "强牌" });
+  const ST_GUAN = mk({ id: "st_guan", layer: "物品", suit: "器", itemEffect: "观牌" });
+  // 主攻牌两张同点数不同 id：避开「招式用老 -2」；花色取 器，对手牌取 策——不相克，边距为 0
+  const ST_BIG = mk({ id: "st_big", suit: "器", power: 9 });
+  const ST_BIG2 = mk({ id: "st_big2", suit: "器", power: 9 });
+  const ST_O1 = mk({ id: "st_o1", suit: "策", power: 1 });
+  const pool = [ST_PO, ST_GONG, ST_BIG, ST_HUI, ST_GONG2, ST_GUAN, ST_QIANG, ST_BIG2];
+  const ids = pool.map((c) => c.id);
+  const base = { id: "st", title: "合同自测", intro: "", opponent: { name: "甲", desc: "乙" }, winScene: "w", loseScene: "l" };
+  const pCfg = { ...base, mode: "pressure", rules: "v2", turnSchema: "phased", hp: { player: 99, opponent: 99 }, script: ["st_o1"], deck: ids, oppCards: [ST_O1] } as unknown as Scenario["duels"][number];
+  const eCfg = { ...base, mode: "emotion", rules: "v2", goal: 5, script: ["策"], deck: ids } as unknown as Scenario["duels"][number];
+  const eDead = { ...eCfg, unwinnable: true } as unknown as Scenario["duels"][number];
+  const co = (id: string): CardDef => pool.find((c) => c.id === id) ?? ST_O1;
+
+  // ① 压制制：物品伤害与交手共用同一份 TURN_DAMAGE_CAP 窗口预算
+  {
+    const d = initDuel(pCfg, ids, pool, { ap: 4 });   // 7 点行动力：够走完 6 步动作序列
+    if (!playItem(d, ST_PO)) fail("合同自测：压制制破防物品被拒用（应可用）");
+    if (!playItem(d, ST_GONG)) fail("合同自测：压制制共鸣物品被拒用（应可用）");
+    const spent = (pCfg.hp!.opponent!) - d.hpOpponent;
+    if (spent > TURN_DAMAGE_CAP) fail(`合同自测：同窗口物品输出 ${spent} 越过 TURN_DAMAGE_CAP ${TURN_DAMAGE_CAP}——物品仍在封顶之上（P0-3 复发）`);
+    if (spent !== TURN_DAMAGE_CAP) fail(`合同自测：破防4+共鸣3 应恰好灌满单窗口封顶 ${TURN_DAMAGE_CAP}，实得 ${spent}——钳制链路没接上？`);
+    const before = d.hpOpponent;
+    playPressure(d, ST_BIG, "st_o1", co);             // 差值 8，但本窗口余量已尽 → 一点不伤
+    if (d.hpOpponent !== before) fail(`合同自测：封顶余量已尽，主攻仍伤敌 ${before - d.hpOpponent} 点——物品与交手未共用预算`);
+    playPressure(d, ST_BIG2, "st_o1", co);            // round 已推进 → 新窗口，钳到封顶 6
+    if (before - d.hpOpponent !== TURN_DAMAGE_CAP) fail(`合同自测：新窗口主攻应伤敌恰好 ${TURN_DAMAGE_CAP}，实得 ${before - d.hpOpponent}——交手伤害被错误吞减？`);
+    if (playItem(d, ST_PO)) fail("合同自测：同一件物品一局限一张失效（usedCards 未记账）");
+    if (!playItem(d, ST_HUI)) fail("合同自测：回气（非伤害型）被误封——只应收紧伤害型物品");
+    if (!playItem(d, ST_QIANG)) fail("合同自测：强牌（增益型）被误封——增益类不受封顶影响");
+  }
+  // ② 剧情杀局封死物品 / 情绪制封死压制制情报物品
+  {
+    const d = initDuel(eDead, ids, pool);
+    revealEmotion(d);
+    if (playItem(d, ST_GONG)) fail("合同自测：unwinnable 剧情杀局仍可打物品——死局标记会被物品打穿");
+    const d2 = initDuel(eCfg, ids, pool);
+    revealEmotion(d2);
+    if (playItem(d2, ST_GUAN)) fail("合同自测：情绪制仍可打出「观牌」（无消费路径的死卡）");
+  }
+  // ③ 情绪制：物品按强度扣言力，且占一次出手（round 前进 / 当前亮色作废）
+  {
+    const d = initDuel(eCfg, ids, pool);
+    revealEmotion(d);
+    const y0 = d.yanli;
+    if (!playItem(d, ST_GONG)) fail("合同自测：情绪制共鸣物品被拒用");
+    if (d.yanli !== y0 - ITEM_YANLI_COST["共鸣"]) fail(`合同自测：情绪制物品未扣言力（应 ${y0}→${y0 - ITEM_YANLI_COST["共鸣"]}，实为 ${d.yanli}）——P0-3 复发`);
+    if (d.round !== 1) fail(`合同自测：情绪制物品未占出手（round 应为 1，实为 ${d.round}）——P0-3 复发`);
+    if (d.opponentShown) fail("合同自测：情绪制物品打出后对手亮色未作废，等于白送一次定向接话");
+    revealEmotion(d);
+    const r0 = d.rapport;
+    d.yanli = 1;   // 抽干预算：只剩 1 言力，共鸣（2）付不起
+    if (playItem(d, ST_GONG2)) fail("合同自测：言力不足仍可打出物品——言力闸门未生效");
+    if (d.rapport !== r0 || d.usedCards.includes("st_gong2")) fail("合同自测：付不起的物品仍产生副作用（先检查后记账被打破）");
+    // 纯物品灌不满 goal：共鸣(2)+破防(2) 顶多 +3 共鸣，仍需成术收尾
+    const d3 = initDuel(eCfg, ids, pool);
+    revealEmotion(d3);
+    playItem(d3, ST_GONG); playItem(d3, ST_PO);
+    if (d3.rapport >= (eCfg.goal ?? 0)) fail("合同自测：两件物品即可打满 goal——情绪制胜线被物品独吞");
+  }
+  console.log("引擎合同自测: 物品卡对局资源约束（封顶预算/言力定价/一局一张/剧情杀封死）校验完成");
 }
 
 // 7) 成就审计：id 唯一；weak_card 引用的卡/对局存在

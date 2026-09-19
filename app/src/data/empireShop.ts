@@ -31,6 +31,9 @@ export const SHOP_THEMES: ThemeDef[] = [
   { id: "zhusha", name: "朱砂主题", desc: "朱红为魂，庙堂气象", price: 40 },
   { id: "daiqing", name: "黛青主题", desc: "青灰冷调，江湖夜雨", price: 40 },
   { id: "liujin", name: "鎏金主题", desc: "金碧辉煌，盛世长安", price: 60 },
+  { id: "celadon", name: "青瓷雅韵", desc: "雨过天青，宋瓷素净（浅色全局换肤）", price: 60 },
+  { id: "indigo", name: "黛蓝幽梦", desc: "霓虹夜航，赛博东方", price: 60 },
+  { id: "luxury", name: "鎏金富贵", desc: "巴洛克金殿，皇家气象", price: 80 },
 ];
 
 export const boostOf = (id: string): BoostDef | undefined => SHOP_BOOSTS.find((b) => b.id === id);

@@ -29,7 +29,7 @@ export const jieyu: Scenario = {
     { id: "j_ren", name: "推诚相待", suit: "策", power: 3, text: "把心里的怕，说给信得过的人。", lore: "「等皇兄回来……他们会不会把我从椅子上拖下去？」" },
     { id: "j_shi", name: "神机营三段击", suit: "器", power: 5, text: "三排火铳轮射，弹丸如雨。", lore: "打光最后一发火铳之前，不许让一架云梯搭上这面墙。" },
     { id: "j_ling", name: "军法祭旗", suit: "策", power: 3, text: "临阵退缩者，斩。", lore: "斩一卒以正军法。九门肃然，无人再敢回头。" },
-    { id: "j_lei", name: "滚木礌石", suit: "势", power: 4, text: "千斤滚木顺着城坡砸下，砸出漫天血雾。", lore: "百姓自发送来的木石，此刻尽数化作守城之威。" },
+    { id: "j_lei", name: "滚木礌石", suit: "器", power: 4, text: "千斤滚木顺着城坡砸下，砸出漫天血雾。", lore: "百姓自发送来的木石，此刻尽数化作守城之威。" },
     { id: "j_shoujiu", name: "九门死守", suit: "势", power: 3, rarity: "良", endingReward: true, text: "闭门，断桥，烧船——京城的命，不押给退路。", lore: "九门俱在。城头的火把，一夜未熄。" },
     { id: "j_sheji", name: "社稷为重", suit: "势", power: 4, rarity: "传", endingReward: true, text: "「社稷为重，君为轻。」你立于城头。三军回望——那道官袍，就是军心。", lore: "德胜门外，他背对京城而立。一袭官袍，挡住十万铁骑。" },
       { id: "j_gucheng", name: "孤城凭吊", suit: "势", power: 3, text: "凭吊孤城，士气为之一振。", lore: "城外白骨，城内孤城。" },
@@ -43,7 +43,7 @@ export const jieyu: Scenario = {
     { id: "j_shuimian", name: "水门暗渡", suit: "隐", power: 3, text: "水门半开，船趁夜过。", lore: "水声掩橹，城门也打盹。" },
     { id: "j_jiyu", name: "急雨守垛", suit: "器", power: 2, text: "急雨浇垛，弓弦受潮。", lore: "雨里守城，火铳也哑了。" },
     { id: "j_xinren", name: "信在人心", suit: "势", rarity: "传", power: 4, endingReward: true, text: "信送到了。城头有人举着火把，喊你的名字。", lore: "蜡封的密信，比命重；送信的人，比信轻。" },
-    { id: "j_kaihua", name: "开花了", suit: "势", rarity: "传", power: 4, endingReward: true, text: "偏院那棵桃树，今年开了。", lore: "八年天子，一棵树记得。" },
+    { id: "j_kaihua", name: "开花了", suit: "势", rarity: "传", power: 4, endingReward: true, text: "偏院墙角那朵不知名的花，今年开了。", lore: "八年天子，一朵花记得。" },
 ],
   clues: [],
   duels: [
@@ -65,9 +65,9 @@ export const jieyu: Scenario = {
       // 兼补 script 对势的克制缺口（原池仅 1 张策牌），胜局可解锁番外「走马灯」（jieyu 原全对局无钥匙卡可达）
       deck: ["j_hou", "j_tu", "j_yuan", "j_min", "j_shi", "j_ling", "j_lei", "j_gucheng", "j_haojiao", "j_xuncheng", "j_liangdao", "j_wengcheng"],
       oppCards: [
-        { id: "w_she", name: "骑射如雨", suit: "器", power: 4, text: "箭如飞蝗，先射后冲——草原的老打法。", lore: "" },
-        { id: "w_qi", name: "骑兵冲锋", suit: "势", power: 4, text: "草原的雄鹰，奔袭天下无双。", lore: "" },
-        { id: "w_yun", name: "云梯蚁附", suit: "隐", power: 3, text: "踩着同伴的尸体攀城。", lore: "" },
+        { id: "w_she", name: "骑射如雨", suit: "器", power: 4, text: "箭如飞蝗，先射后冲——草原的老打法。", lore: "先射后冲，是草原教给每个孩子的头一件事。" },
+        { id: "w_qi", name: "骑兵冲锋", suit: "势", power: 4, text: "草原的雄鹰，奔袭天下无双。", lore: "马背上生，马背上死。他们不会筑墙，只会学怎么撞墙。" },
+        { id: "w_yun", name: "云梯蚁附", suit: "隐", power: 3, text: "踩着同伴的尸体攀城。", lore: "云梯的第一级，是同伴的肩。城头的人看得见。" },
       ],
       winScene: "p1_win",
       loseScene: "p1_lose",
@@ -86,9 +86,9 @@ export const jieyu: Scenario = {
       script: ["w_you", "w_fu", "w_you", "w_he", "w_fu", "w_you", "w_he", "w_fu"],
       deck: ["j_ben", "j_bi", "j_sheng", "j_yuan"],
       oppCards: [
-        { id: "w_you", name: "游骑截杀", suit: "势", power: 4, text: "弯刀如狼，见人少便围。", lore: "" },
-        { id: "w_fu", name: "山谷伏兵", suit: "隐", power: 5, text: "埋伏在密林出口的长枪。", lore: "" },
-        { id: "w_he", name: "河滩堵截", suit: "器", power: 3, text: "不足十人——你完全有把握全歼。但密信不能等。", lore: "" },
+        { id: "w_you", name: "游骑截杀", suit: "势", power: 4, text: "弯刀如狼，见人少便围。", lore: "十几骑一队，不攻城，只等人少的那一路。" },
+        { id: "w_fu", name: "山谷伏兵", suit: "隐", power: 5, text: "埋伏在密林出口的长枪。", lore: "败兵走过的路，他们也走过一遍——哪里能藏人，他们比谁都清楚。" },
+        { id: "w_he", name: "河滩堵截", suit: "器", power: 3, text: "不足十人——你完全有把握全歼。但密信不能等。", lore: "截路的这十个人不足为患。患在马蹄下的时辰，一刻也不属于你。" },
       ],
       winScene: "p2_lose",
       loseScene: "p2_lose",
@@ -104,8 +104,8 @@ export const jieyu: Scenario = {
       script: ["w_you", "w_he", "w_you", "w_he"],
       deck: ["j_ben", "j_bi", "j_sheng", "j_yuan"],
       oppCards: [
-        { id: "w_you", name: "游骑截杀", suit: "势", power: 4, text: "弯刀如狼，见人少便围。", lore: "" },
-        { id: "w_he", name: "河滩堵截", suit: "器", power: 3, text: "不足十人——你完全有把握全歼。但密信不能等。", lore: "" },
+        { id: "w_you", name: "游骑截杀", suit: "势", power: 4, text: "弯刀如狼，见人少便围。", lore: "十几骑一队，不攻城，只等人少的那一路。" },
+        { id: "w_he", name: "河滩堵截", suit: "器", power: 3, text: "不足十人——你完全有把握全歼。但密信不能等。", lore: "截路的这十个人不足为患。患在马蹄下的时辰，一刻也不属于你。" },
       ],
       winScene: "p2_win_hero",
       loseScene: "p2_lose",
@@ -178,7 +178,7 @@ export const jieyu: Scenario = {
       ["势", "策", "策", "势", "策", "策", "策"],
       ["策", "策", "势", "策", "策", "策", "势"]
       ], // M3 反背板全量部署：轮转变体（verify 逐变体穷举可胜性）
-      deck: ["j_shi", "j_ling", "j_sheji", "j_lei", "j_gucheng", "j_haojiao", "j_xuncheng", "j_shoujiu", "j_hou", "j_tu"],
+      deck: ["j_shi", "j_ling", "j_lei", "j_gucheng", "j_haojiao", "j_xuncheng", "j_hou", "j_tu"],
       winScene: "ru_daoge_nan",
       loseScene: "end_wumen",
     },
@@ -301,7 +301,7 @@ export const jieyu: Scenario = {
   "当夕阳的最后一丝余晖被城头吞没时，九门胶着的战事终究如潮水般褪去。德胜门的火炮热得烫手，神机营弹药所剩无几，士兵们靠着城垛喘息，嘴角挂着血迹。",
   "我靠着城垛缓缓坐下，望着天边残阳如血，心中一遍遍默念：撑住，再撑住。只要熬过这七日，大明就有救。",
   "城楼下，一个十二岁的孩童抱着弹弓跑过——他用弹弓打伤了一个摸上来的瓦剌兵，此刻怯生生又骄傲地望着我。",
-  "「红衣官袍皆是百姓血染，我穿蓝图个干净。」我想起自己说过的这句话，朝他点了点头。",
+  "「红衣官袍皆是百姓血染，我穿蓝，图个干净。」我想起自己说过的这句话，朝他点了点头。",
   "我点头的工夫，余光扫见陈四靠坐在墙根下，手里攥着半个干饼，人已经睡着了。",
   "可瓦剌没有给我喘息的机会。当夜，斥候连滚带爬扑进行辕：大人！他们……他们把圣驾，推到阵前来了！"
 ],
@@ -1521,19 +1521,24 @@ export const jieyu: Scenario = {
       id: "p3_lose",
       title: "垂帘之后",
       lines: [
-  "话没能说出口。争执声越来越大，我坐在那把椅子上，胸口发闷，一个字也插不进去。",
+  "殿上的声浪，一层压过一层。最后把它压住的，不是我的声音。",
   "最终是太后拍了板：暂不南迁，命于谦总督各营——由太后懿旨，不由皇帝圣断。",
   "京师保住了。五日血战，瓦剌败走。万民欢呼的声音传进宫墙时，赞的是于少保，念的是孙太后。",
-  "没有人提起龙椅上那个一言未发的年轻皇帝。",
+  "没有人提起龙椅上那个人。",
   "回居所的路上，我在偏殿前站了很久。墙角的杂草枯了又生。",
   "这一次，没有开花。",
   "我摸了摸怀里的荷包。它还是空的。母亲说得对——别争，争不过的。可我还是在墙角，替那朵没开的花，浇了水。"
 ],
+      variantLines: [
+        { cond: { flag: "j_chenmo" }, lines: ["那句「不迁」在我喉咙里转了一整日，末了还是落回肚里——和从前在偏院一样，话到嘴边，咽下去就太平了。", "满殿的目光都转向那面帘子的时候，我忽然明白：沉默也是要还的。往后许多年，我一日一日地还。"] },
+        { cond: { flag: "j_shuncong" }, lines: ["「不迁」两个字，是朕先说出口的。可金殿上落定的，是太后的懿旨——朕说过的话，说了等于没说。", "散朝时于谦从我面前经过，没有抬头。他护住了京师，却没有护住朕的声音。"] },
+      ],
       effects: [{ stat: { junwei: 5 } }],
       choices: [
         {
           text: "你把自己嵌进龙椅里，一言不发——像从前在偏院一样。",
           hint: "沉默 · 多余的那个",
+          cond: { flag: "j_chenmo" },
           effects: [],
           next: "end_duoyu",
         },
@@ -1623,7 +1628,7 @@ export const jieyu: Scenario = {
           next: "p5_light_child",
         },
         {
-          text: "（无论如何）那句意气风发的——「红衣官袍皆是百姓血染，我穿蓝图个干净」。",
+          text: "（无论如何）那句意气风发的——「红衣官袍皆是百姓血染，我穿蓝，图个干净」。",
           effects: [],
           next: "p5_light_robe",
         },
@@ -1671,7 +1676,7 @@ export const jieyu: Scenario = {
       id: "p5_light_robe",
       title: "走马灯 · 红衣",
       lines: [
-  "「红衣官袍皆是百姓血染，我穿蓝图个干净。」",
+  "「红衣官袍皆是百姓血染，我穿蓝，图个干净。」",
   "说这话的时候，我还年轻，官袍确实是干净的。如今它旧了、皱了，上过血、沾过泥——",
   "但直到最后一刻，它没有沾过百姓的一滴血。够了。",
   "那件青袍，在死战前的夜里，烧掉了一角。剩下的一角，一直披到我入狱。"
@@ -1705,7 +1710,7 @@ export const jieyu: Scenario = {
       desc: "兵部尚书。九门是一张网，他是持网的人。",
       startScene: "yq_night",
       initialDeck: ["j_hou", "j_tu", "j_yuan", "j_min", "j_shi", "j_ling", "j_lei"],
-      endings: ["end_withcity", "end_bancheng", "end_wumen", "p5_final"],
+      endings: ["end_withcity", "end_bancheng", "end_wumen", "end_wanjing", "p5_final"],
     },
     {
       id: "vp_chuanling",

@@ -32,7 +32,7 @@ export const xie: Scenario = {
     { id: "x_qing_shi", name: "提及亡者", layer: "成术", rarity: "良", suit: "隐", power: 3, situational: { suit: "势", bonus: 2 }, text: "说起那个白衣书生，说他的诗。亡者一提，再势利的人也要低头。", lore: "「追忆年少京华旧事，凭吊蒙冤亡父。」——酒摊的人都听见过。", price: 26 },
     // ---------- 物品卡（线索型：物证即道具） ----------
     { id: "i_jing", name: "凸面镜片", layer: "物品", suit: "器", rarity: "孤品", itemEffect: "破防", text: "对局中亮出：西洋聚光镜片——一切「天火」谎言在它面前自燃。", lore: "孩童上缴的东西。正午的太阳穿过它，能点燃一整桩冤案。", price: 0 },
-    { id: "i_la", name: "白磷残粉", layer: "物品", suit: "器", rarity: "凡", itemEffect: "强牌", text: "对局中使用：袖口蜡脂的真相在手，下一言掷地有声。（成术+3）", lore: "宫廷专属之物，在市井酒摊的窗沿烧过一回。", price: 24 },
+    { id: "i_la", name: "白磷残粉", layer: "物品", suit: "器", rarity: "凡", itemEffect: "强牌", text: "对局中使用：袖口蜡脂的真相在手，下一言掷地有声。（成术+3）", lore: "刮自袖口的一层白粉，带蜡腥。库房那坛已凭空不见了，只剩这一点还跟着死者的衣襟。", price: 24 },
     { id: "i_suo", name: "织妇的木梭", layer: "物品", suit: "器", rarity: "良", itemEffect: "共鸣", text: "对局中出示：她递给你的旧梭——「大人，替那条街的人，多问一句。」", lore: "梭子磨得发亮。她数十年织的布，没有一尺是给自己的。", price: 22 },
     { id: "i_shigao", name: "谢亮诗稿", layer: "物品", suit: "器", rarity: "良", itemEffect: "抽牌", text: "对局中使用：临窗吟诵的手稿，念之令人心神一凛，再抽两张牌。", lore: "字句之间藏着旧姓与旧案——只有敢读的人才看得见。", price: 22 },
     { id: "i_wenjiu", name: "温过的夜酒", layer: "物品", suit: "器", rarity: "凡", itemEffect: "回气", text: "对局中使用：深夜公堂的旧习——只饮这一盏。（+3）", lore: "只食干点，不进汤水。这个习惯，救过你一命。", price: 14 },
@@ -67,11 +67,11 @@ export const xie: Scenario = {
     { id: "v5", name: "高墙外侧半枚小脚印", kind: "true", desc: "鞋纹细密、尺寸偏小，非劳作乡民——布局者登墙所留。" },
     { id: "v6", name: "尸身无搏斗伤痕", kind: "false", desc: "尸身并无搏斗抵御之伤。" },
     { id: "v7", name: "袖口微量油脂", kind: "true", desc: "成分近似蜡烛蜡脂——白磷粉末残留的引子。" },
-    { id: "v8", name: "墙头白衣丝缕与镜片附土", kind: "true", desc: "与死者衣料吻合、与墙面土质一致——三证互印，有人深夜登墙布镜。" },
+    { id: "v8", name: "墙头白衣丝缕与镜片附土", kind: "true", desc: "与死者衣料吻合、与墙面土质一致——三证互印：有人白日登墙，亲手布下那枚镜片。" },
     { id: "v9", name: "后堂高度烈酒", kind: "false", desc: "后堂存放高度烈酒一坛，日常所用。" },
     { id: "v10", name: "白磷粉末入库后凭空遗失", kind: "true", desc: "无出库记录而失踪——官吏受贿毁证。" },
     { id: "v11", name: "雷如账目异常暴富", kind: "true", desc: "库房都头莫名新增大额进项——灭口贿银。" },
-    { id: "v12", name: "织妇夜话：墙头素衣人影", kind: "core", desc: "目击者亲见有人于案发黎明登墙置物、跃下遁走。" },
+    { id: "v12", name: "织妇夜话：墙头素衣人影", kind: "core", desc: "目击者亲见：案发巳时，长街空巷，有人登墙置物；日头渐盛，纵身跃下遁走。" },
   ],
   verdict: {
     scene: "verdict",
@@ -296,7 +296,7 @@ export const xie: Scenario = {
       shop: {
         name: "县前夜市",
         desc: "小县的夜市没什么稀罕物——但消息和胆子，都论斤卖。",
-        stock: ["x_wei_gong", "x_li_an", "x_qing_shi", "i_wenjiu", "i_la", "r_tingfeng", "r_ande", "r_leiru", "c_zhaqian", "x_jumen", "x_zhiying", "x_huoyan", "x_chuangzhi", "x_tieqi", "s_zhibi"],
+        stock: ["x_wei_gong", "x_li_an", "x_qing_shi", "i_wenjiu", "r_tingfeng", "r_ande", "r_leiru", "r_zhiweng", "c_zhaqian", "x_jumen", "x_zhiying", "x_huoyan", "x_chuangzhi", "x_tieqi", "s_zhibi"],
         packs: [
           { id: "pack_jie", name: "货郎杂担包", price: 22, pool: ["x_wei_yin", "x_wen_kuan", "i_wenjiu", "s_yin10c", "s_yin30b"], draws: 2 },
         ],
@@ -324,7 +324,7 @@ export const xie: Scenario = {
         desc: "「纸比人活得长。大人——纸上的事，也活得长。」",
         stock: ["i_shigao", "i_suo", "x_wen_bu", "r_zhifu"],
         packs: [
-          { id: "pack_shu", name: "夹页残物包", price: 45, pool: ["i_shigao", "i_suo", "i_la", "r_zhifu", "x_huoxian", "x_menhou", "s_yin30b"], draws: 1 },
+          { id: "pack_shu", name: "夹页残物包", price: 45, pool: ["i_shigao", "i_suo", "r_zhifu", "x_huoxian", "x_menhou", "s_yin30b"], draws: 1 },
         ],
       },
       next2: "market_gate",
@@ -376,7 +376,7 @@ export const xie: Scenario = {
         { unlockClue: "v1" }, { unlockClue: "v2" }, { unlockClue: "v3" }, { unlockClue: "v4" },
         { unlockClue: "v5" }, { unlockClue: "v6" }, { unlockClue: "v7" }, { unlockClue: "v8" },
         { unlockClue: "v9" }, { unlockClue: "v10" }, { unlockClue: "v11" }, { unlockCard: "i_jing" },
-        { unlockCard: "x_dengyou" },
+        { unlockCard: "x_dengyou" }, { unlockCard: "i_huotong" }, { unlockCard: "i_denggai" },
       ],
       next: "search_pick",
     },
@@ -388,13 +388,13 @@ export const xie: Scenario = {
   "",
   "「大人，有三样东西按律要入官库。但……您先挑一样带在身上。查案的人，手里总得有东西。」",
   "",
-  "他摊开一方布帕：一盏旧油灯，一册旧诗稿，一封三十两的驿银。",
+  "他摊开一方布帕：一包自袖口刮下的白磷残粉，一册旧诗稿，一封三十两的驿银。",
   "",
   "「都是顺手之物，不入正册。」他说，「大人带了哪样，哪样就替大人记着这个案子。」",
   "",
   "夜风从门口灌进来，吹得布帕一角微微掀动。",
   "",
-  "你伸手。指尖先触到的，是那盏旧油灯——灯身还残留着一点灯油的痕迹。"
+  "你伸手。指尖先触到的，是那包残粉——纸捻儿松着，凑近有股蜡腥气。"
 ],
       cardPick: {
         title: "三选一 · 带走一样",
@@ -438,9 +438,9 @@ export const xie: Scenario = {
   "",
   "唯有入夜褪去官服，方可私下沉访——探寻卷宗封存、权谋掩盖的终极真相。",
   "",
-  "你把那盏旧油灯，从袖中取出来，放在案头。",
+  "案头那盏灯还点得亮。",
   "",
-  "灯还点得亮。火苗在夜风里晃了晃，没有灭。"
+  "你伸手拨了拨灯芯。火苗在夜风里晃了晃，没有灭。"
 ],
       next: "night_intro",
     },
@@ -558,20 +558,20 @@ export const xie: Scenario = {
   "",
   "朱棣深知：再度公开清算遗孤，只会落下「苛待文士、屠戮遗臣」的朝野非议。但帝王猜忌入骨，绝不允许罪臣子嗣留存世间。",
   "",
-  "遂降密令，交由锦衣卫隐秘处置——不留痕迹。缇骑深谙圣心：摸清谢亮盛夏正午必至酒摊临窗独饮的习性，暗中购入西洋凸面镜片，深夜登墙布设、校准日光落点，辅以宫廷白磷——",
+  "遂降密令，交由锦衣卫隐秘处置——不留痕迹。缇骑深谙圣心：摸清谢亮盛夏正午必至酒摊临窗独饮的习性，暗中购入西洋凸面镜片，趁巳时日头正毒、长街空巷，登墙布设、校准日光落点，辅以宫廷白磷——",
   "",
   "借正午天光，行缇骑杀令。一场缜密的朝堂秘杀，被伪装成无解的民间诡案。",
   "",
   "卷宗就摊在你的案头，墨迹未干。窗外，锦衣卫的暗探还没有走。",
   "",
-  "你掌心的那枚镜片，还带着午后的温度。"
+  "你掌心的那枚镜片，还带着那日正午的温度。"
 ],
       choices: [
         {
           text: "【袖藏镜片 · 密奏直呈】以凸面镜片为证，附密奏直递御前——哪怕石沉大海，也要留下一笔。",
           hint: "需要：凸面镜片 · 民心≥55 · 史笔如铁，圣眷难保",
           cond: { card: "i_jing", statAtLeast: { minxin: 55 } },
-          effects: [{ stat: { shengyuan: -30, minxin: 20 } }],
+          effects: [{ setFlag: "xie_mizou" }, { stat: { shengyuan: -30, minxin: 20 } }],
           next: "end_historian",
           altNext: "end_beam",
         },
@@ -656,10 +656,25 @@ export const xie: Scenario = {
   "",
   "吹灯，睡。明日还要早朝。",
   "",
-  "入梦前你忽然想：那盏旧油灯，还亮在案头。",
+  "黑暗里你忽然想：字上了梁，这屋里从此多了一样不说话了的东西。",
   "",
-  "它比你先睡。"
+  "它比你先睡，也睡得久。"
 ],
+      variantLines: [
+        {
+          cond: { flag: "xie_mizou" },
+          lines: [
+  "",
+  "那封写好的密奏，如今也在梁上。",
+  "",
+  "递不上去——手里没有那样东西压着，递上去的话就是空话。你把它同誊本卷成一卷，压在榫缝最里头。",
+  "",
+  "递不出去的话，也得有个地方放。你在黑暗里对自己说。",
+  "",
+  "从此梁上有两份你的字：一份是案，一份是没递出去的话。"
+          ],
+        },
+      ],
       ending: { name: "房梁", rank: "隐藏结局 · 藏之名山", desc: "真相没有沉没，只是在等一个时代。", reward: "x_fangliang" },
     },
     {
@@ -720,11 +735,11 @@ export const xie: Scenario = {
   "",
   "从来不止一个。",
   "",
-  "那天夜里，你翻出那盏旧油灯，想点，又放下。",
+  "那天夜里，驿馆案头的灯还燃着。你伸手想去拨灯芯，手到半途又收了回来。",
   "",
-  "灯油还满着。你最终没有点它。",
+  "灯油是满的，芯子是干的。它什么也没替谁记着——它本不必替你记着。",
   "",
-  "后来那盏灯，一直摆在案头。再后来，你忘了它是从哪来的。"
+  "后来你做过几任官，案头换过许多盏灯。哪一盏是从哪里来的，你一盏也不记得了。"
 ],
       ending: { name: "封印", rank: "顺宦结局", desc: "官越做越大，能记起的越来越少。" },
     },

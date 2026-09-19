@@ -46,6 +46,11 @@ function pushLog(st: DuelState, text: string, kind: string): void {
  *  N=5 + yanliMax=7 → 每局成术上限 12 手：覆盖最长情绪制胜线（赣州强攻 12 步），
  *  同时终结无限刷共鸣（原 9 手上限把赣州从可胜 12 步压成死局，故放宽——2026-08-27 复核）。 */
 export const EMOTION_FREE_PLAYS = 5;
+/** M7（第四轮审计 P0-2）：情绪制话题命中（contentMatch）每局限 N 次——
+ *  封顶后话题线无法独吞 goal，花色博弈（真色/虚张/读牌）重新成为必经之路。 */
+export const EMOTION_TOPIC_MATCH_MAX = 3;
+/** M7：情绪制言力上限（W-2 预算）；App 续档归一化与 initDuel 共用同一口径 */
+export const EMOTION_YANLI_MAX = 7;
 
 export interface DuelState {
   cfg: DuelConfig;
@@ -82,6 +87,10 @@ export interface DuelState {
   log?: { round: number; text: string; kind: string }[];
   /** M0：存档合同版本（duel 断点续局结构变更时递增；旧档缺省视为 1） */
   schema?: number;
+  /** M7：本局已兑现的话题命中次数（封顶 EMOTION_TOPIC_MATCH_MAX；旧档缺省按 0） */
+  topicHits?: number;
+  /** M7：藏牌局（seeOpp=hidden）战报脱敏——pushLog 时隐去对手卡真名，防读战报反推 script 相位 */
+  redactLog?: boolean;
   /** M0/M2：回合制结构开关——legacy=按出手推进（现状）；phased=交替回合（M2 启用） */
   turnSchema?: "legacy" | "phased";
   // ---- M2 交替回合（turnSchema === "phased" 时启用；legacy 局保持缺省不参与存档兼容问题）----
@@ -187,7 +196,7 @@ export function initDuel(cfg: DuelConfig, deck: string[], allCards: CardDef[], b
   })) : [];
   const hpBase = (cfg.hp?.player ?? 10) + bonusQi + boostQi;
   // W-2 言力预算：仅情绪制生效（轻上限 7，共 12 手），pressure 置 0 完全不受影响
-  const yanliMax = cfg.mode === "emotion" ? 7 : 0;
+  const yanliMax = cfg.mode === "emotion" ? EMOTION_YANLI_MAX : 0;
   // M1（审计 4.2）：人物 bonusQi / 备战 b_qi 原本只喂 hpBase（压制局专属）——情绪局 qi=3 写死，
   // 被动形同虚设。现改为情绪局起始气力与上限同步抬升（上限仍留 10 基准的余量供回气）。
   const emotionQiMax = cfg.mode === "emotion" ? 10 + bonusQi + boostQi : 0;
@@ -354,8 +363,8 @@ export function readEmotion(st: DuelState): boolean {
   st.opponentShown = st.opponentTrue;
   st.bluffed = false;
   st.lastResult = wasBluff
-    ? { text: `你不动声色地一试——果然，那色是装出来的，真意在此。（气力-1）`, kind: "gambit" }
-    : { text: `你仔细掂了掂——这色不假，没有虚张。（气力-1）`, kind: "gambit" };
+    ? { text: `你不动声色地一试——果然，那色是装出来的，真意在此。（言力-1）`, kind: "gambit" }
+    : { text: `你仔细掂了掂——这色不假，没有虚张。（言力-1）`, kind: "gambit" };
   finishCheck(st, st.cfg.goal ?? DEFAULT_GOAL);
   return true;
 }
@@ -397,9 +406,12 @@ export function playEmotion(st: DuelState, card: CardDef): boolean {
   const goal = st.cfg.goal ?? DEFAULT_GOAL;
   // M5 内容化：卡牌话题命中本手话头 → 无论花色都算接话（卡名参与结算；未配置 emotionTopics 的局纯花色）
   const roundTopics = st.cfg.emotionTopics?.[st.round % st.cfg.emotionTopics.length];
-  const contentMatch = !!roundTopics?.length && !!card.topics?.some((tp) => roundTopics.includes(tp));
+  const topicHit = !!roundTopics?.length && !!card.topics?.some((tp) => roundTopics.includes(tp));
+  // M7（审计 P0-2）：话题兜底每局封顶 N 次——只靠背话题词的零风险线被封死，回落花色博弈
+  const contentMatch = topicHit && (st.topicHits ?? 0) < EMOTION_TOPIC_MATCH_MAX;
   if (card.suit === shown || contentMatch) {
     st.rapport += 1;
+    if (contentMatch && card.suit !== shown) st.topicHits = (st.topicHits ?? 0) + 1;
     st.lastResult = { text: `你顺着对方的意，一句「${card.name}」接得严丝合缝。`, kind: "match" };
   } else if (card.suit && RESTRAIN[card.suit] === shown) {
     st.guard -= 1;
@@ -571,15 +583,44 @@ export function respondOpponent(st: DuelState, playerCard: CardDef, cardOf: (id:
     st.hand = st.hand.filter((c) => c !== playerCard.id);
     st.discard.push(playerCard.id);
   }
-  const opp = cardOf(intent.cardId);
+  resolveOppAttack(st, playerCard, cardOf);
+  return true;
+}
+
+/** M7（审计 P0-3）：对手主攻而手中无可法应手——不接招，护住门户硬吃这一手。
+ *  陷阱伏击/收买/破招照常生效；堵死 oppTurn 无牌可接的永久卡死。 */
+export function passResponse(st: DuelState, cardOf: (id: string) => CardDef): boolean {
+  if ((st.turnSchema ?? "legacy") !== "phased" || st.phase !== "oppTurn" || st.finished) return false;
+  const intent = st.oppIntent;
+  if (!intent || intent.kind !== "attack" || !intent.cardId) return false;
+  resolveOppAttack(st, null, cardOf);
+  return true;
+}
+
+/** M7（审计 P0-3）：主动退让认输——情绪制言力耗尽、压制制穷途末路时的通用逃生口；
+ *  败局结算（loseScene/loseScene2/押注/回写）由 App 的 finished 钩子照常处理。 */
+export function forfeitDuel(st: DuelState): boolean {
+  if (st.finished) return false;
+  st.finished = "lose";
+  st.lastResult = { text: "你整袖拱手——这一局，你认了。", kind: "lose" };
+  pushLog(st, st.lastResult.text, "lose");
+  return true;
+}
+
+/** 对手主攻结算（playerCard=null 即不接招）；respondOpponent / passResponse 共用 */
+function resolveOppAttack(st: DuelState, playerCard: CardDef | null, cardOf: (id: string) => CardDef): void {
+  const opp = cardOf(st.oppIntent!.cardId!);
   // M4：陷阱按触发条件判定——条件未满足则保持盖放不消耗
   const trap = st.trap;
   const trapActive = !!trap && trapArmed(trap.trigger, st, opp);
   if (trap) st.trap = trapActive ? null : trap;
-  // 势倍率与主攻同口径（牌面写 ×1.5，应手同样兑现；防守姿态不引反噬）
-  const rbase = (playerCard.power ?? 1) + suitBonus(st, playerCard);
-  let p = rbase + 1;
-  if (playerCard.suit === "势") p = Math.floor(rbase * 1.5) + 1;
+  // 势倍率与主攻同口径（牌面写 ×1.5，应手同样兑现；防守姿态不引反噬）；不接招则 p=0
+  let p = 0;
+  if (playerCard) {
+    const rbase = (playerCard.power ?? 1) + suitBonus(st, playerCard);
+    p = rbase + 1;
+    if (playerCard.suit === "势") p = Math.floor(rbase * 1.5) + 1;
+  }
   let o = opp.power ?? 1;
   let broke = false;
   let trapNote: string | undefined;
@@ -598,17 +639,17 @@ export function respondOpponent(st: DuelState, playerCard: CardDef, cardOf: (id:
   }
   if (trapZero) { o = 0; broke = true; }
   let edge = 0;
-  if (playerCard.suit && opp.suit) {
+  if (playerCard?.suit && opp.suit) {
     if (RESTRAIN[playerCard.suit] === opp.suit) edge = 1;
     else if (RESTRAIN[opp.suit] === playerCard.suit) edge = -1;
   }
   p += edge;
-  if (playerCard.situational && opp.suit === playerCard.situational.suit) p += playerCard.situational.bonus;
+  if (playerCard?.situational && opp.suit === playerCard.situational.suit) p += playerCard.situational.bonus;
   // 对手蓄力层随主攻释放（每层 +2）
   const oc = st.oppCharge ?? 0;
   if (oc > 0) { o += oc * 2; st.oppCharge = 0; }
-  st.lastPlay = { playerCard, oppCard: opp, damage: 0, to: "none", edge, broke };
-  st.lastCardId = playerCard.id;
+  st.lastPlay = { playerCard: playerCard ?? undefined, oppCard: opp, damage: 0, to: "none", edge, broke };
+  if (playerCard) st.lastCardId = playerCard.id;
   if (p > o) {
     // M2 调参：应手的反击差值减半（守势转换不如主攻高效）——否则玩家在我方与敌方两个回合都全额赚差值，
     // 轻回合局的张力崩塌，且剧情杀数值防线被守方加成击穿。赢 1 点差保底 1 伤（不许出现「折了 0 点」）。
@@ -619,6 +660,9 @@ export function respondOpponent(st: DuelState, playerCard: CardDef, cardOf: (id:
     const d = Math.min(o - p, TURN_DAMAGE_CAP);
     st.hpPlayer -= d;
     st.lastPlay = { ...st.lastPlay, damage: d, to: "p" };
+  } else if (!playerCard && o <= 0) {
+    // 不接招且他这一手本就被废——无伤交接，不进互耗
+    st.lastPlay = { ...st.lastPlay, damage: 0, to: "none" };
   } else {
     st.hpPlayer -= 1;
     st.hpOpponent -= 1;
@@ -633,11 +677,12 @@ export function respondOpponent(st: DuelState, playerCard: CardDef, cardOf: (id:
   else if (st.hpPlayer <= 0) st.finished = "lose";
   {
     const lp = st.lastPlay;
-    const dest = lp?.to === "o" ? `他折了 ${lp?.damage} 点` : lp?.to === "p" ? `你折了 ${lp?.damage} 点` : "两败俱伤";
-    pushLog(st, `他主攻「${opp.name}」，你以「${playerCard.name}」应手——${dest}${trapNote ? `（${trapNote}）` : ""}`, "press");
+    const oppName = st.redactLog ? "▓▓" : opp.name;
+    const act = playerCard ? `你以「${playerCard.name}」应手` : "你护住门户，硬接不接";
+    const dest = lp?.to === "o" ? `他折了 ${lp?.damage} 点` : lp?.to === "p" ? `你折了 ${lp?.damage} 点` : lp && lp.damage === 0 ? "他这一手落了空" : "两败俱伤";
+    pushLog(st, `他主攻「${oppName}」，${act}——${dest}${trapNote ? `（${trapNote}）` : ""}`, "press");
   }
   finishOppTurn(st);
-  return true;
 }
 
 /** M2：盖放陷阱（phased 专属动作；legacy 仍走 playPressure 的盖放分支）。
@@ -842,6 +887,8 @@ function applyItemEffect(st: DuelState, eff: ItemEffect, name: string): void {
 export function playPressure(st: DuelState, playerCard: CardDef, oppCardId: string, cardOf: (id: string) => CardDef): boolean {
   if (st.mode !== "pressure" || st.finished) return false;
   const phased = (st.turnSchema ?? "legacy") === "phased";
+  // M7（审计 P1-5）：phased 对手回合只允许应手/不接招——主攻在引擎层面拦截，不再单靠 UI 路由
+  if (phased && st.phase !== "pMain") return false;
   // 隐色陷阱：打出即盖放（本轮不结算，对手本轮也不出手——布局回合），下一轮对手出牌时自动触发
   if (playerCard.trap && playerCard.suit === "隐") {
     if (phased) return setTrap(st, playerCard);
@@ -974,7 +1021,7 @@ export function playPressure(st: DuelState, playerCard: CardDef, oppCardId: stri
     const note = trapNoteOpp ?? trapNote;
     if (note) st.lastPlay = { ...st.lastPlay, trapNote: note };
     const dest = lp?.to === "o" ? `他折了 ${lp?.damage} 点` : lp?.to === "p" ? `你折了 ${lp?.damage} 点` : "两败俱伤";
-    pushLog(st, `你出「${playerCard.name}」，他出「${opp.name}」——${dest}${note ? `（${note}）` : ""}`, "press");
+    pushLog(st, `你出「${playerCard.name}」，他出「${st.redactLog ? "▓▓" : opp.name}」——${dest}${note ? `（${note}）` : ""}`, "press");
   }
   // M2 轻回合：每回合一个主行动，出完自动交出先手（对局未结束时）
   if (phased && st.light && !st.finished) handOffToOpponent(st);

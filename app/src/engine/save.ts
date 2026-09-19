@@ -20,6 +20,8 @@ interface DuelWire {
   cfgId: string;
   /** DuelState 去掉 cfg 后的纯数据 */
   data: Omit<DuelState, "cfg">;
+  /** M7（审计 P1-10）：本局押注银两入档——旧实现只存 App state，败局前刷新即免单 */
+  wager?: number;
 }
 export interface SaveData {
   version: number;

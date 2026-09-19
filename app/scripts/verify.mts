@@ -100,7 +100,7 @@ function edgesOf(sc: Scenario) {
 
 const cloneD = (d: DuelState): DuelState => JSON.parse(JSON.stringify(d));
 function stateKey(d: DuelState, handAware: boolean): string {
-  const base = `${d.round}|${d.mode === "emotion" ? `${d.rapport},${d.guard},${d.qi}` : `${d.hpPlayer},${d.hpOpponent}`}|${d.finished ?? ""}|${d.lastCardId ?? ""}|${d.ap}|${d.buffPower}|${d.charge}|${d.foresuit ?? ""}|${d.bluffed ? "b" : ""}`;
+  const base = `${d.round}|${d.mode === "emotion" ? `${d.rapport},${d.guard},${d.qi},${d.yanli ?? ""},${d.topicHits ?? 0}` : `${d.hpPlayer},${d.hpOpponent}`}|${d.finished ?? ""}|${d.lastCardId ?? ""}|${d.ap}|${d.buffPower}|${d.charge}|${d.foresuit ?? ""}|${d.bluffed ? "b" : ""}`;
   // M2 交替回合：相位/回合数/对手意图与蓄力/对手宣言/双方陷阱入键
   const phased = (d.turnSchema ?? "legacy") === "phased";
   const turn = phased ? `|T:${d.phase},${d.turnNo},${d.oppIntent?.kind ?? "-"}|oc:${d.oppCharge ?? 0}|of:${d.oppForesuit ?? ""}|ot:${d.oppTrap ? 1 : 0}|pt:${d.trap ? 1 : 0}` : "";
@@ -516,7 +516,8 @@ for (const sc of ALL) {
       }
       const pool = cfg.rules === "v2" ? v2Loadout(sc) : cfg.deck;
       for (let vi = 0; vi < scripts.length; vi++) {
-        const vc = scripts.length > 1 ? { ...cfg, script: scripts[vi]! } : cfg;
+        // M7（审计 P1-6）：必须同时清掉 scriptVariants——否则 initDuel 会无视钉住的 script 重新随机选变体，穷举测的是随机剧本池
+        const vc = scripts.length > 1 ? { ...cfg, script: scripts[vi]!, scriptVariants: undefined } : cfg;
         if (vc.rules === "v2" && sc.cardSystem) {
           const starter = starterLoadout(sc);
           const s0 = emotionCanWin(sc, vc, starter);
@@ -528,11 +529,12 @@ for (const sc of ALL) {
         if (!r.win && !vc.unwinnable) fail(`对局 ${vc.id}「${vc.title}」${vLabel(vi)}满编卡组在真实 UI 合同下不可胜`);
         else if (!r.win) console.log(`  ${vLabel(vi)}○ ${vc.title}: 设计性死局(必败走向败线)`);
         else if (vc.unwinnable && vc.winScene !== vc.loseScene) fail(`对局 ${vc.id}「${vc.title}」${vLabel(vi)}标记 unwinnable 却穷举可胜 —— 死局标记腐烂，剧情杀可能被打赢`);
+        else if (vc.unwinnable && r.win) warn(`对局 ${vc.id}「${vc.title}」${vLabel(vi)}标记 unwinnable 却穷举可胜（winScene===loseScene 旧豁免）——App 结算端 finAs 已强制判负，但死局数值应回炉`);
         else console.log(`  ${vLabel(vi)}✓ ${vc.title}: 真实UI合同可胜(${r.steps}步)`);
       }
     } else {
       for (let vi = 0; vi < scripts.length; vi++) {
-        const vc = scripts.length > 1 ? { ...cfg, script: scripts[vi]! } : cfg;
+        const vc = scripts.length > 1 ? { ...cfg, script: scripts[vi]!, scriptVariants: undefined } : cfg;
         if (vc.rules === "v2" && sc.cardSystem) {
           const starter = starterLoadout(sc);
           const best0 = pressureBest(sc, vc, starter);
@@ -542,6 +544,7 @@ for (const sc of ALL) {
         const best = pressureBest(sc, vc, loadout);
         const total = vc.hp!.player;
         if (best && vc.unwinnable && vc.winScene !== vc.loseScene) fail(`对局 ${vc.id}「${vc.title}」${vLabel(vi)}标记 unwinnable 却穷举可胜 —— 死局标记腐烂（A-2 反向断言）`);
+        else if (best && vc.unwinnable) warn(`对局 ${vc.id}「${vc.title}」${vLabel(vi)}标记 unwinnable 却穷举可胜（winScene===loseScene 旧豁免）——App 结算端 finAs 已强制判负，但死局数值应回炉`);
         if (best) {
           const margin = best.d.hpPlayer;
           const tenseness = margin <= 2 ? "极高张力" : margin <= Math.ceil(total / 2) ? "中等" : "宽松";

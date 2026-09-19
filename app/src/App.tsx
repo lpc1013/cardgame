@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef, type ReactNode, type CSSProperties } from "react";
-import type { Scenario, CardDef, Suit } from "./engine/types";
+import type { Scenario, CardDef, Suit, DuelConfig } from "./engine/types";
 import { initState, findScene, visibleChoices, applyEffects, registerScenarios, checkCond, resolveSceneLines, type RunState } from "./engine/runtime";
-import { initDuel, revealEmotion, playEmotion, playPressure, endTurn, readEmotion, chargeUp, breakMove, cardCost, duelSpend, respondOpponent, DEFAULT_GOAL, type DuelState, type DuelBoosts } from "./engine/duel";
+import { initDuel, revealEmotion, playEmotion, playPressure, endTurn, readEmotion, chargeUp, breakMove, cardCost, duelSpend, respondOpponent, passResponse, forfeitDuel, EMOTION_FREE_PLAYS, EMOTION_YANLI_MAX, DEFAULT_AP, DEFAULT_GOAL, type DuelState, type DuelBoosts } from "./engine/duel";
 import {
   saveGame, loadGame, clearSave, unlockEnding, getGallery, recordTreeVisit, getTree, recordCardsSeen, getCardSeen,
   settleEmpire, spendInk, gainBoost, consumeBoosts, unlockTheme, setTheme as saveTheme, addRetinue, recordWarLoss, buyPeaceDeal, bumpCounter, getCounter, END_MILES, setTotalEnds, getTotalEnds, buyLuggageSlot, exchangeSilver, grantTitle, consumeSpareSilver, claimMile,
@@ -67,22 +67,6 @@ const _END_ART = import.meta.glob("./assets/endings/*.{png,jpg,jpeg}", { eager: 
 /** 成就图标：assets/achievements/ach_<id>.{jpg,png}（无图时 UI 用 SVG 纹章兜底） */
 const _ACH_ART = import.meta.glob("./assets/achievements/*.{png,jpg,jpeg}", { eager: true, import: "default" }) as Record<string, string>;
 const achArt = (id: string) => _ACH_ART[`./assets/achievements/ach_${id}.jpg`] ?? _ACH_ART[`./assets/achievements/ach_${id}.png`];
-/** 品质卡框图（颜色=品质）：assets/frames/frame_{fan,liang,jing,chuan,gu}.png
- *  按稀有度挂框（凡/良/精/传/孤品），缺图返回 undefined（不叠框） */
-const _FRAME_ART = import.meta.glob("./assets/frames/*.png", { eager: true, import: "default" }) as Record<string, string>;
-function frameOf(c: CardDef): string | undefined {
-  const m: Record<string, string> = { "凡": "fan", "良": "liang", "精": "jing", "传": "chuan", "孤品": "gu" };
-  const key = m[c.rarity ?? "凡"];
-  return key ? _FRAME_ART[`./assets/frames/frame_${key}.png`] : undefined;
-}
-/** 类型花纹框（花纹=类型，统一古铜暗调）：assets/frames/frame_suit_{ce,shi,qi,yin,gu}.png
- *  按花色（策/势/器/隐/孤）挂花纹框，与品质色框双层叠加；缺图返回 undefined（不叠框） */
-function suitFrameOf(suit?: string): string | undefined {
-  if (!suit) return undefined;
-  const m: Record<string, string> = { "策": "ce", "势": "shi", "器": "qi", "隐": "yin", "孤": "gu" };
-  const key = m[suit];
-  return key ? _FRAME_ART[`./assets/frames/frame_suit_${key}.png`] : undefined;
-}
 /** F-13：成就图标缺失时的 SVG 纹章兜底——已达成=金星章，未达成=虚线锁章（U-7 去字化语言，不再回落 emoji） */
 function AchSeal({ on, hidden }: { on: boolean; hidden?: boolean }) {
   return (
@@ -130,7 +114,7 @@ function cardArt(id: string): string | undefined {
 }
 function sceneArt(scenarioId: string, id: string): string | undefined {
   // 优先「剧本前缀」命名（跨剧本场景 id 会重名，如 start）；兼容旧的 scn_* 全局唯一命名
-  return _artUrl(_SCENE_ART_IDX, `${scenarioId}_${id}`) ?? _artUrl(_SCENE_ART_IDX, id);
+  return _artUrl(_SCENE_ART_IDX, `${scenarioId}_${id}`) ?? _artUrl(_SCENE_ART_IDX, `scn_${id}`) ?? _artUrl(_SCENE_ART_IDX, id);
 }
 /** 结局插画：src/assets/endings/end_<剧本id>_<结局场景id>.{jpg,png} */
 function endArt(scenarioId: string, sceneId: string): string | undefined {
@@ -173,6 +157,15 @@ function SuitSeal({ suit }: { suit?: string }) {
 
 /** 四色相克环（展示用）：X 克 Y */
 const RESTRAIN_UI: Record<string, string> = { 策: "势", 势: "器", 器: "隐", 隐: "策" };
+/** 反查（M7 审计 P0-4）：X 被何色所克——提示「出谁可克敌」必须用这张表，用 RESTRAIN_UI 会恰好指向被敌克的色 */
+const RESTRAINED_BY: Record<string, string> = { 势: "策", 器: "势", 隐: "器", 策: "隐" };
+
+/** M7（审计 P1-6）：藏牌局合同（与 DuelView 的 oppHidden 判定同口径）——战报须脱敏对手卡名 */
+function duelHidesOpp(sc: Scenario, cfg: DuelConfig): boolean {
+  if (cfg.mode !== "pressure") return false;
+  const see = cfg.seeOpp ?? (sc.mode === "case" && (cfg.rules ?? "classic") === "v2" ? "hidden" : "open");
+  return see === "hidden";
+}
 
 /** 剧本封面（出征轮播大图） */
 function coverOf(id: string): string | undefined {
@@ -369,22 +362,33 @@ function CardArtPlaceholder({ name, compact }: { name: string; compact: boolean 
   );
 }
 
+/** prep 系裸 <img> 解码失败时就地换首字占位（与 CardArt 的 U-9 回退策略对齐，不留破图） */
+function artFailToFallback(e: { currentTarget: HTMLImageElement }, name: string) {
+  const img = e.currentTarget;
+  const holder = img.parentElement;
+  img.remove();
+  const fb = document.createElement("span");
+  fb.className = "prep-card-fallback";
+  fb.textContent = (name || "?").trim().charAt(0) || "?";
+  holder?.appendChild(fb);
+}
+
 /** 竖向实体卡：底层卡图 + 上卡名 + 下介绍，底色随稀有度（图鉴/背包/市集/翻牌/开包共用） */
 function TCard({ c, unknown, onClick, corner, footer, cardCls }: {
   c: CardDef; unknown?: boolean; onClick?: () => void;
   corner?: ReactNode; footer?: ReactNode; cardCls?: string;
 }) {
   const src = cardArt(c.id);
-  // 卡框双层：下层=类型花纹框（古铜暗调，花纹辨类型），上层=品质色框（颜色辨稀有度）
-  const suitFrameSrc = suitFrameOf(c.suit);
-  const frameSrc = frameOf(c);
+  const [artFailed, setArtFailed] = useState(false);
   const cls = `tcard rarity-${c.rarity ?? "凡"} ${c.suit ? `suit-${c.suit}` : ""} ${unknown ? "card-unknown" : ""} ${onClick ? "clickable" : ""} ${cardCls ?? ""}`;
   return (
     <div className={cls} onClick={onClick}>
-      <div className="tcard-art">{!unknown && src ? <img src={src} alt={c.name} loading="lazy" /> : null}</div>
-      {suitFrameSrc && <img className="suit-frame-img" src={suitFrameSrc} alt="" aria-hidden="true" />}
-      {frameSrc && <img className="card-frame-img" src={frameSrc} alt="" aria-hidden="true" />}
-      {c.suit && <SuitGlyph suit={c.suit} />}
+      <div className="tcard-art">
+        {unknown ? null : src && !artFailed
+          ? <img src={src} alt={c.name} loading="lazy" onError={() => setArtFailed(true)} />
+          : <CardArtPlaceholder name={c.name} compact />}
+      </div>
+      {!unknown && c.suit && <SuitGlyph suit={c.suit} />}
       {corner && <span className="tcard-corner">{corner}</span>}
       {!unknown && (() => {
         // C-3/C-5：右上角 = 「层语言」位——成术显点数（fix-corner-power），物品/人物显层徽（fix-layer-seal），资源显银锭+面额。
@@ -465,25 +469,30 @@ export default function App() {
         if (cfg) {
           // 和议之书：仅对本剧下一场「战争对局」免战（F-3：cfg.war 显式标记；审讯/对峙/宫变/截杀不算战争），
           // 直接进胜线；奖励归零由结算侧处理
+          let eff = cur;
           if (cur.boosts.includes("b_peace") && cfg.mode === "pressure" && cfg.war && sc.id !== "jieyu") {
-            cur.boosts = cur.boosts.filter((b) => b !== "b_peace");
+            // M7（审计 P1-11）：消耗/扣减一律走副本快照，不再原地改 React 状态
+            eff = { ...cur, boosts: cur.boosts.filter((b) => b !== "b_peace") };
             if (cfg.unwinnable) {
               // B-3：设计性死局（剧情杀）是叙事必需——和议之书在此无效，但照样消耗
               setToast("项羽收了银子也不肯退兵——这仗躲不过。");
+              setSt(eff);
             } else {
               // W-4：和议生效——主声望类 stat 扣 3（无匹配键则跳过），该局奖励归零（对局结算路径天然跳过 + 胜线结局奖励标记归零）。
               // F-3：归零旗标改为随 RunState 传递的通用标记——旧实现拼接 winScene 场景 id，winScene 非结局场景时
               // 旗标永不命中，7 处跳战点仅 1 处真正生效（sichou/shumian/changjiang/jianfeng 全部落空）。
               const pStat = sc.stats?.find((s) => PRESTIGE_STAT_KEYS.includes(s.key));
-              if (pStat) cur.stats[pStat.key] = (cur.stats[pStat.key] ?? 0) - 3;
-              cur.flags.add("b_peace_skip");
+              if (pStat) eff.stats = { ...eff.stats, [pStat.key]: (eff.stats[pStat.key] ?? 0) - 3 };
+              eff.flags = new Set(eff.flags);
+              eff.flags.add("b_peace_skip");
               setToast("敌酋见银退兵——和议成了，仗没打。（威望有损 · 该局奖励归零）");
-              gotoFrom(cur, cfg.winScene);
+              gotoFrom(eff, cfg.winScene);
               return;
             }
           }
-          const loadout = sc.cardSystem ? cur.deck : cfg.deck;
-          const d = initDuel(cfg, loadout, allCardsFor(sc, cur.deck), duelBoostsOf(cur.boosts));
+          const loadout = sc.cardSystem ? eff.deck : cfg.deck;
+          const d = initDuel(cfg, loadout, allCardsFor(sc, eff.deck), duelBoostsOf(eff.boosts));
+          d.redactLog = duelHidesOpp(sc, cfg);
           revealEmotion(d);
           setDuel(d);
           setWager(0);
@@ -555,16 +564,19 @@ export default function App() {
   // 对局结束 → 即刻推进至结算场景并存档（消除 1.6s 窗口期关页重打的竞态），战果文案定格至延迟结束后再切相位；押注同步结算入账
   useEffect(() => {
     if (duel?.finished && sc && st) {
+      // M7（审计 P1-8）：unwinnable 剧情杀兜底——穷举/数值失准被打赢时，结算一律按败局走（胜也吞胜线不兑现），防死局标记腐烂变现
+      const finAs: "win" | "lose" = duel.cfg.unwinnable && duel.finished === "win" ? "lose" : duel.finished;
+      if (finAs !== duel.finished) setToast("天命难违——这一局，本就不许你赢。");
       // 对局成就（仅胜局判定）：卡组构成 / 行为（跨局计数）
-      if (duel.finished === "win") {
+      if (finAs === "win") {
         const owned = new Set(getAchievements());
         const rarityOf = (id: string) => allCardsFor(sc, st.deck).find((c) => c.id === id)?.rarity;
         const suitOf = (id: string) => allCardsFor(sc, st.deck).find((c) => c.id === id)?.suit;
         const layerOf = (id: string) => allCardsFor(sc, st.deck).find((c) => c.id === id)?.layer;
         // B-2：情绪制全程消耗 qi 而非 hpPlayer（hpPlayer/hpMax 恒等于开局值，会让「毫发无伤」恒真）——
-        // 按模式分流：emotion 用 qi / 上限常量 10（与 duel.ts 回气钳制、QiBar 一致）；pressure 用 hpPlayer/hpMax
+        // 按模式分流：emotion 用 qi / 上限 qiMax（M7：含人物/备战加成，旧写死 10 让 10/12 也判满气）；pressure 用 hpPlayer/hpMax
         const achHpPlayer = duel.mode === "emotion" ? duel.qi : duel.hpPlayer;
-        const achHpMax = duel.mode === "emotion" ? EMOTION_QI_MAX : duel.hpMax;
+        const achHpMax = duel.mode === "emotion" ? (duel.qiMax ?? EMOTION_QI_MAX) : duel.hpMax;
         const got = checkDuelAchievements({
           deck: st.deck,
           rarityOf,
@@ -600,37 +612,37 @@ export default function App() {
         for (const [aid, cond] of behavior) if (cond) grantAch(aid, owned);
       }
       // 战争局失败：记录（解锁「岁币之约」购买）；劫与烬（北京保卫战）为唯一战争剧本，虽败亦不求和，但记录仍用于商市解锁判定
-      if (duel.finished === "lose" && sc.id === "jieyu") recordWarLoss(sc.id);
+      if (finAs === "lose" && sc.id === "jieyu") recordWarLoss(sc.id);
       // 番外解锁：cards 型番外——携带本剧本番外钥匙卡（≥need 张）赢下对局 → 解锁（幂等）
       const noWinRoute = sc.duels.length > 0 && sc.duels.every((d) => d.unwinnable);
       for (const b of bonusListOfScenario(sc.id).filter((x) => x.unlock !== "ending" && x.unlock !== "dual")) {
         const hits = (b.keyCards ?? []).filter((k) => new Set(duel.cfg.deck).has(k)).length;
-        const hitOk = duel.finished === "win" && (noWinRoute || hits >= (b.need ?? 2));
-        const loseOk = noWinRoute && duel.finished === "lose";
+        const hitOk = finAs === "win" && (noWinRoute || hits >= (b.need ?? 2));
+        const loseOk = noWinRoute && finAs === "lose";
         if (hitOk || loseOk) {
           if (unlockBonus(b.id)) setToast(`番外解锁：「${b.title}」——去剧本封面展阅。`);
         }
       }
-      const target = duel.finished === "win"
-        ? duel.cfg.winScene
-        : duel.cfg.loseScene2 && checkCond(duel.cfg.loseScene2.cond, st)
-          ? duel.cfg.loseScene2.scene
-          : duel.cfg.loseScene;
+      const target = finAs === "win" ? duel.cfg.winScene : duel.cfg.loseScene;
       // 押注结算（M1 风控，审计 4.3）：胜 1.6 倍、败失本金；每周目限 3 次——
       // 旧「两倍+无限次」在对局确定可胜的前提下是无风险双倍返（审计 W-1 同类经济裂缝）
+      // M7（审计 P2）：wager 先落账再判 loseScene2 用同一份 base，条件败线的资源判定与转移不再两张皮
       let base = st;
       if (wager > 0) {
-        const gain = duel.finished === "win" ? Math.round(wager * 1.6) : -wager;
+        const gain = finAs === "win" ? Math.round(wager * 1.6) : -wager;
         base = { ...st, silver: Math.max(0, st.silver + gain), wagers: (st.wagers ?? 0) + 1 };
-        setToast(duel.finished === "win" ? `押注得手：本金 ${wager} 两，连彩头入账 ${Math.round(wager * 1.6)} 两` : `押注失手，${wager} 两银子打了水漂`);
+        setToast(finAs === "win" ? `押注得手：本金 ${wager} 两，连彩头入账 ${Math.round(wager * 1.6)} 两` : `押注失手，${wager} 两银子打了水漂`);
         setWager(0);
       }
+      const target2 = finAs === "lose" && duel.cfg.loseScene2 && checkCond(duel.cfg.loseScene2.cond, base)
+        ? duel.cfg.loseScene2.scene
+        : target;
       // 剧本级 usedCards：本剧进过 deck 的卡并入（弱卡点名成就判定依据；与上面的 base 副本合并）
       base = { ...base, usedCards: [...new Set([...(base.usedCards ?? []), ...base.deck])] };
-      gotoFrom(base, target, { holdView: true });
+      gotoFrom(base, target2, { holdView: true });
       const t = setTimeout(() => {
         setDuel(null);
-        if (stRef.current) enterSceneOf(stRef.current, target);
+        if (stRef.current) enterSceneOf(stRef.current, target2);
       }, 1600);
       return () => clearTimeout(t);
     }
@@ -706,12 +718,17 @@ export default function App() {
     setPhase("story");
   };
 
+  // 单击全推：空行「""」只是段间排版分隔，不单独占一次推进——
+  // 一次空格/点击直接亮出整段（推到下个空行为止），杜绝「按一下没反应、再按才出下段」
   const advance = () => {
     if (!sc || !st) return;
     const scene = findScene(sc, st.sceneId);
-    if (st.lineIndex < resolveSceneLines(scene, st).length - 1) {
+    const lines = resolveSceneLines(scene, st);
+    if (st.lineIndex < lines.length - 1) {
+      let j = st.lineIndex + 1;
+      while (j < lines.length - 1 && lines[j] !== "") j++;
       sfx.page();
-      setSt({ ...st, lineIndex: st.lineIndex + 1 });
+      setSt({ ...st, lineIndex: j });
     } else if (scene.next && !scene.choices?.length && !scene.cardPick && !scene.shop) {
       sfx.page();
       goto(scene.next);
@@ -745,12 +762,14 @@ export default function App() {
   useEffect(() => {
     if (st && sc && phase !== "title" && phase !== "ending" && duel) {
       const { cfg, ...rest } = duel;
-      if (!rest.finished) saveGame(sc.id, st, { cfgId: cfg.id, data: rest });
+      if (!rest.finished) saveGame(sc.id, st, { cfgId: cfg.id, data: rest, wager });
       else saveGame(sc.id, st);
     } else if (st && sc && phase !== "title" && phase !== "ending") {
       saveGame(sc.id, st);
     }
-  }, [st, phase, duel?.round, duel?.finished, duel?.usedCards.length]);
+    // M7（审计 P1-7）：读牌/刺探/收买/蓄势/破招只扣 yanli/随从次数/ap，不推进 round——
+    // 旧 deps 只看 round，这些动作永不落盘，「刷新退款」成为免费情报机
+  }, [st, phase, duel?.round, duel?.finished, duel?.usedCards.length, duel?.ap, duel?.yanli, duel?.charge, duel?.foresuit, duel?.scoutLeft, duel?.insiderLeft, duel?.sharedUsed, duel?.phase, duel?.oppIntent?.kind, duel?.hpPlayer, duel?.hpOpponent, duel?.rapport, duel?.qi, wager]);
 
   // 结局入图鉴 + 清档
   useEffect(() => {
@@ -868,9 +887,25 @@ export default function App() {
         const savedVariant = (save.duel!.data as unknown as { variantScript?: string[] }).variantScript;
         const cfg = savedVariant?.length ? { ...baseCfg, script: savedVariant } : baseCfg;
         // 旧档兼容：博弈字段（charge/foresuit/opponentTrue/bluffed/trap）+ 随从字段（scoutLeft/insiderLeft/...）缺省补全（展开后兜底写回）
-        const d = { ...save.duel.data, cfg, charge: save.duel.data.charge ?? 0, foresuit: save.duel.data.foresuit ?? null, opponentTrue: save.duel.data.opponentTrue ?? null, bluffed: save.duel.data.bluffed ?? false, trap: save.duel.data.trap ?? null, scoutLeft: save.duel.data.scoutLeft ?? 0, insiderLeft: save.duel.data.insiderLeft ?? 0, sharedUsed: save.duel.data.sharedUsed ?? 0, sharedTotal: save.duel.data.sharedTotal ?? 0, insiderActive: save.duel.data.insiderActive ?? false, retinueNames: save.duel.data.retinueNames ?? [] };
+        const d: DuelState = { ...save.duel.data, cfg, charge: save.duel.data.charge ?? 0, foresuit: save.duel.data.foresuit ?? null, opponentTrue: save.duel.data.opponentTrue ?? null, bluffed: save.duel.data.bluffed ?? false, trap: save.duel.data.trap ?? null, scoutLeft: save.duel.data.scoutLeft ?? 0, insiderLeft: save.duel.data.insiderLeft ?? 0, sharedUsed: save.duel.data.sharedUsed ?? 0, sharedTotal: save.duel.data.sharedTotal ?? 0, insiderActive: save.duel.data.insiderActive ?? false, retinueNames: save.duel.data.retinueNames ?? [],
+          // M7（审计 P1-7）：C-1 分桶与 v2 字段兜底——旧实现漏 these，老档 passives 缺失直接 TypeError、独立随从次数丢失
+          indScoutLeft: save.duel.data.indScoutLeft ?? 0, indInsiderLeft: save.duel.data.indInsiderLeft ?? 0,
+          passives: save.duel.data.passives ?? [], seeNext: save.duel.data.seeNext ?? "none",
+          playerLeadSuits: save.duel.data.playerLeadSuits ?? [], hand: save.duel.data.hand ?? [], library: save.duel.data.library ?? [], discard: save.duel.data.discard ?? [], usedCards: save.duel.data.usedCards ?? [],
+          ap: save.duel.data.ap ?? DEFAULT_AP, baseAp: save.duel.data.baseAp ?? DEFAULT_AP
+        };
+        // M7：情绪局旧档缺言力字段——补回预算（7），而非让引擎 typeof 守卫静默解除出牌上限
+        if (d.mode === "emotion" && (typeof d.yanli !== "number" || typeof d.yanliMax !== "number")) {
+          d.yanli = EMOTION_YANLI_MAX; d.yanliMax = EMOTION_YANLI_MAX;
+        }
+        // M7：phase 与 oppIntent 不一致（跨版本档/手改档）→ 自愈回我方主阶段，防「应手永假」死锁
+        if ((d.turnSchema ?? "legacy") === "phased" && d.phase === "oppTurn" && (d.oppIntent?.kind !== "attack" || !d.oppIntent.cardId)) {
+          d.phase = "pMain"; d.oppIntent = null;
+        }
+        d.redactLog = duelHidesOpp(scenario, cfg);
         if (d.mode === "emotion" && !d.opponentShown && !d.finished) revealEmotion(d);
         setDuel(d);
+        setWager(save.duel.wager ?? 0);
         setPhase("duel");
         return;
       }
@@ -881,6 +916,7 @@ export default function App() {
       if (cfg) {
         const loadout = scenario.cardSystem ? save.state.deck : cfg.deck;
         const d = initDuel(cfg, loadout, allCardsFor(scenario, save.state.deck), duelBoostsOf(state.boosts));
+        d.redactLog = duelHidesOpp(scenario, cfg);
         revealEmotion(d);
         setDuel(d);
         setPhase("duel");
@@ -1179,7 +1215,7 @@ export default function App() {
               <div className="guide-sec"><b>案件模式</b>：调查取证 → 结案陈词拣选线索（真/伪/核心）→ 定谳。核心线索+足够实据 = 完整结局。</div>
               <div className="guide-sec"><b>对局·情绪匹配制</b>：对手亮出手段（策/器/势/隐）。同色接话=共鸣；克色=破防；被克=大失言（气力-2），错色=失言。共鸣满则胜。v2 情绪局出牌不耗行动力。</div>
               <div className="guide-sec"><b>对局 · 博弈动作</b>（压制制）：蓄势（挨打换下张+2，上限2层）/ 破招（宣言对手花色，押中该手作废）/ 刺探·收买（需带斥候/内应随从，见下）。部分牌有情境加成（对手为某色时+2）/ 牺牲（自伤换强）/ 抽牌。</div>
-              <div className="guide-sec"><b>✦ 卡牌系统 v2</b>：四层卡——成术（对局四色牌）/ 物品（对局道具，用后消耗，也是剧情钥匙）/ 人物（携带被动，开局场外生效）/ 资源（即银两）。市集买卡卖卡开卡包；翻牌三选一；顶栏「背包」随时编组（上限 12，资源不占槽）。压制局出牌耗行动力，可「换气」回力补牌；打出的牌进弃牌堆，牌库抽空调洗回填。</div>
+              <div className="guide-sec"><b>✦ 卡牌系统 v2</b>：四层卡——成术（对局四色牌）/ 物品（对局道具，一局限用一次、局后仍在行囊，也是剧情钥匙）/ 人物（携带被动，开局场外生效）/ 资源（即银两）。市集买卡卖卡开卡包；翻牌三选一；顶栏「背包」随时编组（上限 12，资源不占槽）。压制局出牌耗行动力，可「换气」回力补牌；打出的牌进弃牌堆，牌库抽空调洗回填。</div>
               <div className="guide-sec"><b>随从</b>：带斥候/内应被动的人物卡，黑市可雇，全局至多 3 人。对局内由随从执行「刺探」（看破对手下一手全牌）/「收买」（敌招作废）——消耗随从次数，不耗银两；银两只用于雇随从。凡=斥候1次 · 良=内应1次 · 精=双能共1 · 传=双能共2（任选搭配）。</div>
               <div className="guide-sec"><b>小游戏（五艺）</b>：驸马案·吟诗作对（补下联，辨工整）｜秋闱案·证词真假（仅 N 人说真话，逻辑排除）｜丝绸案·推牌九（押点博彩，同点庄赢）｜秀才案·棋局残局（多手正解，棋盘随步变化）｜秦淮案·宴会行令（翻令签对花色，留牌折算彩头）。败不可再战。</div>
               <div className="guide-sec"><b>帝国商市</b>：解锁结局奖励墨铤（每个 {INK_PER_ENDING}；结局进度条里程碑达标后**点击礼物领取**）；商市可购随身位扩容（+1 格，上限 5）、银两兑换（1 墨铤=1 两，出征注入）、开局加成、主题外观与「岁币之约」（败仗解锁，和议结局线，劫与烬除外）。</div>
@@ -1418,6 +1454,36 @@ export default function App() {
 
 function TopBar({ sc, st, onClues, onBag }: { sc: Scenario; st: RunState; onClues: () => void; onBag: () => void }) {
   const [snd, setSnd] = useState(sfxEnabled());
+  // R-1：资源变化浮动提示——数值一变在字牌上浮出「+n / −n」+ 微光脉冲（朝望-2 之类不再悄无声息）。
+  // 同帧多项变动（如 朝望-2 且 银+10）各浮各的；applyEffects 就地改 stats（浅拷贝共享引用），依赖用整个 st。
+  const prevRef = useRef<{ stats: Record<string, number>; silver: number } | null>(null);
+  const [deltas, setDeltas] = useState<{ id: number; key: string; d: number }[]>([]);
+  const deltaTimer = useRef<number | null>(null);
+  useEffect(() => {
+    const prev = prevRef.current;
+    prevRef.current = { stats: { ...st.stats }, silver: st.silver };
+    if (!prev) return;
+    const hits: { id: number; key: string; d: number }[] = [];
+    sc.stats?.forEach((s) => {
+      const d = (st.stats[s.key] ?? 0) - (prev.stats[s.key] ?? 0);
+      if (d !== 0) hits.push({ id: Date.now() + hits.length, key: s.key, d });
+    });
+    if (sc.cardSystem && st.silver !== prev.silver) {
+      hits.push({ id: Date.now() + hits.length, key: "__silver", d: st.silver - prev.silver });
+    }
+    if (!hits.length) return;
+    setDeltas(hits);
+    if (deltaTimer.current) window.clearTimeout(deltaTimer.current);
+    deltaTimer.current = window.setTimeout(() => setDeltas([]), 1600);
+  }, [st, sc]);
+  useEffect(() => () => { if (deltaTimer.current) window.clearTimeout(deltaTimer.current); }, []);
+  const deltaOf = (key: string) => deltas.find((x) => x.key === key);
+  const DeltaTag = ({ k }: { k: string }) => {
+    const d = deltaOf(k);
+    return d ? (
+      <i key={d.id} className={`stat-delta ${d.d < 0 ? "neg" : ""}`}>{d.d > 0 ? `+${d.d}` : d.d}</i>
+    ) : null;
+  };
   return (
     <div className="top-bar">
       <span className="tb-title">{sc.title}</span>
@@ -1425,9 +1491,17 @@ function TopBar({ sc, st, onClues, onBag }: { sc: Scenario; st: RunState; onClue
         <span className="stat-chip chip-vp">{sc.viewpoints.find((v) => v.id === st.viewpoint)!.name}</span>
       )}
       {sc.stats?.map((s) => (
-        <span key={s.key} className="stat-chip">{s.name} {st.stats[s.key]}</span>
+        <span key={s.key} className={`stat-chip ${deltaOf(s.key) ? "stat-pulse" : ""}`}>
+          {s.name} {st.stats[s.key]}
+          <DeltaTag k={s.key} />
+        </span>
       ))}
-      {sc.cardSystem && <span className="stat-chip chip-silver">银 {st.silver}</span>}
+      {sc.cardSystem && (
+        <span className={`stat-chip chip-silver ${deltaOf("__silver") ? "stat-pulse" : ""}`}>
+          银 {st.silver}
+          <DeltaTag k="__silver" />
+        </span>
+      )}
       {st.clues.length > 0 && (
         <button className="clue-btn" onClick={() => { sfx.choice(); onClues(); }}>卷宗（{st.clues.length}）</button>
       )}
@@ -1763,8 +1837,10 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
   /** M1 押注风控：本周目剩余押注次数 */
   wagersLeft: number;
 }) {
+  const cardOfOpt = (id: string): CardDef | undefined =>
+    sc.cards.find((x) => x.id === id) ?? duel.cfg.oppCards?.find((x) => x.id === id) ?? getGlobalCard(id);
   const cardOf = (id: string): CardDef => {
-    const c = sc.cards.find((x) => x.id === id) ?? duel.cfg.oppCards?.find((x) => x.id === id) ?? getGlobalCard(id);
+    const c = cardOfOpt(id);
     if (!c) throw new Error(`卡牌不存在: ${id}（对局 ${duel.cfg.id}）`);
     return c;
   };
@@ -1794,7 +1870,7 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
   const scanOn = (duel.passives ?? []).some((p) => p.scan);
   /** 当前可知粒度：道具/诈问 > 青眼被动 */
   const knownLevel: "none" | "suit" | "card" | "power" = seeLevel !== "none" ? seeLevel : peekHit ? "card" : "none";
-  const oppNext = duel.mode === "pressure" ? cardOf(oppIdOf(duel)) : null;
+  const oppNext = duel.mode === "pressure" ? cardOfOpt(oppIdOf(duel)) ?? null : null;
   const knownSuit = knownLevel !== "none" ? (oppNext?.suit ?? null) : null;
 
   const moodText = useMemo(() => {
@@ -1843,13 +1919,19 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
     const d = structuredClone(duel);
     if (d.mode === "emotion") {
       if (!d.opponentShown) return;
-      // M1：观X物品在情绪局无消费路径（引擎已拒绝），提前给出人话提示
-      if ((card.layer ?? "成术") === "物品" && (card.itemEffect === "观牌" || card.itemEffect === "观色" || card.itemEffect === "观点")) {
+      // M1：观X/揭底物品在情绪局无消费路径（引擎已拒绝），提前给出人话提示
+      if ((card.layer ?? "成术") === "物品" && (card.itemEffect === "观牌" || card.itemEffect === "观色" || card.itemEffect === "观点" || card.itemEffect === "揭底")) {
         toast("对谈局里，这件观牌物件派不上用场——留着压制局再用。");
         return;
       }
+      // M7（审计 P2）：言力耗尽的失败必须报真因，不再错挂「人物卡是被动」（物品不耗言力，不受此限）
+      if (typeof d.yanli === "number" && (card.layer ?? "成术") === "成术" && d.round >= EMOTION_FREE_PLAYS && d.yanli <= 0) {
+        toast("言力已尽，成术接不上了——看看物品牌，或拱手退让。");
+        return;
+      }
+      if ((card.layer ?? "成术") === "人物") { toast("人物卡是被动，不能打出"); return; }
       const ok = playEmotion(d, card);
-      if (!ok) { toast("人物卡是被动，不能打出"); return; }
+      if (!ok) { toast("此刻打不出这张牌"); return; }
       const kind = d.lastResult?.kind;
       if (kind === "match") sfx.match();
       else if (kind === "press" || kind === "item") sfx.press();
@@ -1867,7 +1949,14 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
     } else {
       const oppId = d.cfg.script[d.round % d.cfg.script.length] ?? d.cfg.script[0]!;
       const ok = playPressure(d, card, oppId, cardOf);
-      if (!ok) { toast(card.layer === "人物" ? "人物卡是被动，不能打出" : "行动力不足"); return; }
+      if (!ok) {
+        // M7（审计 P2）：报真因——旧实现统一「行动力不足」，掩盖陷阱占位与对手回合门控
+        if ((card.layer ?? "成术") === "人物") toast("人物卡是被动，不能打出");
+        else if (card.trap && duel.trap) toast("案上已经扣着一张牌了——只能盖一张。");
+        else if (inOppTurn) toast("他招式已出——先接这一手，或【硬接不接】");
+        else toast("行动力不足——【换气】另起一回合");
+        return;
+      }
       // 盖放陷阱计数（刚盖未触发的回合）；F-7：触发单独计数（盖放 ≠ 触发——陷阱大师按触发算）
       if (!duel.trap && d.trap) bumpCounter("traps");
       if (duel.trap && !d.trap && d.lastPlay?.playerCard) bumpCounter("trap_triggers");
@@ -1881,6 +1970,23 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
     sfx.choice();
     const d = structuredClone(duel);
     endTurn(d);
+    setDuel(d);
+  };
+
+  // ---- M7 逃生口（审计 P0-3：死锁必须给出路，且只在全然无解时露出） ----
+  const doPass = () => {
+    sfx.choice();
+    const d = structuredClone(duel);
+    if (!passResponse(d, cardOf)) { toast("此刻不必硬接"); return; }
+    if (d.finished) (d.finished === "win" ? sfx.win : sfx.lose)();
+    else sfx.press();
+    setDuel(d);
+  };
+  const doForfeit = () => {
+    sfx.choice();
+    const d = structuredClone(duel);
+    if (!forfeitDuel(d)) return;
+    sfx.lose();
     setDuel(d);
   };
 
@@ -1920,6 +2026,12 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
   };
 
   const handIds = v2 ? duel.hand : duel.cfg.deck;
+  // M7（审计 P0-3）：绝境逃生口——情绪制言力耗尽/牌库尽，或对手主攻时手里没有能接的成术，才递上「退让/硬接」按钮
+  const emotionStuck = duel.mode === "emotion" && !duel.finished
+    && ((typeof duelExtra.yanli === "number" && duel.round >= EMOTION_FREE_PLAYS && duelExtra.yanli <= 0)
+      || (v2 && duel.hand.length === 0 && duel.library.length === 0 && duel.discard.length === 0));
+  const canRespondNow = handIds.some((id) => { const c = cardOfOpt(id); return !!c && (c.layer ?? "成术") === "成术" && !c.trap; });
+  const oppTurnStuck = inOppTurn && !duel.finished && duel.oppIntent?.kind === "attack" && !canRespondNow;
   /** 押注窗口：仅开局未出手时可押；选过「不押」后不再追问；M1：每周目限 3 次 */
   const [wagerDismissed, setWagerDismissed] = useState(false);
   const wagerOpen = gambit && !duel.finished && !wagerDismissed && wager === 0 && duel.round === 0 && !duel.lastResult && wagersLeft > 0;
@@ -1936,6 +2048,15 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
   const [raisedId, setRaisedId] = useState<string | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const swipeYRef = useRef<number | null>(null);
+  // M7（审计 P1-13）：上滑出牌后浏览器仍可能补发 click——同卡 350ms 内的二次触发直接吞掉，防一手两出
+  const lastPlayRef = useRef<{ id: string; t: number } | null>(null);
+  const guardedClick = (id: string) => {
+    const t = Date.now();
+    const last = lastPlayRef.current;
+    if (last && last.id === id && t - last.t < 350) return;
+    lastPlayRef.current = { id, t };
+    clickCard(id);
+  };
   const centerIdx = Math.round((handIds.length - 1) / 2);
   const lastLogRef = useRef<string | null>(null);
   useEffect(() => {
@@ -1998,6 +2119,7 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
         {duel.mode === "pressure" && (duel.oppForesuit) && <span className="trap-on"><span className="st-label">敌方宣言</span>你必出「{duel.oppForesuit}」——被他押中则该手作废</span>}
         {duel.mode === "pressure" && duel.foresuit && <span><span className="st-label">破招宣言</span>{inOppTurn ? "其主攻" : "敌出"}「{duel.foresuit}」</span>}
         {duel.mode === "pressure" && duel.trap && <span className="trap-on"><span className="st-label">盖牌</span>「{duel.trap.name}」扣在案上（{duel.trap.effect}）</span>}
+        {duel.mode === "pressure" && duel.insiderActive && <span className="trap-on"><span className="st-label">内应</span>已买通——他下一招作废</span>}
         {v2 && <span className="muted">牌库 {duel.library.length} · 手牌 {duel.hand.length} · 弃牌 {duel.discard.length}</span>}
       </div>
 
@@ -2023,11 +2145,11 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
             <span className="edge-hint">应手不引发挥牌位与蓄力；盖放中的陷阱会在这一刻发动。</span>
           </p>
         )}
-        {v2 && duel.mode === "pressure" && !oppHidden && !gambit && (
+        {v2 && duel.mode === "pressure" && !oppHidden && !gambit && oppNext && (
           <p className="opp-line">
-            对手下一手：「{cardOf(oppIdOf(duel)).name}」
-            <SuitSeal suit={cardOf(oppIdOf(duel)).suit} />
-            <span className="edge-hint">出「{RESTRAIN_UI[cardOf(oppIdOf(duel)).suit ?? ""]}」牌可克敌（+1）；每牌耗 1 行动力，行动力尽可【换气】。</span>
+            对手下一手：「{oppNext.name}」
+            <SuitSeal suit={oppNext.suit} />
+            <span className="edge-hint">出「{RESTRAINED_BY[oppNext.suit ?? "策"]}」牌可克敌（+1）；每牌耗 1 行动力，行动力尽可【换气】。</span>
           </p>
         )}
         {v2 && duel.mode === "pressure" && oppHidden && (
@@ -2041,19 +2163,19 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
             {knownLevel === "suit" && (
               <>
                 〔洞察〕他下一手的路数是<span className={`s-${knownSuit}`}>「{knownSuit}」</span>。
-                <span className="edge-hint">已【破招】宣言此色则这招作废；出「{RESTRAIN_UI[knownSuit ?? ""]}」牌可克敌（+1）。</span>
+                <span className="edge-hint">已【破招】宣言此色则这招作废；出「{RESTRAINED_BY[knownSuit ?? "策"]}」牌可克敌（+1）。</span>
               </>
             )}
-            {knownLevel === "card" && (
+            {knownLevel === "card" && oppNext && (
               <>
-                〔洞察〕他下一手：「{oppNext!.name}」
-                <SuitSeal suit={oppNext!.suit} />（点数 {oppNext!.power}）
-                <span className="edge-hint">出「{RESTRAIN_UI[oppNext!.suit ?? ""]}」牌可克敌（+1）。</span>
+                〔洞察〕他下一手：「{oppNext.name}」
+                <SuitSeal suit={oppNext.suit} />（点数 {oppNext.power}）
+                <span className="edge-hint">出「{RESTRAINED_BY[oppNext.suit ?? "策"]}」牌可克敌（+1）。</span>
               </>
             )}
-            {knownLevel === "power" && (
+            {knownLevel === "power" && oppNext && (
               <>
-                〔洞察〕他下一手的劲道约为{oppNext!.power}点，花色不明。
+                〔洞察〕他下一手的劲道约为{oppNext.power}点，花色不明。
                 <span className="edge-hint">够不够换血，你心里有数。</span>
               </>
             )}
@@ -2061,7 +2183,7 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
         )}
         {scanOn && duel.round >= 4 && duel.mode === "pressure" && (
           <p className="opp-line scan-hint">
-            <span className="fix-term-tip" title="耳报：携带「读悉」被动的人物卡，第 4 回合起读透对手出牌循环">〔耳报〕</span>他的路数你已摸透：{duel.cfg.script.map((id) => cardOf(id).suit).join("→")}——眼下这一手是「{cardOf(oppIdOf(duel)).suit}」。
+            <span className="fix-term-tip" title="耳报：携带「读悉」被动的人物卡，第 4 回合起读透对手出牌循环">〔耳报〕</span>他的路数你已摸透：{duel.cfg.script.map((id) => cardOfOpt(id)?.suit ?? "▓").join("→")}——眼下这一手是「{oppNext?.suit ?? "▓"}」。
           </p>
         )}
         {v2 && duel.mode === "pressure" && gambit && !oppHidden && (
@@ -2138,6 +2260,12 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
         {v2 && !duel.finished && duel.mode === "pressure" && !inOppTurn && (
           <button className="btn-main end-turn-btn" onClick={doEndTurn}>{phased ? "结束回合（交出先手——他将有所动作）" : "换气（结束本回合，补牌+行动力）"}</button>
         )}
+        {emotionStuck && (
+          <button className="btn-main end-turn-btn forfeit-btn" onClick={doForfeit}>拱手退让（认输此局，走败局叙事）</button>
+        )}
+        {oppTurnStuck && (
+          <button className="btn-main end-turn-btn" onClick={doPass}>硬接不接（护住门户，这一手白吃下来）</button>
+        )}
       </div>
 
       <div className="hand">
@@ -2147,34 +2275,43 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
             if (duel.finished || duel.mode !== "pressure" || !oppNext) return null;
             const show = !oppHidden || knownLevel === "card";
             if (!show) return null;
-            const c = cardOf(id);
-            if ((c.layer ?? "成术") !== "成术" || c.trap) return null;
+            const c = cardOfOpt(id);
+            if (!c || (c.layer ?? "成术") !== "成术" || c.trap) return null;
             const base = (c.power ?? 1) + suitBonusOf(duel, c);
-            let p = base + duel.buffPower + duel.charge * 2;
-            if (c.suit === "势") p = Math.floor(base * 1.5) + (p - base);
+            let edge = 0;
             if (c.suit && oppNext.suit) {
-              if (RESTRAIN_UI[c.suit] === oppNext.suit) p += 1;
-              else if (RESTRAIN_UI[oppNext.suit] === c.suit) p -= 1;
+              if (RESTRAIN_UI[c.suit] === oppNext.suit) edge = 1;
+              else if (RESTRAIN_UI[oppNext.suit] === c.suit) edge = -1;
             }
-            if (c.situational && oppNext.suit === c.situational.suit) p += c.situational.bonus;
-            if (c.sacrifice) p += c.sacrifice * 2;
-            if (duel.lastCardId === c.id) p -= 2;
-            let o = oppNext.power ?? 1;
+            const situ = c.situational && oppNext.suit === c.situational.suit ? c.situational.bonus : 0;
+            // 敌招作废：内应收买（两分支通用）；破招宣言——phased 押其主攻（只在应手兑现），legacy 押下一手
+            const oppDead = duel.insiderActive || (!!duel.foresuit && duel.foresuit === oppNext.suit && (!phased || inOppTurn));
             if (inOppTurn) {
-              p += 1; // 守方应手
-              o += (duel.oppCharge ?? 0) * 2;
+              // 引擎口径（resolveOppAttack）：守方+1、势按基础点×1.5；不引强牌/蓄力/牺牲/招式用老
+              const p = (c.suit === "势" ? Math.floor(base * 1.5) : base) + 1 + edge + situ;
+              const o = oppDead ? 0 : (oppNext.power ?? 1) + (duel.oppCharge ?? 0) * 2;
               if (p > o) return `≈反伤他${Math.min(Math.max(1, Math.floor((p - o) / 2)), 6)}`;
               if (o > p) return `≈挡不住（你-${Math.min(o - p, 6)}）`;
               return "≈平（各-1）";
             }
+            let p = base + duel.buffPower + duel.charge * 2 + edge + situ;
+            if (c.sacrifice) p += c.sacrifice * 2;
+            if (duel.lastCardId === c.id) p -= 2;
+            if (c.suit === "势") p = Math.floor(base * 1.5) + (p - base);
+            if (light) p += 1;
+            if (phased && duel.oppForesuit && c.suit === duel.oppForesuit) p = 0;
+            const o = oppDead ? 0 : oppNext.power ?? 1;
             if (p > o) return `≈伤他${Math.min(p - o, 6)}`;
             if (o > p) return `≈你损${Math.min(o - p, 6)}`;
             return "≈平（各-1）";
           })();
           const c = cardOf(id);
+          // M7（审计 P1-4）：言力耗尽后成术灰掉——引擎此时只会回「言力已尽」，UI 提前如实反馈（物品牌不受言力门槛约束）
+          const yanliSpentOut = duel.mode === "emotion" && typeof duelExtra.yanli === "number"
+            && duelExtra.yanli <= 0 && duel.round >= EMOTION_FREE_PLAYS;
           // M2：对手回合手牌=应手候选（只允许成术非陷阱）；我方主阶段维持行动力门槛
           const disabled = !!duel.finished
-            || (duel.mode === "emotion" && !duel.opponentShown)
+            || (duel.mode === "emotion" && (!duel.opponentShown || (yanliSpentOut && (c.layer ?? "成术") === "成术")))
             || (inOppTurn && ((c.layer ?? "成术") !== "成术" || !!c.trap))
             || (!inOppTurn && v2 && duel.mode === "pressure" && duel.ap < cardCost(c));
           const isChar = (c.layer ?? "成术") === "人物";
@@ -2186,15 +2323,14 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
               className={`play-card rarity-${c.rarity ?? "凡"} ${c.suit ? `suit-${c.suit}` : ""} ${isChar ? "char-card" : ""} ${isTop ? "hand-top" : ""}`}
               style={{ "--d": d, "--z": Math.abs(d) } as CSSProperties}
               disabled={disabled && !isChar ? true : !!duel.finished || (duel.mode === "emotion" && !duel.opponentShown)}
-              onClick={() => { if (isTop) { setRaisedId(null); clickCard(id); } else setRaisedId(id); }}
+              onClick={() => { if (isTop) { setRaisedId(null); guardedClick(id); } else setRaisedId(id); }}
               onTouchStart={(e) => { swipeYRef.current = e.touches[0]?.clientY ?? null; }}
               onTouchEnd={(e) => {
                 const y0 = swipeYRef.current;
                 swipeYRef.current = null;
-                if (y0 !== null && y0 - (e.changedTouches[0]?.clientY ?? y0) > 24) { setRaisedId(null); clickCard(id); }
+                if (y0 !== null && y0 - (e.changedTouches[0]?.clientY ?? y0) > 24) { setRaisedId(null); guardedClick(id); }
               }}
             >
-              {frameOf(c) && <img className="card-frame-img" src={frameOf(c)} alt="" aria-hidden="true" />}
               {c.suit && <SuitGlyph suit={c.suit} />}
               {c.power !== undefined && !isChar && <span className="pc-power-badge">{c.power}</span>}
               <div className="card-artwrap">
@@ -2588,11 +2724,12 @@ function CardGallery({ sc, onClose }: { sc: Scenario; onClose: () => void }) {
     { key: "人物", label: "人物卡" },
   ];
   const collectible = sc.cards.filter((c) => (c.layer ?? "成术") !== "资源");
+  const collected = collectible.filter((c) => seen.has(c.id)).length;
   return (
     <div className="clue-overlay" onClick={onClose}>
       <div className="bag-panel" onClick={(e) => e.stopPropagation()}>
         <h3>{sc.title} · 卡牌图鉴</h3>
-        <p className="muted">已收录 {seen.size}/{collectible.length} 张（资源卡折银，不计收集）</p>
+        <p className="muted">已收录 {collected}/{collectible.length} 张（资源卡折银，不计收集）</p>
         {groups.map((g) => {
           const ids = sc.cards.filter((c) => (c.layer ?? "成术") === g.key);
           if (!ids.length) return null;
@@ -3135,15 +3272,15 @@ function PrepModal({ sc, onCancel, onGo }: {
   const toggleBonus = (id: string) => {
     setDeckBonus((xs) => xs.includes(id) ? xs.filter((x) => x !== id) : [...xs, id]);
   };
-  // 品级边框色（固定色板：凡/良/精/传/孤品）
-  const RARITY_COLOR: Record<string, string> = { 凡: "#565040", 良: "#5b8fb8", 精: "#8b7ab8", 传: "#d2a44f", 孤品: "#e0745a" };
+  // 品级边框色（与 app.css 固定色板同源：凡=墨灰#6b6558，改档需两处同步）
+  const RARITY_COLOR: Record<string, string> = { 凡: "#6b6558", 良: "#5b8fb8", 精: "#8b7ab8", 传: "#d2a44f", 孤品: "#e0745a" };
   const cardMeta = (id: string) => [...luggageItems, ...retinuePool, ...rewardPool].find((x) => x.id === id);
   const slotItems = [...slots.carry, ...slots.retinue].map((id) => cardMeta(id)).filter((x): x is CardDef => !!x);
   // 卡面迷你块（左池候选网格共用）
   const Mini = ({ c, sel, onToggle, badge }: { c: CardDef; sel: boolean; onToggle: () => void; badge?: string }) => (
     <button type="button" className={`prep-card ${sel ? "on" : ""}`} style={{ borderColor: RARITY_COLOR[c.rarity ?? "凡"] }} onClick={() => { sfx.choice(); onToggle(); }}>
       <span className="prep-card-art">
-        {cardArt(c.id) ? <img src={cardArt(c.id)} alt={c.name} loading="lazy" /> : <span className="prep-card-fallback">{c.name.slice(0, 1)}</span>}
+        {cardArt(c.id) ? <img src={cardArt(c.id)} alt={c.name} loading="lazy" onError={(e) => artFailToFallback(e, c.name)} /> : <span className="prep-card-fallback">{c.name.slice(0, 1)}</span>}
         {sel && <span className="prep-card-check">✓</span>}
         {badge && <span className="prep-card-badge">{badge}</span>}
       </span>
@@ -3220,7 +3357,7 @@ function PrepModal({ sc, onCancel, onGo }: {
             <div className="prep-slot-grid">
               {slotItems.map((c) => (
                 <button key={c.id} type="button" className={`prep-slot filled ${c.layer === "人物" ? "person" : "item"} ${replaceHint ? "fix-slot-replace" : ""}`} style={{ borderColor: RARITY_COLOR[c.rarity ?? "凡"] }} title="点击取出，腾出位置" onClick={() => { sfx.choice(); (c.layer === "人物" ? toggleRetinue : toggleCarry)(c.id); }}>
-                  {cardArt(c.id) ? <img src={cardArt(c.id)} alt={c.name} /> : <span className="prep-card-fallback">{c.name.slice(0, 1)}</span>}
+                  {cardArt(c.id) ? <img src={cardArt(c.id)} alt={c.name} onError={(e) => artFailToFallback(e, c.name)} /> : <span className="prep-card-fallback">{c.name.slice(0, 1)}</span>}
                   <span className="prep-slot-tag">{c.layer === "人物" ? "随从" : "器物"} · 点击取出</span>
                 </button>
               ))}

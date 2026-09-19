@@ -321,7 +321,7 @@ export const qiuwei: Scenario = {
         desc: "金陵的夜短，查案的夜更长。",
         stock: ["w_wei_ning", "w_li_yi", "w_qing_jia", "w_li_gui", "i_suoyi", "r_xuan", "r_chensan", "r_neiting", "q_xiaosheng", "q_zhuangao", "q_weimo", "r_zhangtou"],
         packs: [
-          { id: "pack_ye", name: "夜市闲话包", price: 22, pool: ["w_li_guan", "w_qing_tong", "i_wenji", "s_yin10e", "s_yin30d"], draws: 2 },
+          { id: "pack_ye", name: "夜市闲话包", price: 28, pool: ["w_li_guan", "w_qing_tong", "i_wenji", "s_yin10e", "s_yin30d"], draws: 2 }, // M9.5（审计 P1-6 扫尾）：全口径期望 25.2>22，抬价至负
         ],
       },
       next2: "market_gate",

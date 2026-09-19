@@ -298,7 +298,7 @@ export const xie: Scenario = {
         desc: "小县的夜市没什么稀罕物——但消息和胆子，都论斤卖。",
         stock: ["x_wei_gong", "x_li_an", "x_qing_shi", "i_wenjiu", "r_tingfeng", "r_ande", "r_leiru", "r_zhiweng", "c_zhaqian", "x_jumen", "x_zhiying", "x_huoyan", "x_chuangzhi", "x_tieqi", "s_zhibi"],
         packs: [
-          { id: "pack_jie", name: "货郎杂担包", price: 22, pool: ["x_wei_yin", "x_wen_kuan", "i_wenjiu", "s_yin10c", "s_yin30b"], draws: 2 },
+          { id: "pack_jie", name: "货郎杂担包", price: 26, pool: ["x_wei_yin", "x_wen_kuan", "i_wenjiu", "s_yin10c", "s_yin30b"], draws: 2 }, // M9.5（审计 P1-6 扫尾）：全口径期望 23.6>22，抬价至负
         ],
       },
       next2: "market_gate",

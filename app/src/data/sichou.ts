@@ -300,7 +300,7 @@ export const sichou: Scenario = {
         desc: "苏杭的绸缎、消息、人手，明码标价。",
         stock: ["w_wei_ning", "w_li_yi", "w_qing_jia", "w_li_gui", "w_li_fen", "i_midce", "i_mixin", "i_yinpiao2", "r_atao", "r_lvsiyuan", "r_chenhu", "r_qingyan", "r_zhanggui", "s_huodizhang", "s_yanchuan", "s_qiaocheng", "s_banhuo", "s_yaoshi", "s_chaosi", "t_shengdong", "t_tieqiu", "t_kongcheng"],
         packs: [
-          { id: "pack_shu", name: "书吏夹带包", price: 25, pool: ["w_li_guan", "w_qing_tong", "i_mixin", "s_yin10b", "s_yin50"], draws: 2 },
+          { id: "pack_shu", name: "书吏夹带包", price: 35, pool: ["w_li_guan", "w_qing_tong", "i_mixin", "s_yin10b", "s_yin50"], draws: 2 }, // M9.5（审计 P1-6 扫尾）：含回卖全口径期望 32.8>25——抬价压回负期望
           { id: "pack_shang", name: "商行打点包", price: 75, pool: ["i_yinpiao2", "i_midce", "w_li_yi", "s_yin50", "s_yin100"], draws: 2 }, // M8（审计 P1-6）：原价 45 仅资源期望回银已 60——期望为正的卡包就是印钞机
         ],
       },

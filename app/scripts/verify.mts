@@ -751,5 +751,30 @@ for (const sc of ALL) {
   console.log(`番外可达性: ${BONUS_SCENES.length} 个番外校验完成`);
 }
 
+// ---------- 卡包期望门禁（M9.5，审计 P1-6 扫尾）----------
+// 印钞机判据：单包期望回银 = Σ池[(resource ?? 半价回卖)]/池大小×draws，超过售价即「无限买包稳赚」。
+// 资源卡直接折银、非资源按半价卖回计最大回收——与 ShopView 的 openPack/sell 口径一致。
+{
+  let packCount = 0;
+  for (const sc of ALL) {
+    for (const scene of sc.scenes) {
+      for (const p of scene.shop?.packs ?? []) {
+        packCount++;
+        let sum = 0;
+        for (const id of p.pool) {
+          const c = sc.cards.find((x) => x.id === id);
+          if (!c) { fail(`卡包「${p.name}」(${sc.id}/${p.id}) 池含未知卡 id：${id}——开出即吞银`); continue; }
+          sum += (c.resource ?? 0) || Math.floor((c.price ?? 10) / 2);
+        }
+        const ev = (sum / p.pool.length) * p.draws;
+        if (ev > p.price) {
+          fail(`卡包「${p.name}」(${sc.id}/${p.id}) 是印钞机：期望回银 ${ev.toFixed(1)} > 售价 ${p.price}——抬价或削池（P1-6 口径：含回卖回收）`);
+        }
+      }
+    }
+  }
+  console.log(`卡包期望值: ${packCount} 个全检，期望均 ≤ 售价`);
+}
+
 console.log(`\n========== ${failures} 失败 / ${warnings} 警告（警告不拦退出码——绿≠零隐患，明细见上） ==========`);
 process.exit(failures ? 1 : 0);

@@ -78,7 +78,7 @@ export function loadGame(): SaveData | null {
       return null;
     }
     const wire = d.state as SaveStateWire;
-    const state: RunState = { ...wire, flags: new Set(wire.flags), boosts: Array.isArray(wire.boosts) ? wire.boosts : [], retinue: Array.isArray(wire.retinue) ? wire.retinue : [], usedCards: Array.isArray(wire.usedCards) ? wire.usedCards : [] };
+    const state: RunState = { ...wire, flags: new Set(wire.flags), stats: wire.stats ?? {}, boosts: Array.isArray(wire.boosts) ? wire.boosts : [], retinue: Array.isArray(wire.retinue) ? wire.retinue : [], usedCards: Array.isArray(wire.usedCards) ? wire.usedCards : [] };
     let duel: DuelWire | undefined;
     if (d.duel && typeof d.duel === "object" && typeof (d.duel as DuelWire).cfgId === "string") {
       duel = d.duel as DuelWire;

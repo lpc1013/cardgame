@@ -19,34 +19,10 @@ button:focus-visible,
   transform: translateY(1px);
 }
 
-/* ---------------- C-2 · 文字区双向治理 ---------------- */
-/* 图鉴大卡：说明区自适应高度——不再预留 80px 死区；短文本收窄为两行余量 */
-.tcard-bottom {
-  min-height: 38px;
-  max-height: none;
-}
-/* 对局手牌：长文本最多三行省略，防止把 283px 卡图顶破 */
-.pc-text {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  max-height: 62px;
-}
-.cost-tag { font-size: 12px; } /* 10px → 12px（排版篇与 U-2 同源整改） */
+/* ---------------- C-2 · 文字区双向治理（已并入 app.css 基处唯一来源） ---------------- */
 
 /* ---------------- C-3/C-5 · 卡面右上「层语言」角标位 ---------------- */
-/* 成术 = 金色点数角标；物品/人物/资源 = 层徽（方孔钱/人形剪影/银锭+面额）。
-   与左上花色楷体圆章对角呼应，图鉴缩略态即可分辨四层。 */
-.tcard-power {
-  position: absolute; top: 8px; right: 8px; z-index: 2;
-  min-width: 24px; text-align: center; padding: 1px 6px;
-  font-size: 12px; font-weight: 700; line-height: 1.5; color: #17130c;
-  background: linear-gradient(160deg, #ecd08a, #b3853a);
-  border-radius: 7px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.18);
-  pointer-events: auto; cursor: help;
-}
+/* 成术点数在图鉴侧走 app.css .fix-corner-power，在手牌侧走下方悬出徽；旧 .tcard-power 死类已删 */
 .pc-power-badge {
   position: absolute; top: -9px; right: 8px; z-index: 1;
   min-width: 22px; text-align: center; padding: 1px 6px;
@@ -55,27 +31,6 @@ button:focus-visible,
   border-radius: 7px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
 }
-.layer-mark {
-  position: absolute; top: 8px; right: 8px; z-index: 2;
-  display: inline-flex; align-items: center; justify-content: center; gap: 3px;
-  width: 26px; height: 26px; padding: 0 3px;
-  border-radius: 13px;
-  background: radial-gradient(circle at 50% 40%, rgba(22, 19, 14, 0.78), rgba(10, 8, 6, 0.92));
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(214, 204, 182, 0.28);
-  pointer-events: auto; cursor: help;
-}
-.layer-mark svg { width: 14px; height: 14px; flex: none; }
-.l-物品 { color: #cfc6b2; }
-.l-人物 { color: #d9a066; }
-/* 资源=银锭徽 + 面额数字（面额即角标，C-3 资源项） */
-.l-资源 {
-  width: auto; min-width: 34px; height: 22px;
-  padding: 0 7px 0 5px;
-}
-.l-资源 b { font-size: 11px; font-weight: 700; color: var(--gold); letter-spacing: 0; }
-/* 放大镜态同步放大一档 */
-.codex-zoom-overlay .tcard-power, .codex-zoom-overlay .layer-mark,
-.card-zoom-body .tcard-power, .card-zoom-body .layer-mark { transform: scale(1.18); }
 
 /* ---------------- L-1 · 高频小目标治理 ---------------- */
 .emporia-buy { min-height: 32px; }

@@ -208,10 +208,11 @@ export const cardThemes: Record<string, string> = {
   t_hou: "边军",
 };
 
-/** 兜底：无显式映射时，按父分类给一个合理默认（策→刑名，器→商贾，势→宫闱）。 */
+/** 兜底：无显式映射时，按父分类给一个合理默认（策→刑名，器→商贾，势→宫闱，隐→江湖）。 */
 export function themeOf(id: string, suit?: string): string {
   if (cardThemes[id]) return cardThemes[id];
   if (suit === "器") return "商贾";
   if (suit === "势") return "宫闱";
+  if (suit === "隐") return "江湖";
   return "刑名"; // 策 默认刑名
 }

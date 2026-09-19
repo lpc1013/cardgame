@@ -2654,7 +2654,7 @@ function originLines(sc: Scenario, c: CardDef): string[] {
 }
 
 /** 卡牌详情弹层：左侧大卡 + 右侧「由来 / 作用 / 卡面」详情框；点外部空白返回上一层 */
-function CardZoomView({ sc, c, seen, onClose }: { sc: Scenario; c: CardDef; seen?: boolean; onClose: () => void }) {
+function CardZoomView({ sc, c, seen = true, onClose }: { sc: Scenario; c: CardDef; seen?: boolean; onClose: () => void }) {
   const bonus = bonusOfCard(c.id);
   const [readBonus, setReadBonus] = useState(false);
   return (
@@ -2662,7 +2662,17 @@ function CardZoomView({ sc, c, seen, onClose }: { sc: Scenario; c: CardDef; seen
       <div className="card-zoom-body" onClick={(e) => e.stopPropagation()}>
         <TCard c={c} unknown={!seen} cardCls="fix-zoom-collapsed" />
         <div className="card-detail">
-          <h3 className="card-detail-name">{c.name}</h3>
+          <h3 className="card-detail-name">{seen ? c.name : "？？？"}</h3>
+          {!seen && (
+            <>
+              <div className="card-detail-tags">
+                <span className="detail-tag">{c.layer ?? "成术"}</span>
+              </div>
+              <p className="muted detail-line">此牌尚未收录——在剧本中打出、购入或翻见后，图鉴即揭封显形。</p>
+              <button className="btn-main" onClick={onClose}>收回</button>
+            </>
+          )}
+          {seen && <>
           <div className="card-detail-tags">
             <span className="detail-tag">{c.layer ?? "成术"}</span>
             {c.suit && <span className={`detail-tag s-${c.suit}`}>{c.suit}</span>}
@@ -2696,6 +2706,7 @@ function CardZoomView({ sc, c, seen, onClose }: { sc: Scenario; c: CardDef; seen
             </div>
           )}
           <button className="btn-main" onClick={onClose}>收回</button>
+          </>}
         </div>
       </div>
       {readBonus && bonus && (

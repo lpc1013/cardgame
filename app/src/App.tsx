@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef, type ReactNode, type CSSProperties } from "react";
 import type { Scenario, CardDef, Suit, DuelConfig } from "./engine/types";
 import { initState, findScene, visibleChoices, applyEffects, registerScenarios, checkCond, resolveSceneLines, type RunState } from "./engine/runtime";
-import { initDuel, revealEmotion, playEmotion, playPressure, endTurn, readEmotion, chargeUp, breakMove, cardCost, duelSpend, respondOpponent, passResponse, forfeitDuel, EMOTION_FREE_PLAYS, EMOTION_YANLI_MAX, DEFAULT_AP, DEFAULT_GOAL, type DuelState, type DuelBoosts } from "./engine/duel";
+import { initDuel, revealEmotion, playEmotion, playPressure, endTurn, readEmotion, chargeUp, breakMove, cardCost, duelSpend, respondOpponent, passResponse, forfeitDuel, dmgRoom, ITEM_YANLI_COST, EMOTION_FREE_PLAYS, EMOTION_YANLI_MAX, DEFAULT_AP, DEFAULT_GOAL, type DuelState, type DuelBoosts } from "./engine/duel";
 import {
   saveGame, loadGame, clearSave, unlockEnding, getGallery, recordTreeVisit, getTree, recordCardsSeen, getCardSeen,
   settleEmpire, spendInk, gainBoost, consumeBoosts, unlockTheme, setTheme as saveTheme, addRetinue, canAddRetinue, removeRetinue, recordWarLoss, buyPeaceDeal, bumpCounter, getCounter, END_MILES, setTotalEnds, getTotalEnds, buyLuggageSlot, exchangeSilver, grantTitle, consumeSpareSilver, claimMile,
@@ -758,17 +758,23 @@ export default function App() {
     setPicked([]);
   };
 
+  // 存档写入口径（唯一）：对局未终则连对局一并存。自动存档与市集即时落账共用此函数，两处格式不许多套一套
+  const saveRun = (state: RunState, d: DuelState | null) => {
+    if (!sc || phase === "title" || phase === "ending") return;
+    if (d) {
+      const { cfg, ...rest } = d;
+      if (!rest.finished) saveGame(sc.id, state, { cfgId: cfg.id, data: rest, wager });
+      else saveGame(sc.id, state);
+    } else saveGame(sc.id, state);
+  };
+
   // 自动存档
   useEffect(() => {
-    if (st && sc && phase !== "title" && phase !== "ending" && duel) {
-      const { cfg, ...rest } = duel;
-      if (!rest.finished) saveGame(sc.id, st, { cfgId: cfg.id, data: rest, wager });
-      else saveGame(sc.id, st);
-    } else if (st && sc && phase !== "title" && phase !== "ending") {
-      saveGame(sc.id, st);
-    }
+    if (st) saveRun(st, duel);
     // M7（审计 P1-7）：读牌/刺探/收买/蓄势/破招只扣 yanli/随从次数/ap，不推进 round——
     // 旧 deps 只看 round，这些动作永不落盘，「刷新退款」成为免费情报机
+    // deps 只挂「真正改变存档内容的值」：saveRun/duel 的对象标识不入表——入表等于每帧重写一次
+    // localStorage，oxlint 的 exhaustive-deps 提示在此为有意为之（同 gotoFrom 处的处理）
   }, [st, phase, duel?.round, duel?.finished, duel?.usedCards.length, duel?.ap, duel?.yanli, duel?.charge, duel?.foresuit, duel?.scoutLeft, duel?.insiderLeft, duel?.sharedUsed, duel?.phase, duel?.oppIntent?.kind, duel?.hpPlayer, duel?.hpOpponent, duel?.rapport, duel?.qi, wager]);
 
   // 结局入图鉴 + 清档
@@ -1288,7 +1294,10 @@ export default function App() {
   // ---------- 市集 ----------
   if (phase === "shop") {
     const scene = findScene(sc, st.sceneId);
-    return <ShopView sc={sc} st={st} shop={scene.shop!} onLeave={afterShop} onSync={setSt} toast={setToast} />;
+    // 市集写穿：内存 st 与存档同一同步任务内落地。随从册（addRetinue/removeRetinue→writeEmpire）
+    // 本来就是同步写 localStorage 的，RunState 只交给 effect 就会慢一拍——「人入册了、银两没扣」
+    // 的刷新套利正是从这道缝里漏出去的（审计 P0-1、P0-2），故此处即时 flush。
+    return <ShopView sc={sc} st={st} shop={scene.shop!} onLeave={afterShop} onSync={(s) => { setSt(s); saveRun(s, duel); }} toast={setToast} />;
   }
 
   // ---------- 结案复盘 ----------
@@ -1605,10 +1614,15 @@ function BagView({ sc, st, onClose, onMutate, toast, readOnly }: {
 // ============================================================
 // 市集：买卡 / 卖卡 / 卡包 / 编组
 // ============================================================
+/** 随从卡判据（入册/出册同一把尺）：带斥候或内应被动的人物卡。
+ *  buy 与 sell 必须共用此判定——两处各写一遍内联条件，任何一侧改动就会「收了钱不销账」
+ *  或「退了账不放人」（审计 P0-2）。 */
+const isRetinueCard = (c: CardDef) => (c.layer ?? "成术") === "人物" && ((c.passive?.scout ?? 0) > 0 || (c.passive?.insider ?? 0) > 0);
 function ShopView({ sc, st, shop, onLeave, onSync, toast }: {
   sc: Scenario; st: RunState; shop: NonNullable<Scenario["scenes"][number]["shop"]>;
   onLeave: (s: RunState) => void;
-  /** M8（审计 P0-1）：市集每笔成交即时回写全局 RunState——旧「离市才落账」让刷新一键撤销赌坊亏损 */
+  /** M8（审计 P0-1）：市集每笔成交即时回写全局 RunState——旧「离市才落账」让刷新一键撤销赌坊亏损。
+   *  调用方（App）除 setSt 外还同步 flush 存档：local 只是渲染镜像，真账在 st + localStorage */
   onSync: (s: RunState) => void;
   toast: (m: string) => void;
 }) {
@@ -1643,13 +1657,16 @@ function ShopView({ sc, st, shop, onLeave, onSync, toast }: {
       return;
     }
     // 随从卡（斥候/内应被动的人物卡）购买后入帝国随从池（全局 ≤3，供跨剧本出征携带）
-    const isRetinue = (c.layer ?? "成术") === "人物" && ((c.passive?.scout ?? 0) > 0 || (c.passive?.insider ?? 0) > 0);
+    const isRetinue = isRetinueCard(c);
     // M8（审计 P0-2）：先查册再花钱——旧序是银货两讫后才被告知满员退不掉
     if (isRetinue && !canAddRetinue(id)) { toast("随从册已满员（最多 3 人）——先辞退一人，再来买。"); return; }
     const next = { ...local, silver: local.silver - price, bag: [...local.bag, id], deck: local.deck.length < limit ? [...local.deck, id] : local.deck };
+    // 落册是这笔买卖的权威裁决（addRetinue 自行拒绝满员）：先落册、后扣银，落册不成一分不花。
+    // 反过来写就会留下「银已扣、人未入册」的半笔账——册与银必须同一提交点（审计 P0-2）
+    if (isRetinue && !addRetinue(id)) { toast("随从册已满员（最多 3 人）——先辞退一人，再来买。"); return; }
     sfx.card();
     setLocal(next);
-    if (isRetinue) { addRetinue(id); toast(`购得「${c.name}」（-${price} 两），已入随从册（跨剧本可携带）`); }
+    if (isRetinue) toast(`购得「${c.name}」（-${price} 两），已入随从册（跨剧本可携带）`);
     else toast(`购得「${c.name}」（-${price} 两）`);
   };
   const sell = (id: string) => {
@@ -1657,13 +1674,16 @@ function ShopView({ sc, st, shop, onLeave, onSync, toast }: {
     if (!c) return;
     if (keyIds.has(id)) { toast("案关要物，不可发卖——卖了，前头的路就断了。"); return; }
     if (c.price === 0) { toast("此物非卖，亦不可售。"); return; }
+    const isRetinue = isRetinueCard(c);
+    // M8（审计 P0-2）：随从卡出手即出册——银两收回去了，人不能再白留着。
+    // 采「出册」而非「禁卖已入册者」：货架对已持有的卡一律亮卖出按钮、买侧文案也写着「先辞退一人，
+    // 再来买」，禁卖会与既有 UI 语义自相矛盾。销账先于收钱，两笔同一同步任务落盘（随 P0-1 写穿）
+    if (isRetinue) removeRetinue(id);
     const gain = Math.floor((c.price ?? 10) / 2);
-    const next = { ...local, silver: local.silver + gain, bag: local.bag.filter((x) => x !== id), deck: local.deck.filter((x) => x !== id) };
+    const next = { ...local, silver: local.silver + gain, bag: local.bag.filter((x) => x !== id), deck: local.deck.filter((x) => x !== id), retinue: local.retinue.filter((x) => x !== id) };
     sfx.choice();
     setLocal(next);
-    // M8（审计 P0-2）：随从卡出手即出册——银两收回去了，人不能再白留着
-    if ((c.layer ?? "成术") === "人物" && ((c.passive?.scout ?? 0) > 0 || (c.passive?.insider ?? 0) > 0)) removeRetinue(id);
-    toast(`卖出「${c.name}」（+${gain} 两）`);
+    toast(isRetinue ? `卖出「${c.name}」（+${gain} 两），随从同时辞出册` : `卖出「${c.name}」（+${gain} 两）`);
   };
   /** M8（审计 P2-4）：试珠验出的结果被锁定——「先验一封」与随后开包各摇各的，等于给玩家假样本诱导消费 */
   const [peeked, setPeeked] = useState<Record<string, string[]>>({});
@@ -1874,6 +1894,13 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
   const caseMode = sc.mode === "case";
   const oppSee = duel.cfg.seeOpp ?? (caseMode && v2 && duel.mode === "pressure" ? "hidden" : "open");
   const oppHidden = oppSee === "hidden";
+  /** P0-4（第四轮审计）战报「他打出」一行的遮蔽闸：三把尺取并——
+   *  ① duel.redactLog：引擎 pushLog 罩 duel.log 用的就是它，同口径才不打架；
+   *  ② oppHidden：由 cfg 现算，不信存档里可被改写的布尔字段；
+   *  ③ v2 博弈局：下一手本应▓▓▓，结算后外泄真名等于白送洞察。
+   *  任一为真即隐去对手真名与点数，否则几回合内即可从战报反推整条 script 循环，
+   *  M3 反背板与观牌经济全部作废 */
+  const oppPlayHidden = !!duel.redactLog || oppHidden || (v2 && gambit);
   /** 洞察·道具/诈问揭示粒度（seeNext） */
   const seeLevel: "none" | "suit" | "card" | "power" = duel.seeNext ?? "none";
   /** 洞察·青眼被动：每 N 回合瞥见（第 N、2N…回合自动揭示下一手） */
@@ -1937,7 +1964,12 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
         toast("对谈局里，这件观牌物件派不上用场——留着压制局再用。");
         return;
       }
-      // M7（审计 P2）：言力耗尽的失败必须报真因，不再错挂「人物卡是被动」（物品不耗言力，不受此限）
+      // M9（审计 P0-3）：物品同样耗言力——按强度定价，付不起先拒用（引擎同口径，零副作用）
+      if ((card.layer ?? "成术") === "物品" && card.itemEffect && typeof d.yanli === "number" && d.yanli < ITEM_YANLI_COST[card.itemEffect]) {
+        toast(`「${card.name}」这一手要使 ${ITEM_YANLI_COST[card.itemEffect]} 点言力才做得实——你话已穷了。`);
+        return;
+      }
+      // M7（审计 P2）：言力耗尽的失败必须报真因，不再错挂「人物卡是被动」
       if (typeof d.yanli === "number" && (card.layer ?? "成术") === "成术" && d.round >= EMOTION_FREE_PLAYS && d.yanli <= 0) {
         toast("言力已尽，成术接不上了——看看物品牌，或拱手退让。");
         return;
@@ -2257,7 +2289,7 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
             {duel.lastPlay.stale && "（招式用老，点数-2！）"}
             {duel.lastPlay.edge === 1 && "（克敌牌色，点数+1）"}
             {duel.lastPlay.edge === -1 && "（被敌牌色所克，点数-1）"}
-            你打出「{duel.lastPlay.playerCard?.name}」（{duel.lastPlay.playerCard?.power}{duel.lastPlay.playerCard?.suit === "势" ? "×1.5" : ""}{duel.lastPlay.stale ? "-2" : ""}{duel.lastPlay.edge ? (duel.lastPlay.edge > 0 ? "+1" : "-1") : ""}），他打出「{duel.redactLog || (v2 && gambit) ? "▓▓" : duel.lastPlay.oppCard?.name}」（{duel.redactLog || (v2 && gambit) ? "▓" : duel.lastPlay.oppCard?.power}）——
+            你打出「{duel.lastPlay.playerCard?.name}」（{duel.lastPlay.playerCard?.power}{duel.lastPlay.playerCard?.suit === "势" ? "×1.5" : ""}{duel.lastPlay.stale ? "-2" : ""}{duel.lastPlay.edge ? (duel.lastPlay.edge > 0 ? "+1" : "-1") : ""}），他打出「{oppPlayHidden ? "▓▓" : duel.lastPlay.oppCard?.name}」（{oppPlayHidden ? "▓" : duel.lastPlay.oppCard?.power}）——
             {duel.lastPlay.to === "o"
               ? `他折了 ${duel.lastPlay.damage} 点气力！`
               : duel.lastPlay.to === "p"
@@ -2305,7 +2337,7 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
               const o = oppDead ? 0 : (oppNext.power ?? 1) + (duel.oppCharge ?? 0) * 2;
               // M8（审计 P2-1）：轻回合免 AP 的破招押空额外赔 1 点，三种结果都要如实报
               const gambleMiss = !!duel.breakGamble && !!duel.foresuit && !!oppNext.suit && duel.foresuit !== oppNext.suit;
-              if (p > o) return `≈反伤他${Math.min(Math.max(1, Math.floor((p - o) / 2)), 6)}${gambleMiss ? "·破招押空你-1" : ""}`;
+              if (p > o) return `≈反伤他${Math.min(Math.max(1, Math.floor((p - o) / 2)), dmgRoom(duel))}${gambleMiss ? "·破招押空你-1" : ""}`;
               if (o > p) return `≈挡不住（你-${Math.min(o - p, 6) + (gambleMiss ? 1 : 0)}）`;
               return `≈平（各-1${gambleMiss ? "，押空再-1" : ""}）`;
             }
@@ -2316,17 +2348,19 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
             if (light) p += 1;
             if (phased && duel.oppForesuit && c.suit === duel.oppForesuit) p = 0;
             const o = oppDead ? 0 : oppNext.power ?? 1;
-            if (p > o) return `≈伤他${Math.min(p - o, 6)}`;
+            if (p > o) return `≈伤他${Math.min(p - o, dmgRoom(duel))}`;
             if (o > p) return `≈你损${Math.min(o - p, 6)}`;
             return "≈平（各-1）";
           })();
           const c = cardOf(id);
-          // M7（审计 P1-4）：言力耗尽后成术灰掉——引擎此时只会回「言力已尽」，UI 提前如实反馈（物品牌不受言力门槛约束）
+          // M7（审计 P1-4）→M9：言力耗尽后成术灰掉；物品按各自言力价灰掉（引擎同口径）
           const yanliSpentOut = duel.mode === "emotion" && typeof duelExtra.yanli === "number"
             && duelExtra.yanli <= 0 && duel.round >= EMOTION_FREE_PLAYS;
+          const itemPrice = (c.layer ?? "成术") === "物品" && c.itemEffect && duel.mode === "emotion" && typeof duelExtra.yanli === "number"
+            ? ITEM_YANLI_COST[c.itemEffect] : 0;
           // M2：对手回合手牌=应手候选（只允许成术非陷阱）；我方主阶段维持行动力门槛
           const disabled = !!duel.finished
-            || (duel.mode === "emotion" && (!duel.opponentShown || (yanliSpentOut && (c.layer ?? "成术") === "成术")))
+            || (duel.mode === "emotion" && (!duel.opponentShown || (yanliSpentOut && (c.layer ?? "成术") === "成术") || (itemPrice > 0 && duelExtra.yanli < itemPrice)))
             || (inOppTurn && ((c.layer ?? "成术") !== "成术" || !!c.trap))
             || (!inOppTurn && v2 && duel.mode === "pressure" && duel.ap < cardCost(c));
           const isChar = (c.layer ?? "成术") === "人物";

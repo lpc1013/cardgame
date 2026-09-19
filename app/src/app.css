@@ -241,11 +241,10 @@ input, textarea, [contenteditable="true"] {
     opacity: 0.85;
   }
   
-  /* M-16b: 关键信息突出 */
+  /* M-16b: 关键信息突出（卡名走固定墨色不随主题，见 .tcard-name 基处） */
   h1, h2, h3,
   .sc-title,
-  .emporia-name,
-  .tcard-name {
+  .emporia-name {
     color: var(--gold);
     font-weight: 600;
   }
@@ -893,8 +892,8 @@ button { font-family: inherit; }
 .prep-card.on { box-shadow: 0 0 0 2px rgba(201,168,106,.5), 0 8px 18px rgba(0,0,0,.5); }
 .prep-card-art { position: relative; display: block; width: 100%; aspect-ratio: 16 / 10; }
 .prep-card-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.prep-card-fallback { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #14110e; color: var(--gold); font-size: 38px; }
-.prep-card-check { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 50%; background: var(--gold); color: #14110e; font-size: 14px; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+.prep-card-fallback { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #14110e; color: #c9a86a; font-size: 38px; }
+.prep-card-check { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; border-radius: 50%; background: #c9a86a; color: #14110e; font-size: 14px; display: flex; align-items: center; justify-content: center; font-weight: 700; }
 .prep-card-badge { position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,.72); color: #e8d9b0; font-size: 11px; padding: 2px 6px; border-radius: 3px; }
 .prep-card-name { display: block; padding: 6px 8px; font-size: 12px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .prep-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
@@ -1680,7 +1679,7 @@ button { font-family: inherit; }
   .scene-title { font-size: 14px; margin-bottom: 18px; }
   .choice { padding: 14px 16px; font-size: 15px; min-height: 48px; }
   /* 手牌横滑大卡：单卡主视 + 边缘露卡提示可滑；卡图降高保文字可读 */
-  .hand { display: flex; overflow-x: auto; gap: 12px; padding: 4px 14px 10px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
+  .hand { display: flex; overflow-x: auto; gap: 12px; padding: 10px 14px 10px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
   .play-card { flex: 0 0 62%; max-width: 240px; min-height: 0; scroll-snap-align: center; }
   .duel-root { padding: 12px; padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
   .duel-stage { flex: 0 0 auto; max-height: 34dvh; overflow-y: auto; }
@@ -2425,8 +2424,8 @@ button { font-family: inherit; }
 }
 .fix-shake { animation: fix-shake .4s ease-in-out; }
 
-/* --- M-3 卡详情折叠态：按 3:4 比例反推宽度（高≈34dvh），详情第一屏可见且不裁卡 --- */
-@media (max-width: 720px) {
+/* --- M-3 卡详情折叠态：仅竖屏按 3:4 反推宽度（高≈34dvh）；横屏短高度下 dvh 会把卡压瘪，走横屏专用行式布局 --- */
+@media (max-width: 720px) and (orientation: portrait) {
   .card-zoom-body .tcard.fix-zoom-collapsed {
     width: min(82vw, 25.5dvh);
     max-width: none;
@@ -2517,7 +2516,7 @@ button { font-family: inherit; }
 .opp-attack-turn { color: #d9a05a; }
 .opp-attack-turn b { color: var(--gold); }
 .opp-action { color: #8a8375; font-size: 13px; }
-.pc-preview { font-size: 12px; color: var(--gold); border-top: 1px dashed rgba(190,160,90,.35); margin-top: 4px; padding-top: 3px; }
+.pc-preview { font-size: 12px; color: #c9a86a; border-top: 1px dashed rgba(190,160,90,.35); margin-top: 4px; padding-top: 3px; }
 .duel-history { font-size: 12px; color: #9a927f; margin-top: 6px; }
 .duel-history summary { cursor: pointer; color: #b0a88f; }
 .duel-history .duel-log.hist { font-size: 12px; margin: 2px 0; opacity: .85; }

@@ -1204,6 +1204,25 @@ button { font-family: inherit; }
   box-shadow: 0 6px 16px rgba(0,0,0,.45), 0 0 0 1px var(--line);
 }
 .play-card:disabled { opacity: .45; cursor: not-allowed; }
+/* 两段式出牌：灰态只是「此刻打不出」，仍可点开看全文（由详情条承载），故与 :disabled 分开 */
+.play-card.card-disabled { opacity: .45; }
+/* 手牌详情条：悬浮/选中卡的完整卡面（治 pc-text 三行截断——看不到技能就出牌的盲区） */
+.hand-detail {
+  margin: 0 auto 6px; max-width: 680px; padding: 8px 14px 10px;
+  background: linear-gradient(0deg, rgba(15,13,10,.9), rgba(15,13,10,.72));
+  border: 1px solid rgba(244,235,216,.16); border-radius: 10px;
+  animation: hd-in .16s ease-out;
+}
+.hand-detail.sticky { border-color: rgba(210,164,79,.5); box-shadow: 0 0 0 1px rgba(210,164,79,.25), 0 6px 18px rgba(0,0,0,.4); }
+@keyframes hd-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.hand-detail .hd-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.hand-detail .hd-head b { font-size: 15px; color: var(--ink); }
+.hand-detail .hd-meta { font-size: 12px; color: #b0a88f; }
+.hand-detail .hd-hint { margin-left: auto; font-size: 11px; color: var(--ink-dim); opacity: .8; }
+.hand-detail .hd-text { font-size: 13px; line-height: 1.7; color: rgba(244,235,216,.92); margin-top: 4px; }
+.hand-detail .hd-lore { font-size: 12px; font-style: italic; color: #9a927f; margin-top: 3px; }
+.hand-detail .hd-preview { font-size: 12px; color: #c9a86a; border-top: 1px dashed rgba(190,160,90,.35); margin-top: 5px; padding-top: 4px; }
+.hand-detail .hd-passive { font-size: 12px; color: #7fa9cc; margin-top: 3px; }
 /* 花色色相：纹章上色（左缘色带已改随品级，见底部「品级左缘」段） */
 .pc-suit { font-size: 20px; margin-bottom: 6px; }
 .s-策 { color: var(--suit-ce); } .s-器 { color: var(--suit-qi); }
@@ -1222,7 +1241,7 @@ button { font-family: inherit; }
   box-shadow: 0 4px 18px rgba(0,0,0,.5);
 }
 
-/* 稀有度（卡框）：凡·墨灰｜良·黛青｜精·藤紫｜传·鎏金｜孤品·朱砂。
+/* 稀有度（卡框）：价值阶梯 凡·墨灰｜良·黛青｜精·藤紫｜传·鎏金；孤品·朱砂为纪念标记（不在阶梯上，不比传高）。
    一律用固定色，不引用主题变量（--gold/--accent 会随帝国主题变色，品级色必须恒定） */
 .rarity-凡 { border-top: 2px solid #6b6558; }
 .rarity-良 {

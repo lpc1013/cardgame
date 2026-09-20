@@ -1221,7 +1221,7 @@ export default function App() {
               <div className="guide-sec"><b>案件模式</b>：调查取证 → 结案陈词拣选线索（真/伪/核心）→ 定谳。核心线索+足够实据 = 完整结局。</div>
               <div className="guide-sec"><b>对局·情绪匹配制</b>：对手亮出手段（策/器/势/隐）。同色接话=共鸣；克色=破防；被克=大失言（气力-2），错色=失言。共鸣满则胜。v2 情绪局出牌不耗行动力。</div>
               <div className="guide-sec"><b>对局 · 博弈动作</b>（压制制）：蓄势（挨打换下张+2，上限2层）/ 破招（宣言对手花色，押中该手作废）/ 刺探·收买（需带斥候/内应随从，见下）。部分牌有情境加成（对手为某色时+2）/ 牺牲（自伤换强）/ 抽牌。</div>
-              <div className="guide-sec"><b>✦ 卡牌系统 v2</b>：四层卡——成术（对局四色牌）/ 物品（对局道具，一局限用一次、局后仍在行囊，也是剧情钥匙）/ 人物（携带被动，开局场外生效）/ 资源（即银两）。市集买卡卖卡开卡包；翻牌三选一；顶栏「背包」随时编组（上限 12，资源不占槽）。压制局出牌耗行动力，可「换气」回力补牌；打出的牌进弃牌堆，牌库抽空调洗回填。</div>
+              <div className="guide-sec"><b>✦ 卡牌系统 v2</b>：四层卡——成术（对局四色牌）/ 物品（对局道具，一局限用一次、局后仍在行囊，也是剧情钥匙）/ 人物（携带被动，开局场外生效）/ 资源（即银两）。市集买卡卖卡开卡包；翻牌三选一；顶栏「背包」随时编组（上限 12，资源不占槽）。压制局出牌耗行动力，可「换气」回力补牌；打出的牌进弃牌堆，牌库抽空调洗回填。手牌两段式：点一下先立起来看全卡面（桌面鼠标悬浮即预览），再点同一张才真正打出；手机横屏上滑仍可一步出牌。</div>
               <div className="guide-sec"><b>随从</b>：带斥候/内应被动的人物卡，黑市可雇，全局至多 3 人。对局内由随从执行「刺探」（看破对手下一手全牌）/「收买」（敌招作废）——消耗随从次数，不耗银两；银两只用于雇随从。凡=斥候1次 · 良=内应1次 · 精=双能共1 · 传=双能共2（任选搭配）。</div>
               <div className="guide-sec"><b>小游戏（五艺）</b>：驸马案·吟诗作对（补下联，辨工整）｜秋闱案·证词真假（仅 N 人说真话，逻辑排除）｜丝绸案·推牌九（押点博彩，同点庄赢）｜秀才案·棋局残局（多手正解，棋盘随步变化）｜秦淮案·宴会行令（翻令签对花色，留牌折算彩头）。败不可再战。</div>
               <div className="guide-sec"><b>帝国商市</b>：解锁结局奖励墨铤（每个 {INK_PER_ENDING}；结局进度条里程碑达标后**点击礼物领取**）；商市可购随身位扩容（+1 格，上限 5）、银两兑换（1 墨铤=1 两，出征注入）、开局加成、主题外观与「岁币之约」（败仗解锁，和议结局线，劫与烬除外）。</div>
@@ -2090,9 +2090,10 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
     })
     .filter(({ n }) => n >= 5);
 
-  // 手机横屏扇形手牌：raisedId = 悬浮在最上方的卡（null 时扇形中位卡自然顶出）。
-  // 顶卡点击/上滑直接出牌；他卡点击先浮升预览（二次确认），上滑仍直接出牌。
+  // 手牌两段式（截断文看全再出牌）：点卡先弹起选中，全文/逸闻/比点预演钉在牌门上方的详情条里；
+  // 再点同一张才真正打出。桌面鼠标悬浮即时预览（只看不选）；手机横屏上滑仍一键直接出（老手感保留）。
   const [raisedId, setRaisedId] = useState<string | null>(null);
+  const [hoverId, setHoverId] = useState<string | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const swipeYRef = useRef<number | null>(null);
   // M7（审计 P1-13）：上滑出牌后浏览器仍可能补发 click——同卡 350ms 内的二次触发直接吞掉，防一手两出
@@ -2104,7 +2105,6 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
     lastPlayRef.current = { id, t };
     clickCard(id);
   };
-  const centerIdx = Math.round((handIds.length - 1) / 2);
   const lastLogRef = useRef<string | null>(null);
   useEffect(() => {
     // 手牌变化（出牌/补牌）后顶卡失效则复位
@@ -2118,6 +2118,45 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
       if (el && el.scrollHeight > el.clientHeight + 24) el.scrollTop = el.scrollHeight;
     }
   });
+
+  // M6 结算预演：对手下一手可知（明牌/已洞察）时给出比点预告（引擎为准，此处只读展示）——
+  // 手牌角标与详情条共用同一函数，两处口径不会分叉
+  const previewOf = (id: string): string | null => {
+    if (duel.finished || duel.mode !== "pressure" || !oppNext) return null;
+    const show = !oppHidden || knownLevel === "card";
+    if (!show) return null;
+    const c = cardOfOpt(id);
+    if (!c || (c.layer ?? "成术") !== "成术" || c.trap) return null;
+    const base = (c.power ?? 1) + suitBonusOf(duel, c);
+    let edge = 0;
+    if (c.suit && oppNext.suit) {
+      if (RESTRAIN_UI[c.suit] === oppNext.suit) edge = 1;
+      else if (RESTRAIN_UI[oppNext.suit] === c.suit) edge = -1;
+    }
+    const situ = c.situational && oppNext.suit === c.situational.suit ? c.situational.bonus : 0;
+    // 敌招作废：内应收买（两分支通用）；破招宣言——phased 押其主攻（只在应手兑现），legacy 押下一手
+    const oppDead = duel.insiderActive || (!!duel.foresuit && duel.foresuit === oppNext.suit && (!phased || inOppTurn));
+    if (inOppTurn) {
+      // 引擎口径（resolveOppAttack）：守方+1、势按基础点×1.5；不引强牌/蓄力/牺牲/招式用老
+      const p = (c.suit === "势" ? Math.floor(base * 1.5) : base) + 1 + edge + situ;
+      const o = oppDead ? 0 : (oppNext.power ?? 1) + (duel.oppCharge ?? 0) * 2;
+      // M8（审计 P2-1）：轻回合免 AP 的破招押空额外赔 1 点，三种结果都要如实报
+      const gambleMiss = !!duel.breakGamble && !!duel.foresuit && !!oppNext.suit && duel.foresuit !== oppNext.suit;
+      if (p > o) return `≈反伤他${Math.min(Math.max(1, Math.floor((p - o) / 2)), dmgRoom(duel))}${gambleMiss ? "·破招押空你-1" : ""}`;
+      if (o > p) return `≈挡不住（你-${Math.min(o - p, 6) + (gambleMiss ? 1 : 0)}）`;
+      return `≈平（各-1${gambleMiss ? "，押空再-1" : ""}）`;
+    }
+    let p = base + duel.buffPower + duel.charge * 2 + edge + situ;
+    if (c.sacrifice) p += c.sacrifice * 2;
+    if (duel.lastCardId === c.id) p -= 2;
+    if (c.suit === "势") p = Math.floor(base * 1.5) + (p - base);
+    if (light) p += 1;
+    if (phased && duel.oppForesuit && c.suit === duel.oppForesuit) p = 0;
+    const o = oppDead ? 0 : oppNext.power ?? 1;
+    if (p > o) return `≈伤他${Math.min(p - o, dmgRoom(duel))}`;
+    if (o > p) return `≈你损${Math.min(o - p, 6)}`;
+    return "≈平（各-1）";
+  };
 
   return (
     <div className="duel-root">
@@ -2317,45 +2356,35 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
         )}
       </div>
 
+      {(() => {
+        const detailId = raisedId ?? hoverId;
+        const dc = detailId ? cardOfOpt(detailId) : null;
+        if (!dc) return null;
+        const sticky = raisedId !== null && raisedId === detailId;
+        const dp = previewOf(dc.id);
+        return (
+          <div className={`hand-detail${sticky ? " sticky" : ""}`}>
+            <div className="hd-head">
+              <b>{dc.name}</b>
+              <span className="hd-meta">
+                {dc.layer ?? "成术"}{dc.suit ? ` · ${dc.suit}` : ""} · {dc.rarity ?? "凡"}
+                {v2 && duel.mode === "pressure" && (dc.layer ?? "成术") === "成术" && !dc.trap ? ` · 费${cardCost(dc)}` : ""}
+                {dc.power !== undefined ? ` · 点数${dc.power}${dc.suit === "势" ? "×1.5（反噬1）" : ""}` : ""}
+              </span>
+              <span className="hd-hint">{sticky ? "再点这张牌＝打出 · 上滑＝直接打出" : "点卡面立起来细看，再点它才打出"}</span>
+            </div>
+            <div className="hd-text">{dc.text}</div>
+            {dc.lore && <div className="hd-lore">{dc.lore}</div>}
+            {dp && <div className="hd-preview">{dp}</div>}
+            {(dc.layer ?? "成术") === "人物" && <div className="hd-passive">被动 · 开局场外生效，不可打出</div>}
+          </div>
+        );
+      })()}
+
       <div className="hand">
         {handIds.map((id, i) => {
-          // M6 结算预演：对手下一手可知（明牌/已洞察）时，卡面直接给出比点预告（引擎为准，此处只读展示）
-          const preview = (() => {
-            if (duel.finished || duel.mode !== "pressure" || !oppNext) return null;
-            const show = !oppHidden || knownLevel === "card";
-            if (!show) return null;
-            const c = cardOfOpt(id);
-            if (!c || (c.layer ?? "成术") !== "成术" || c.trap) return null;
-            const base = (c.power ?? 1) + suitBonusOf(duel, c);
-            let edge = 0;
-            if (c.suit && oppNext.suit) {
-              if (RESTRAIN_UI[c.suit] === oppNext.suit) edge = 1;
-              else if (RESTRAIN_UI[oppNext.suit] === c.suit) edge = -1;
-            }
-            const situ = c.situational && oppNext.suit === c.situational.suit ? c.situational.bonus : 0;
-            // 敌招作废：内应收买（两分支通用）；破招宣言——phased 押其主攻（只在应手兑现），legacy 押下一手
-            const oppDead = duel.insiderActive || (!!duel.foresuit && duel.foresuit === oppNext.suit && (!phased || inOppTurn));
-            if (inOppTurn) {
-              // 引擎口径（resolveOppAttack）：守方+1、势按基础点×1.5；不引强牌/蓄力/牺牲/招式用老
-              const p = (c.suit === "势" ? Math.floor(base * 1.5) : base) + 1 + edge + situ;
-              const o = oppDead ? 0 : (oppNext.power ?? 1) + (duel.oppCharge ?? 0) * 2;
-              // M8（审计 P2-1）：轻回合免 AP 的破招押空额外赔 1 点，三种结果都要如实报
-              const gambleMiss = !!duel.breakGamble && !!duel.foresuit && !!oppNext.suit && duel.foresuit !== oppNext.suit;
-              if (p > o) return `≈反伤他${Math.min(Math.max(1, Math.floor((p - o) / 2)), dmgRoom(duel))}${gambleMiss ? "·破招押空你-1" : ""}`;
-              if (o > p) return `≈挡不住（你-${Math.min(o - p, 6) + (gambleMiss ? 1 : 0)}）`;
-              return `≈平（各-1${gambleMiss ? "，押空再-1" : ""}）`;
-            }
-            let p = base + duel.buffPower + duel.charge * 2 + edge + situ;
-            if (c.sacrifice) p += c.sacrifice * 2;
-            if (duel.lastCardId === c.id) p -= 2;
-            if (c.suit === "势") p = Math.floor(base * 1.5) + (p - base);
-            if (light) p += 1;
-            if (phased && duel.oppForesuit && c.suit === duel.oppForesuit) p = 0;
-            const o = oppDead ? 0 : oppNext.power ?? 1;
-            if (p > o) return `≈伤他${Math.min(p - o, dmgRoom(duel))}`;
-            if (o > p) return `≈你损${Math.min(o - p, 6)}`;
-            return "≈平（各-1）";
-          })();
+          // M6 结算预演角标（与详情条同源：previewOf）
+          const preview = previewOf(id);
           const c = cardOf(id);
           // M7（审计 P1-4）→M9：言力耗尽后成术灰掉；物品按各自言力价灰掉（引擎同口径）
           const yanliSpentOut = duel.mode === "emotion" && typeof duelExtra.yanli === "number"
@@ -2369,14 +2398,22 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
             || (!inOppTurn && v2 && duel.mode === "pressure" && duel.ap < cardCost(c));
           const isChar = (c.layer ?? "成术") === "人物";
           const d = i - (handIds.length - 1) / 2;
-          const isTop = raisedId ? raisedId === id : i === centerIdx;
+          const raised = raisedId === id;
+          // 真按钮级禁用只留给「对局已终/情绪局等对手亮牌」；「此刻打不出」的牌灰而不锁——
+          // 点它照样弹起看全文，二次打出时由 clickCard 报真因（行动力/言力/应手门槛）
+          const hardLock = !!duel.finished || (duel.mode === "emotion" && !duel.opponentShown);
           return (
             <button
               key={id}
-              className={`play-card rarity-${c.rarity ?? "凡"} ${c.suit ? `suit-${c.suit}` : ""} ${isChar ? "char-card" : ""} ${isTop ? "hand-top" : ""}`}
+              className={`play-card rarity-${c.rarity ?? "凡"} ${c.suit ? `suit-${c.suit}` : ""} ${isChar ? "char-card" : ""} ${raised ? "hand-top" : ""} ${disabled && !hardLock ? "card-disabled" : ""}`}
               style={{ "--d": d, "--z": Math.abs(d) } as CSSProperties}
-              disabled={disabled && !isChar ? true : !!duel.finished || (duel.mode === "emotion" && !duel.opponentShown)}
-              onClick={() => { if (isTop) { setRaisedId(null); guardedClick(id); } else setRaisedId(id); }}
+              disabled={hardLock}
+              onClick={() => {
+                if (raised) { setRaisedId(null); guardedClick(id); }
+                else setRaisedId(id);
+              }}
+              onMouseEnter={() => setHoverId(id)}
+              onMouseLeave={() => setHoverId((h) => (h === id ? null : h))}
               onTouchStart={(e) => { swipeYRef.current = e.touches[0]?.clientY ?? null; }}
               onTouchEnd={(e) => {
                 const y0 = swipeYRef.current;

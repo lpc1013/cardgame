@@ -66,6 +66,21 @@ for (const sc of SCENARIOS) {
   if (missing.length) say(`[缺卡面] ${sc.id}: ${[...new Set(missing)].join(" ")}`);
 }
 
+// 3b) gu/ 目录语义：cards/gu 只放「孤品」稀有度的卡面（特殊收藏、四色之外的极少数）；
+//     非孤品混进来 = 把孤品架当杂物间（历史上 i_/r_/s_ 曾整体倾倒于此，积到 86 张）
+{
+  const rarityOf = new Map<string, string>();
+  for (const sc of SCENARIOS) for (const c of sc.cards) if (!rarityOf.has(c.id)) rarityOf.set(c.id, c.rarity ?? "");
+  for (const [k, files] of cards) {
+    for (const f of files) {
+      const inGu = f.startsWith("gu/");
+      const isGu = rarityOf.get(k) === "孤品";
+      if (inGu && !isGu) say(`[gu目录滥用] gu/${k}——稀有度「${rarityOf.get(k) ?? "查无此卡"}」，gu/ 只收孤品，请迁往花色目录`);
+      if (isGu && !inGu) say(`[孤品未入gu] ${k} 是孤品，卡面却在「${f}」`);
+    }
+  }
+}
+
 // 4) 场景底图与结局图：与 sceneArt 的三级回退一致（剧本前缀 → scn_旧命名 → 裸 id）
 let noScene = 0, noEnd = 0;
 for (const sc of SCENARIOS) {

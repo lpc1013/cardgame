@@ -66,17 +66,20 @@ for (const sc of SCENARIOS) {
   if (missing.length) say(`[缺卡面] ${sc.id}: ${[...new Set(missing)].join(" ")}`);
 }
 
-// 3b) gu/ 目录语义：cards/gu 只放「孤品」稀有度的卡面（特殊收藏、四色之外的极少数）；
-//     非孤品混进来 = 把孤品架当杂物间（历史上 i_/r_/s_ 曾整体倾倒于此，积到 86 张）
+// 3b) gu/ 目录语义：cards/gu 只放「孤品」稀有度的物品/资源卡面（特殊收藏、四色之外的极少数）；
+//     人物卡一律不入 gu/——孤品人物仍按花色归位（势）。非孤品混进来 = 把孤品架当杂物间
+//     （历史上 i_/r_/s_ 曾整体倾倒于此积到 86 张，后又清剩 3 张孤品人物，两轮均被用户退回）
 {
-  const rarityOf = new Map<string, string>();
-  for (const sc of SCENARIOS) for (const c of sc.cards) if (!rarityOf.has(c.id)) rarityOf.set(c.id, c.rarity ?? "");
+  const loneOf = new Map<string, boolean>();
+  for (const sc of SCENARIOS) for (const c of sc.cards) {
+    if (!loneOf.has(c.id)) loneOf.set(c.id, c.rarity === "孤品" && (c.layer ?? "成术") !== "人物");
+  }
   for (const [k, files] of cards) {
     for (const f of files) {
       const inGu = f.startsWith("gu/");
-      const isGu = rarityOf.get(k) === "孤品";
-      if (inGu && !isGu) say(`[gu目录滥用] gu/${k}——稀有度「${rarityOf.get(k) ?? "查无此卡"}」，gu/ 只收孤品，请迁往花色目录`);
-      if (isGu && !inGu) say(`[孤品未入gu] ${k} 是孤品，卡面却在「${f}」`);
+      const belongs = loneOf.get(k) === true;
+      if (inGu && !belongs) say(`[gu目录滥用] gu/${k}——${loneOf.has(k) ? "人物卡纵是孤品也不入孤品架" : "非孤品或查无此卡"}，请迁往花色目录`);
+      if (belongs && !inGu) say(`[孤品未入gu] ${k} 是孤品物品/资源，卡面却在「${f}」`);
     }
   }
 }

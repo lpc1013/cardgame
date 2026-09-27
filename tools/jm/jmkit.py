@@ -24,7 +24,8 @@ CLI = Path(os.environ.get("LOCALAPPDATA", "")) / "Tabbit/LocalAgent/bin/tabbit-c
 
 
 def owned_tab() -> str:
-    """取本任务 owns 的那一张标签页 id。全程只用它，绝不新建页。"""
+    """本任务 owns 的那一张标签页 id；没有就返回空串（调用方据此决定传不传 --tab）。
+    全程只用这一张，绝不新建第二页。"""
     out = subprocess.run([str(CLI), "tabs", "--task", TASK, "--state", "owned"],
                          capture_output=True, text=True, encoding="utf-8", errors="replace")
     for line in (out.stdout or "").splitlines():
@@ -34,7 +35,7 @@ def owned_tab() -> str:
         ids = [t["tabId"] for t in json.loads(line).get("tabs", [])]
         if ids:
             return str(ids[0])
-    raise SystemExit(f"task {TASK} owns no tab — 先跑 ping，或任务名已作废要加号")
+    return ""
 
 
 def run_stage(job: dict, timeout_ms: int = 175000) -> dict:
@@ -44,10 +45,14 @@ def run_stage(job: dict, timeout_ms: int = 175000) -> dict:
     js = js.replace("__STAGE__", json.dumps(job.get("stage", "")))
     tmp = SCRATCH / f"run_{job.get('stage')}_{job.get('stamp','x')}.js"
     tmp.write_text(js, encoding="utf-8")
-    # 必须带 --tab：不带时 CLI 报 succeeded 但脚本根本不执行（elapsedMs 个位数）
-    cmd = [str(CLI), "nodejs", "--task", TASK, "--tab", owned_tab(),
-           "--request-id", f"{job.get('stage')}{job.get('stamp','x')}",
-           "--timeout-ms", str(timeout_ms)]
+    cmd = [str(CLI), "nodejs", "--task", TASK]
+    # 任务已 owns 页时必须显式 --tab 绑上：不绑会命中那张可能已失焦的死页而静默空跑
+    # （elapsedMs 个位数、status 仍报 succeeded）。一张都没有时反倒不能传——让 CLI 开页。
+    tab = owned_tab()
+    if tab:
+        cmd += ["--tab", tab]
+    cmd += ["--request-id", f"{job.get('stage')}{job.get('stamp','x')}",
+            "--timeout-ms", str(timeout_ms)]
     with open(tmp, "r", encoding="utf-8") as fh:
         out = subprocess.run(cmd, stdin=fh, capture_output=True, text=True,
                              encoding="utf-8", errors="replace")

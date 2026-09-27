@@ -1,0 +1,77 @@
+{
+  "src": "E:/CardGame/app/src/assets/scenes/changhen_wuzhang.jpg",
+  "size": [
+    1920,
+    1080
+  ],
+  "fps": 20,
+  "seconds": 6.0,
+  "preroll": 20,
+  "effects": [
+    {
+      "type": "particles",
+      "params": {
+        "amount": 70,
+        "lifetime": 6.0,
+        "color": [
+          0.82,
+          0.88,
+          1.0,
+          0.3
+        ],
+        "dir_x": -1.0,
+        "dir_y": 0.1,
+        "spread": 6,
+        "vel_min": 90,
+        "vel_max": 170,
+        "scale_min": 0.22,
+        "scale_max": 0.5,
+        "spin_min": -2,
+        "spin_max": 2,
+        "fade": 0.35,
+        "sprite_file": "E:/CardGame/tools/anim-forge/sprites/streak.png",
+        "x": 1.1,
+        "y": 0.4,
+        "w": 0.12,
+        "h": 0.5,
+        "seed": 5409665
+      }
+    },
+    {
+      "type": "particles",
+      "params": {
+        "amount": 60,
+        "lifetime": 3.0,
+        "color": [
+          1.0,
+          0.62,
+          0.28,
+          0.9
+        ],
+        "dir_x": 0.14,
+        "dir_y": -1.0,
+        "spread": 26,
+        "vel_min": 40,
+        "vel_max": 115,
+        "grav_x": 22,
+        "grav_y": -14,
+        "scale_min": 0.08,
+        "scale_max": 0.24,
+        "fade": 0.6,
+        "sprite_file": "E:/CardGame/tools/anim-forge/sprites/mote.png",
+        "additive": true,
+        "x": 0.2,
+        "y": 0.5,
+        "w": 0.14,
+        "h": 0.06,
+        "seed": 5409665
+      }
+    }
+  ],
+  "deliver": {
+    "out": "app/src/assets/scenes/motion/changhen_wuzhang.webp",
+    "width": 1152,
+    "height": 648,
+    "quality": 58
+  }
+}

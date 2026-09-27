@@ -1,0 +1,61 @@
+{
+  "src": "E:/CardGame/app/src/assets/scenes/xingxing_geban_intro.jpg",
+  "size": [
+    1920,
+    1080
+  ],
+  "fps": 20,
+  "seconds": 6.0,
+  "preroll": 20,
+  "effects": [
+    {
+      "type": "flicker",
+      "params": {
+        "amplitude": 0.07,
+        "hz": 2.1,
+        "color": [
+          1.0,
+          0.72,
+          0.4,
+          1.0
+        ],
+        "seed": 7590956
+      }
+    },
+    {
+      "type": "particles",
+      "params": {
+        "amount": 55,
+        "lifetime": 6.0,
+        "color": [
+          1.0,
+          0.86,
+          0.62,
+          0.34
+        ],
+        "dir_x": 0.1,
+        "dir_y": -0.6,
+        "spread": 48,
+        "vel_min": 6,
+        "vel_max": 20,
+        "grav_y": -3,
+        "scale_min": 0.08,
+        "scale_max": 0.22,
+        "fade": 0.6,
+        "sprite_file": "E:/CardGame/tools/anim-forge/sprites/mote.png",
+        "additive": true,
+        "x": 0.5,
+        "y": 0.62,
+        "w": 0.34,
+        "h": 0.24,
+        "seed": 7590956
+      }
+    }
+  ],
+  "deliver": {
+    "out": "app/src/assets/scenes/motion/xingxing_geban_intro.webp",
+    "width": 1152,
+    "height": 648,
+    "quality": 58
+  }
+}

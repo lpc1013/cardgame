@@ -1,0 +1,77 @@
+{
+  "src": "E:/CardGame/app/src/assets/scenes/changjiang_start.jpg",
+  "size": [
+    1920,
+    1080
+  ],
+  "fps": 20,
+  "seconds": 6.0,
+  "preroll": 20,
+  "effects": [
+    {
+      "type": "particles",
+      "params": {
+        "amount": 64,
+        "lifetime": 6.0,
+        "color": [
+          1.0,
+          0.83,
+          0.87,
+          0.8
+        ],
+        "dir_x": 0.12,
+        "dir_y": 1,
+        "spread": 42,
+        "vel_min": 16,
+        "vel_max": 40,
+        "scale_min": 0.28,
+        "scale_max": 0.72,
+        "spin_min": -34,
+        "spin_max": 34,
+        "fade": 0.4,
+        "x": 0.5,
+        "y": -0.12,
+        "w": 0.66,
+        "h": 0.14,
+        "seed": 20260927,
+        "sprite_file": "E:/CardGame/tools/anim-forge/sprites/petal_pink.png"
+      }
+    },
+    {
+      "type": "particles",
+      "params": {
+        "amount": 70,
+        "lifetime": 6.0,
+        "color": [
+          0.95,
+          0.97,
+          1.0,
+          0.3
+        ],
+        "dir_x": 0.2,
+        "dir_y": 0.35,
+        "spread": 70,
+        "vel_min": 6,
+        "vel_max": 20,
+        "grav_y": 5,
+        "scale_min": 0.1,
+        "scale_max": 0.3,
+        "spin_min": -6,
+        "spin_max": 6,
+        "fade": 0.55,
+        "x": 0.5,
+        "y": 0.3,
+        "w": 0.6,
+        "h": 0.45,
+        "seed": 770201,
+        "sprite_file": "E:/CardGame/tools/anim-forge/sprites/mote.png"
+      }
+    }
+  ],
+  "deliver": {
+    "out": "app/src/assets/scenes/motion/changjiang_start.webp",
+    "width": 1152,
+    "height": 648,
+    "quality": 60
+  }
+}

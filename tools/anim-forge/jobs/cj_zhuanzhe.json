@@ -1,0 +1,81 @@
+{
+  "src": "E:/CardGame/app/src/assets/scenes/changjiang_zhuanzhe.jpg",
+  "size": [
+    1920,
+    1080
+  ],
+  "fps": 20,
+  "seconds": 6.0,
+  "preroll": 20,
+  "effects": [
+    {
+      "type": "particles",
+      "params": {
+        "amount": 150,
+        "lifetime": 6.0,
+        "color": [
+          1,
+          1,
+          1,
+          0.42
+        ],
+        "dir_x": -1.0,
+        "dir_y": 0.22,
+        "spread": 7,
+        "vel_min": 250,
+        "vel_max": 420,
+        "grav_x": -20,
+        "grav_y": 45,
+        "scale_min": 0.3,
+        "scale_max": 0.72,
+        "spin_min": -3,
+        "spin_max": 3,
+        "fade": 0.3,
+        "x": 1.12,
+        "y": 0.35,
+        "w": 0.1,
+        "h": 0.55,
+        "seed": 930114,
+        "sprite_file": "E:/CardGame/tools/anim-forge/sprites/streak.png"
+      }
+    },
+    {
+      "type": "particles",
+      "params": {
+        "amount": 70,
+        "lifetime": 3.0,
+        "color": [
+          1.0,
+          0.6,
+          0.26,
+          0.95
+        ],
+        "dir_x": 0.15,
+        "dir_y": -1.0,
+        "spread": 28,
+        "vel_min": 40,
+        "vel_max": 120,
+        "grav_x": 26,
+        "grav_y": -16,
+        "scale_min": 0.08,
+        "scale_max": 0.26,
+        "spin_min": -8,
+        "spin_max": 8,
+        "fade": 0.6,
+        "x": 0.16,
+        "y": 0.44,
+        "w": 0.1,
+        "h": 0.05,
+        "additive": true,
+        "seed": 551208,
+        "sprite_file": "E:/CardGame/tools/anim-forge/sprites/mote.png"
+      }
+    }
+  ],
+  "deliver": {
+    "out": "app/src/assets/scenes/motion/changjiang_zhuanzhe.webp",
+    "width": 1152,
+    "height": 648,
+    "quality": 55
+  }
+}

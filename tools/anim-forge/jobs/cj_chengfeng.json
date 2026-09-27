@@ -1,0 +1,64 @@
+{
+  "src": "E:/CardGame/app/src/assets/scenes/changjiang_cheng_feng.jpg",
+  "size": [
+    1920,
+    1080
+  ],
+  "fps": 20,
+  "seconds": 6.0,
+  "preroll": 20,
+  "effects": [
+    {
+      "type": "shaft",
+      "params": {
+        "x": 0.5,
+        "width": 360,
+        "angle": 3.5,
+        "strength": 0.42,
+        "hz": 0.35,
+        "color": [
+          1.0,
+          0.95,
+          0.85,
+          0.55
+        ]
+      }
+    },
+    {
+      "type": "particles",
+      "params": {
+        "amount": 110,
+        "lifetime": 6.0,
+        "color": [
+          1.0,
+          0.94,
+          0.82,
+          0.45
+        ],
+        "dir_x": 0.05,
+        "dir_y": 1,
+        "spread": 24,
+        "vel_min": 8,
+        "vel_max": 26,
+        "scale_min": 0.08,
+        "scale_max": 0.26,
+        "spin_min": -4,
+        "spin_max": 4,
+        "fade": 0.5,
+        "x": 0.5,
+        "y": -0.05,
+        "w": 0.12,
+        "h": 0.1,
+        "additive": true,
+        "seed": 480117,
+        "sprite_file": "E:/CardGame/tools/anim-forge/sprites/mote.png"
+      }
+    }
+  ],
+  "deliver": {
+    "out": "app/src/assets/scenes/motion/changjiang_cheng_feng.webp",
+    "width": 1152,
+    "height": 648,
+    "quality": 60
+  }
+}

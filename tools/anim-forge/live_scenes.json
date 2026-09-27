@@ -1,0 +1,122 @@
+[
+ {
+  "sc": "changhen",
+  "scene": "start",
+  "title": "咳"
+ },
+ {
+  "sc": "changhen",
+  "scene": "duel_intro",
+  "title": "棋局"
+ },
+ {
+  "sc": "changhen",
+  "scene": "wuzhang",
+  "title": "五丈原"
+ },
+ {
+  "sc": "changjiang",
+  "scene": "start",
+  "title": "棋 · 金陵御花园"
+ },
+ {
+  "sc": "changjiang",
+  "scene": "zhuanzhe",
+  "title": "战报 · 金陵危"
+ },
+ {
+  "sc": "changjiang",
+  "scene": "cheng_feng",
+  "title": "局 · 功高（帝王视角 · 新帝）"
+ },
+ {
+  "sc": "diaolan",
+  "scene": "start",
+  "title": "汉献帝"
+ },
+ {
+  "sc": "diaolan",
+  "scene": "coup_intro",
+  "title": "三短一长"
+ },
+ {
+  "sc": "diaolan",
+  "scene": "boy",
+  "title": "与马赛跑的少年"
+ },
+ {
+  "sc": "jianfeng",
+  "scene": "start",
+  "title": "加冠"
+ },
+ {
+  "sc": "jianfeng",
+  "scene": "duel_city",
+  "title": "孤城之战"
+ },
+ {
+  "sc": "jianfeng",
+  "scene": "aftermath",
+  "title": "新死的城"
+ },
+ {
+  "sc": "jieyu",
+  "scene": "start",
+  "title": "第一视角 · 兵部尚书"
+ },
+ {
+  "sc": "jieyu",
+  "scene": "p1_intro",
+  "title": "九门血线"
+ },
+ {
+  "sc": "jieyu",
+  "scene": "p3_intro",
+  "title": "第三视角 · 偏院的孩子"
+ },
+ {
+  "sc": "shumian",
+  "scene": "start",
+  "title": "第一幕 · 陉谷"
+ },
+ {
+  "sc": "shumian",
+  "scene": "a2_intro",
+  "title": "第二幕 · 孤城（主公视角）"
+ },
+ {
+  "sc": "shumian",
+  "scene": "a3_intro",
+  "title": "第三幕 · 垓下（韩信视角）"
+ },
+ {
+  "sc": "touming",
+  "scene": "start",
+  "title": "雨夜 · 官署"
+ },
+ {
+  "sc": "touming",
+  "scene": "ch2_court",
+  "title": "紫禁城 · 茶局"
+ },
+ {
+  "sc": "touming",
+  "scene": "ch3_depart",
+  "title": "催粮"
+ },
+ {
+  "sc": "xingxing",
+  "scene": "start",
+  "title": "祠堂"
+ },
+ {
+  "sc": "xingxing",
+  "scene": "geban_intro",
+  "title": "深夜 · 煤油灯"
+ },
+ {
+  "sc": "xingxing",
+  "scene": "kaike",
+  "title": "识字班 · 「人」"
+ }
+]

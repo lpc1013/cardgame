@@ -1,0 +1,47 @@
+{
+  "src": "E:/CardGame/app/src/assets/scenes/jianfeng_duel_city.jpg",
+  "size": [
+    1920,
+    1080
+  ],
+  "fps": 20,
+  "seconds": 6.0,
+  "preroll": 20,
+  "effects": [
+    {
+      "type": "particles",
+      "params": {
+        "amount": 130,
+        "lifetime": 6.0,
+        "color": [
+          1,
+          1,
+          1,
+          0.55
+        ],
+        "dir_x": 0.1,
+        "dir_y": 1,
+        "spread": 52,
+        "vel_min": 22,
+        "vel_max": 58,
+        "scale_min": 0.1,
+        "scale_max": 0.3,
+        "spin_min": -8,
+        "spin_max": 8,
+        "fade": 0.42,
+        "sprite_file": "E:/CardGame/tools/anim-forge/sprites/mote.png",
+        "x": 0.5,
+        "y": -0.14,
+        "w": 0.66,
+        "h": 0.14,
+        "seed": 7811504
+      }
+    }
+  ],
+  "deliver": {
+    "out": "app/src/assets/scenes/motion/jianfeng_duel_city.webp",
+    "width": 1152,
+    "height": 648,
+    "quality": 58
+  }
+}

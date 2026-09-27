@@ -1,0 +1,91 @@
+{
+  "src": "E:/CardGame/app/src/assets/scenes/xingxing_kaike.jpg",
+  "size": [
+    1920,
+    1080
+  ],
+  "fps": 20,
+  "seconds": 6.0,
+  "preroll": 20,
+  "effects": [
+    {
+      "type": "shaft",
+      "params": {
+        "x": 0.5,
+        "width": 340,
+        "angle": 4,
+        "strength": 0.4,
+        "hz": 0.35,
+        "color": [
+          1.0,
+          0.95,
+          0.85,
+          0.5
+        ],
+        "seed": 9796922
+      }
+    },
+    {
+      "type": "particles",
+      "params": {
+        "amount": 100,
+        "lifetime": 6.0,
+        "color": [
+          1.0,
+          0.94,
+          0.82,
+          0.4
+        ],
+        "dir_x": 0.05,
+        "dir_y": 1,
+        "spread": 24,
+        "vel_min": 8,
+        "vel_max": 26,
+        "scale_min": 0.08,
+        "scale_max": 0.26,
+        "fade": 0.5,
+        "sprite_file": "E:/CardGame/tools/anim-forge/sprites/mote.png",
+        "additive": true,
+        "x": 0.5,
+        "y": -0.05,
+        "w": 0.12,
+        "h": 0.1,
+        "seed": 9796922
+      }
+    },
+    {
+      "type": "particles",
+      "params": {
+        "amount": 80,
+        "lifetime": 6.0,
+        "color": [
+          0.96,
+          0.94,
+          0.9,
+          0.3
+        ],
+        "dir_x": 0.15,
+        "dir_y": 0.3,
+        "spread": 70,
+        "vel_min": 5,
+        "vel_max": 18,
+        "grav_y": 4,
+        "scale_min": 0.1,
+        "scale_max": 0.3,
+        "fade": 0.55,
+        "sprite_file": "E:/CardGame/tools/anim-forge/sprites/mote.png",
+        "x": 0.5,
+        "y": 0.3,
+        "w": 0.6,
+        "h": 0.5,
+        "seed": 9796922
+      }
+    }
+  ],
+  "deliver": {
+    "out": "app/src/assets/scenes/motion/xingxing_kaike.webp",
+    "width": 1152,
+    "height": 648,
+    "quality": 58
+  }
+}

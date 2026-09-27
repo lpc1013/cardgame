@@ -1,0 +1,392 @@
+{
+  "dust_motes": [
+    {
+      "type": "particles",
+      "params": {
+        "amount": 80,
+        "lifetime": 6.0,
+        "color": [
+          0.96,
+          0.94,
+          0.9,
+          0.3
+        ],
+        "dir_x": 0.15,
+        "dir_y": 0.3,
+        "spread": 70,
+        "vel_min": 5,
+        "vel_max": 18,
+        "grav_y": 4,
+        "scale_min": 0.1,
+        "scale_max": 0.3,
+        "fade": 0.55,
+        "sprite_file": "@mote",
+        "x": 0.5,
+        "y": 0.3,
+        "w": 0.6,
+        "h": 0.5
+      }
+    }
+  ],
+  "candle": [
+    {
+      "type": "flicker",
+      "params": {
+        "amplitude": 0.07,
+        "hz": 2.1,
+        "color": [
+          1.0,
+          0.72,
+          0.4,
+          1.0
+        ]
+      }
+    },
+    {
+      "type": "particles",
+      "params": {
+        "amount": 55,
+        "lifetime": 6.0,
+        "color": [
+          1.0,
+          0.86,
+          0.62,
+          0.34
+        ],
+        "dir_x": 0.1,
+        "dir_y": -0.6,
+        "spread": 48,
+        "vel_min": 6,
+        "vel_max": 20,
+        "grav_y": -3,
+        "scale_min": 0.08,
+        "scale_max": 0.22,
+        "fade": 0.6,
+        "sprite_file": "@mote",
+        "additive": true,
+        "x": 0.5,
+        "y": 0.62,
+        "w": 0.34,
+        "h": 0.24
+      }
+    }
+  ],
+  "leaf_drift": [
+    {
+      "type": "particles",
+      "params": {
+        "amount": 34,
+        "lifetime": 6.0,
+        "color": [
+          0.93,
+          0.55,
+          0.36,
+          0.8
+        ],
+        "dir_x": 0.22,
+        "dir_y": 1,
+        "spread": 44,
+        "vel_min": 16,
+        "vel_max": 42,
+        "scale_min": 0.22,
+        "scale_max": 0.55,
+        "spin_min": -46,
+        "spin_max": 46,
+        "fade": 0.4,
+        "sprite_file": "@leaf",
+        "x": 0.5,
+        "y": -0.12,
+        "w": 0.66,
+        "h": 0.14
+      }
+    }
+  ],
+  "night_wind": [
+    {
+      "type": "particles",
+      "params": {
+        "amount": 70,
+        "lifetime": 6.0,
+        "color": [
+          0.82,
+          0.88,
+          1.0,
+          0.3
+        ],
+        "dir_x": -1.0,
+        "dir_y": 0.1,
+        "spread": 6,
+        "vel_min": 90,
+        "vel_max": 170,
+        "scale_min": 0.22,
+        "scale_max": 0.5,
+        "spin_min": -2,
+        "spin_max": 2,
+        "fade": 0.35,
+        "sprite_file": "@streak",
+        "x": 1.1,
+        "y": 0.4,
+        "w": 0.12,
+        "h": 0.5
+      }
+    }
+  ],
+  "plain_wind": [
+    {
+      "type": "particles",
+      "params": {
+        "amount": 90,
+        "lifetime": 6.0,
+        "color": [
+          0.98,
+          0.9,
+          0.76,
+          0.34
+        ],
+        "dir_x": -1.0,
+        "dir_y": 0.06,
+        "spread": 8,
+        "vel_min": 120,
+        "vel_max": 230,
+        "scale_min": 0.2,
+        "scale_max": 0.46,
+        "spin_min": -3,
+        "spin_max": 3,
+        "fade": 0.35,
+        "sprite_file": "@streak",
+        "x": 1.1,
+        "y": 0.55,
+        "w": 0.12,
+        "h": 0.42
+      }
+    }
+  ],
+  "snow_fall": [
+    {
+      "type": "particles",
+      "params": {
+        "amount": 130,
+        "lifetime": 6.0,
+        "color": [
+          1,
+          1,
+          1,
+          0.55
+        ],
+        "dir_x": 0.1,
+        "dir_y": 1,
+        "spread": 52,
+        "vel_min": 22,
+        "vel_max": 58,
+        "scale_min": 0.1,
+        "scale_max": 0.3,
+        "spin_min": -8,
+        "spin_max": 8,
+        "fade": 0.42,
+        "sprite_file": "@mote",
+        "x": 0.5,
+        "y": -0.14,
+        "w": 0.66,
+        "h": 0.14
+      }
+    }
+  ],
+  "blizzard": [
+    {
+      "type": "particles",
+      "params": {
+        "amount": 150,
+        "lifetime": 6.0,
+        "color": [
+          1,
+          1,
+          1,
+          0.42
+        ],
+        "dir_x": -1.0,
+        "dir_y": 0.22,
+        "spread": 7,
+        "vel_min": 250,
+        "vel_max": 420,
+        "grav_x": -20,
+        "grav_y": 45,
+        "scale_min": 0.3,
+        "scale_max": 0.72,
+        "spin_min": -3,
+        "spin_max": 3,
+        "fade": 0.3,
+        "sprite_file": "@streak",
+        "x": 1.12,
+        "y": 0.35,
+        "w": 0.1,
+        "h": 0.55
+      }
+    }
+  ],
+  "embers": [
+    {
+      "type": "particles",
+      "params": {
+        "amount": 60,
+        "lifetime": 3.0,
+        "color": [
+          1.0,
+          0.62,
+          0.28,
+          0.9
+        ],
+        "dir_x": 0.14,
+        "dir_y": -1.0,
+        "spread": 26,
+        "vel_min": 40,
+        "vel_max": 115,
+        "grav_x": 22,
+        "grav_y": -14,
+        "scale_min": 0.08,
+        "scale_max": 0.24,
+        "fade": 0.6,
+        "sprite_file": "@mote",
+        "additive": true,
+        "x": 0.2,
+        "y": 0.5,
+        "w": 0.14,
+        "h": 0.06
+      }
+    }
+  ],
+  "smoke": [
+    {
+      "type": "particles",
+      "params": {
+        "amount": 16,
+        "lifetime": 6.0,
+        "color": [
+          0.62,
+          0.62,
+          0.65,
+          0.09
+        ],
+        "dir_x": 0.1,
+        "dir_y": -1.0,
+        "spread": 22,
+        "vel_min": 18,
+        "vel_max": 46,
+        "scale_min": 3.4,
+        "scale_max": 8.0,
+        "spin_min": -4,
+        "spin_max": 4,
+        "fade": 0.75,
+        "sprite_file": "@blob",
+        "x": 0.72,
+        "y": 0.66,
+        "w": 0.16,
+        "h": 0.1
+      }
+    }
+  ],
+  "light_shaft": [
+    {
+      "type": "shaft",
+      "params": {
+        "x": 0.5,
+        "width": 340,
+        "angle": 4,
+        "strength": 0.4,
+        "hz": 0.35,
+        "color": [
+          1.0,
+          0.95,
+          0.85,
+          0.5
+        ]
+      }
+    },
+    {
+      "type": "particles",
+      "params": {
+        "amount": 100,
+        "lifetime": 6.0,
+        "color": [
+          1.0,
+          0.94,
+          0.82,
+          0.4
+        ],
+        "dir_x": 0.05,
+        "dir_y": 1,
+        "spread": 24,
+        "vel_min": 8,
+        "vel_max": 26,
+        "scale_min": 0.08,
+        "scale_max": 0.26,
+        "fade": 0.5,
+        "sprite_file": "@mote",
+        "additive": true,
+        "x": 0.5,
+        "y": -0.05,
+        "w": 0.12,
+        "h": 0.1
+      }
+    }
+  ],
+  "rain": [
+    {
+      "type": "particles",
+      "params": {
+        "amount": 150,
+        "lifetime": 6.0,
+        "color": [
+          0.86,
+          0.9,
+          1.0,
+          0.34
+        ],
+        "dir_x": 0.14,
+        "dir_y": 1,
+        "spread": 4,
+        "vel_min": 420,
+        "vel_max": 640,
+        "scale_min": 0.3,
+        "scale_max": 0.62,
+        "spin_min": 88,
+        "spin_max": 92,
+        "fade": 0.28,
+        "sprite_file": "@streak",
+        "x": 0.5,
+        "y": -0.2,
+        "w": 0.66,
+        "h": 0.12
+      }
+    }
+  ],
+  "river_mist": [
+    {
+      "type": "particles",
+      "params": {
+        "amount": 14,
+        "lifetime": 6.0,
+        "color": [
+          0.9,
+          0.95,
+          0.96,
+          0.11
+        ],
+        "dir_x": -1.0,
+        "dir_y": -0.05,
+        "spread": 18,
+        "vel_min": 8,
+        "vel_max": 24,
+        "scale_min": 6.0,
+        "scale_max": 13.0,
+        "spin_min": -2,
+        "spin_max": 2,
+        "fade": 0.75,
+        "sprite_file": "@blob",
+        "x": 0.5,
+        "y": 0.7,
+        "w": 0.6,
+        "h": 0.2
+      }
+    }
+  ]
+}

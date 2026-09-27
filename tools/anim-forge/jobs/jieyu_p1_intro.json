@@ -1,0 +1,79 @@
+{
+  "src": "E:/CardGame/app/src/assets/scenes/jieyu_p1_intro.jpg",
+  "size": [
+    1920,
+    1080
+  ],
+  "fps": 20,
+  "seconds": 6.0,
+  "preroll": 20,
+  "effects": [
+    {
+      "type": "particles",
+      "params": {
+        "amount": 150,
+        "lifetime": 6.0,
+        "color": [
+          1,
+          1,
+          1,
+          0.42
+        ],
+        "dir_x": -1.0,
+        "dir_y": 0.22,
+        "spread": 7,
+        "vel_min": 250,
+        "vel_max": 420,
+        "grav_x": -20,
+        "grav_y": 45,
+        "scale_min": 0.3,
+        "scale_max": 0.72,
+        "spin_min": -3,
+        "spin_max": 3,
+        "fade": 0.3,
+        "sprite_file": "E:/CardGame/tools/anim-forge/sprites/streak.png",
+        "x": 1.12,
+        "y": 0.35,
+        "w": 0.1,
+        "h": 0.55,
+        "seed": 10562106
+      }
+    },
+    {
+      "type": "particles",
+      "params": {
+        "amount": 60,
+        "lifetime": 3.0,
+        "color": [
+          1.0,
+          0.62,
+          0.28,
+          0.9
+        ],
+        "dir_x": 0.14,
+        "dir_y": -1.0,
+        "spread": 26,
+        "vel_min": 40,
+        "vel_max": 115,
+        "grav_x": 22,
+        "grav_y": -14,
+        "scale_min": 0.08,
+        "scale_max": 0.24,
+        "fade": 0.6,
+        "sprite_file": "E:/CardGame/tools/anim-forge/sprites/mote.png",
+        "additive": true,
+        "x": 0.2,
+        "y": 0.5,
+        "w": 0.14,
+        "h": 0.06,
+        "seed": 10562106
+      }
+    }
+  ],
+  "deliver": {
+    "out": "app/src/assets/scenes/motion/jieyu_p1_intro.webp",
+    "width": 1152,
+    "height": 648,
+    "quality": 58
+  }
+}

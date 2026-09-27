@@ -1,0 +1,89 @@
+{
+  "src": "E:/CardGame/app/src/assets/scenes/changhen_duel_intro.jpg",
+  "size": [
+    1920,
+    1080
+  ],
+  "fps": 20,
+  "seconds": 6.0,
+  "preroll": 20,
+  "effects": [
+    {
+      "type": "flicker",
+      "params": {
+        "amplitude": 0.07,
+        "hz": 2.1,
+        "color": [
+          1.0,
+          0.72,
+          0.4,
+          1.0
+        ],
+        "seed": 5981719
+      }
+    },
+    {
+      "type": "particles",
+      "params": {
+        "amount": 55,
+        "lifetime": 6.0,
+        "color": [
+          1.0,
+          0.86,
+          0.62,
+          0.34
+        ],
+        "dir_x": 0.1,
+        "dir_y": -0.6,
+        "spread": 48,
+        "vel_min": 6,
+        "vel_max": 20,
+        "grav_y": -3,
+        "scale_min": 0.08,
+        "scale_max": 0.22,
+        "fade": 0.6,
+        "sprite_file": "E:/CardGame/tools/anim-forge/sprites/mote.png",
+        "additive": true,
+        "x": 0.5,
+        "y": 0.62,
+        "w": 0.34,
+        "h": 0.24,
+        "seed": 5981719
+      }
+    },
+    {
+      "type": "particles",
+      "params": {
+        "amount": 80,
+        "lifetime": 6.0,
+        "color": [
+          0.96,
+          0.94,
+          0.9,
+          0.3
+        ],
+        "dir_x": 0.15,
+        "dir_y": 0.3,
+        "spread": 70,
+        "vel_min": 5,
+        "vel_max": 18,
+        "grav_y": 4,
+        "scale_min": 0.1,
+        "scale_max": 0.3,
+        "fade": 0.55,
+        "sprite_file": "E:/CardGame/tools/anim-forge/sprites/mote.png",
+        "x": 0.5,
+        "y": 0.3,
+        "w": 0.6,
+        "h": 0.5,
+        "seed": 5981719
+      }
+    }
+  ],
+  "deliver": {
+    "out": "app/src/assets/scenes/motion/changhen_duel_intro.webp",
+    "width": 1152,
+    "height": 648,
+    "quality": 58
+  }
+}

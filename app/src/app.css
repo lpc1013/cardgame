@@ -1063,6 +1063,25 @@ button { font-family: inherit; }
   opacity: .72; transition: opacity .4s;
 }
 .story-line.show { opacity: 1; }
+/* 对话演出：新揭示的段落自左擦入（水墨运笔的方向感），一段一批按序错峰。
+   用 backwards 而非 both——动画结束后交还给 .story-line/.show 自己的透明度，
+   否则非末段的 .72 会被动画终值永久顶掉 */
+.story-line.fresh { animation: line-ink .5s ease-out backwards; }
+@keyframes line-ink {
+  from { clip-path: inset(0 100% -.2em 0); }
+  to   { clip-path: inset(0 -.2em -.2em 0); }
+}
+/* 直接引语着鎏金，与叙述文一眼可辨 */
+.said { font-style: normal; color: var(--gold); }
+/* 换幕转场：panelRef 挂在面板上，key=场景 id 令其重挂载，动画随之每次换幕重播 */
+.story-panel { animation: scene-in .42s ease-out both; }
+@keyframes scene-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .story-line.fresh, .story-panel { animation: none; }
+}
 .continue-tip { color: var(--ink-dim); text-align: center; font-size: 12px; margin-top: 30px; }
 
 .choices { margin-top: 34px; display: flex; flex-direction: column; gap: 12px; cursor: default; }

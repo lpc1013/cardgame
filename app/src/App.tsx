@@ -72,6 +72,14 @@ const achArt = (id: string) => _ACH_ART[`./assets/achievements/ach_${id}.jpg`] ?
 const _SCENE_MOTION = import.meta.glob("./assets/scenes/motion/*.webp", { eager: true, import: "default" }) as Record<string, string>;
 const sceneMotion = (scenarioId: string, id: string): string | undefined =>
   _SCENE_MOTION[`./assets/scenes/motion/${scenarioId}_${id}.webp`];
+/** 对话演出：把「」/“”里的直接引语拆出来着暖色，与叙述文分开——
+ *  台词是小说化第一人称（"我说：高。"），没有说话人字段，故只标引语不标人 */
+function saidSpans(l: string): ReactNode {
+  const parts = l.split(/([「“][^」”]*[」”])/g);
+  if (parts.length === 1) return l;
+  return parts.map((p, i) =>
+    /^[「“]/.test(p) && /[」”]$/.test(p) ? <i key={i} className="said">{p}</i> : p);
+}
 /** F-13：成就图标缺失时的 SVG 纹章兜底——已达成=金星章，未达成=虚线锁章（U-7 去字化语言，不再回落 emoji） */
 function AchSeal({ on, hidden }: { on: boolean; hidden?: boolean }) {
   return (
@@ -444,6 +452,8 @@ export default function App() {
   const [vpFor, setVpFor] = useState<Scenario | null>(null);
   const [vpId, setVpId] = useState<string | undefined>(undefined);
   const [coverIdx, setCoverIdx] = useState(0);
+  /** 对话演出：本批新揭示之前的 lineIndex（-1 = 刚进这一幕，整幕文字按序擦入） */
+  const [revealFrom, setRevealFrom] = useState(-1);
   // 手机横屏悬浮胶囊（商市/书斋/规则书/设置+结局进度）展开态
   const [fabOpen, setFabOpen] = useState(false);
   const [coverZoom, setCoverZoom] = useState(false);
@@ -539,6 +549,7 @@ export default function App() {
       applyEffects(target.effects, next);
       next.lineIndex = opts?.autoRead ? Math.max(0, resolveSceneLines(target, next).length - 1) : 0;
       noteCards(sc, next.bag);
+      setRevealFrom(-1);
       setSt(next);
       if (!opts?.holdView) enterSceneOf(next, id);
     },
@@ -733,6 +744,7 @@ export default function App() {
       let j = st.lineIndex + 1;
       while (j < lines.length - 1 && lines[j] !== "") j++;
       sfx.page();
+      setRevealFrom(st.lineIndex);
       setSt({ ...st, lineIndex: j });
     } else if (scene.next && !scene.choices?.length && !scene.cardPick && !scene.shop) {
       sfx.page();
@@ -1430,12 +1442,22 @@ export default function App() {
       ) : (
         sceneBg && <div className="scene-bg" style={{ backgroundImage: `url(${sceneBg})` }} aria-hidden="true" />
       )}
-      <div className="story-panel" onClick={advance} ref={panelRef}>
+      <div className="story-panel" onClick={advance} ref={panelRef} key={scene.id}>
         {scene.title && <div className="scene-title">{scene.title}</div>}
         {scene.desc && <p className="scene-desc">{scene.desc}</p>}
-        {resolveSceneLines(scene, st).slice(0, st.lineIndex + 1).map((l, i) => (
-          <p key={i} className={`story-line ${i === st.lineIndex ? "show" : ""}`}>{l}</p>
-        ))}
+        {resolveSceneLines(scene, st).slice(0, st.lineIndex + 1).map((l, i) => {
+          const fresh = i > revealFrom;
+          // 一幕可能一次揭出十几段（空行只作排版分隔），步长按批大小自适应，
+          // 整批总时长封顶 ~1.1s，避免固定 110ms 让后段挤成一面文字墙
+          const batch = Math.max(1, st.lineIndex - revealFrom);
+          const step = Math.min(110, Math.round(1100 / batch));
+          return (
+            <p key={i} className={`story-line ${i === st.lineIndex ? "show" : ""}${fresh ? " fresh" : ""}`}
+               style={fresh ? { animationDelay: `${(i - revealFrom - 1) * step}ms` } : undefined}>
+              {saidSpans(l)}
+            </p>
+          );
+        })}
         {st.lineIndex >= resolveSceneLines(scene, st).length - 1 && choices.length > 0 && (
           <div className="choices" onClick={(e) => e.stopPropagation()}>
             {choices.map((c, i) => (

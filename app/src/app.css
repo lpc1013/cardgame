@@ -1097,6 +1097,51 @@ button { font-family: inherit; }
 
 /* ---------- 结局 ---------- */
 .story-panel.ending { text-align: center; cursor: default; }
+/* 叙述者立绘：台词是小说化第一人称，说话人即当前视角的叙述主体，
+   故按 st.viewpoint 挂一张全身立绘在右侧，不做逐句 speaker 解析。
+   缺图不出栏，正文自动回到全宽居中。 */
+.narrator {
+  position: fixed; right: max(18px, calc(50vw - 640px)); top: 50%;
+  transform: translateY(-50%);
+  width: clamp(168px, 21vw, 300px); z-index: -1;
+  pointer-events: none;
+}
+.narrator-art {
+  display: block; width: 100%; height: auto;
+  border: 1px solid var(--line); outline: 1px solid rgba(201,168,106,.16); outline-offset: 3px;
+  box-shadow: 0 12px 34px rgba(0,0,0,.5);
+  animation: narr-breathe 7s ease-in-out infinite alternate;
+}
+@keyframes narr-breathe {
+  from { transform: translateY(0) scale(1); filter: brightness(.94); }
+  to   { transform: translateY(-5px) scale(1.008); filter: brightness(1); }
+}
+/* 每揭一段，立绘上掠过一道暖光——"在说话"的凭据，不靠嘴型 */
+.narrator-pulse {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, transparent 30%, rgba(201,168,106,.22) 52%, transparent 74%);
+  animation: narr-said .62s ease-out both;
+}
+@keyframes narr-said {
+  from { opacity: 0; transform: translateY(28%); }
+  35%  { opacity: 1; }
+  to   { opacity: 0; transform: translateY(-28%); }
+}
+.narrator-name {
+  position: absolute; left: 50%; bottom: -30px; transform: translateX(-50%);
+  font-size: 13px; letter-spacing: 4px; color: var(--gold); white-space: nowrap;
+}
+/* 立绘占右侧，正文让位到剩余空间居中，避免中屏文字压在人物身上。
+   1440px 下立绘左缘在 1060，正文若仍取满 720 会压过去 20px，故预留 180 而非 120 */
+.story-root.has-narrator .story-panel { max-width: min(720px, calc(100vw - 2 * clamp(168px, 21vw, 300px) - 180px)); }
+@media (max-width: 900px) {
+  .narrator { display: none; }
+  .story-root.has-narrator .story-panel { max-width: 720px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .narrator-art { animation: none; }
+  .narrator-pulse { display: none; }
+}
 /* 结局演出：画框裁掉溢出，画心做极缓推近（18s 一镜），品级与结局名分层落定 */
 .ending-art-frame {
   position: relative; overflow: hidden;

@@ -72,6 +72,12 @@ const achArt = (id: string) => _ACH_ART[`./assets/achievements/ach_${id}.jpg`] ?
 const _SCENE_MOTION = import.meta.glob("./assets/scenes/motion/*.webp", { eager: true, import: "default" }) as Record<string, string>;
 const sceneMotion = (scenarioId: string, id: string): string | undefined =>
   _SCENE_MOTION[`./assets/scenes/motion/${scenarioId}_${id}.webp`];
+/** 叙述者立绘：assets/narrators/<视角id>.{jpg,png}，按 st.viewpoint 取。
+ *  台词是小说化第一人称，说话人即当前视角的叙述主体，故不做逐句 speaker 解析——
+ *  那会把"我说：高。"这类句子猜错人。缺图即不出栏，布局自动回落全宽。 */
+const _NARRATOR_ART = import.meta.glob("./assets/narrators/*.{png,jpg,jpeg}", { eager: true, import: "default" }) as Record<string, string>;
+const _NARRATOR_IDX = buildArtIndex(_NARRATOR_ART);
+const narratorArt = (vpId?: string): string | undefined => (vpId ? _artUrl(_NARRATOR_IDX, vpId) : undefined);
 /** 对话演出：把「」/“”里的直接引语拆出来着暖色，与叙述文分开——
  *  台词是小说化第一人称（"我说：高。"），没有说话人字段，故只标引语不标人 */
 function saidSpans(l: string): ReactNode {
@@ -1433,9 +1439,11 @@ export default function App() {
   const choices = visibleChoices(scene, st);
   const sceneBg = sceneArt(sc.id, scene.id);
   const sceneFx = sceneMotion(sc.id, scene.id);
+  const narrArt = narratorArt(st.viewpoint);
+  const narrName = sc.viewpoints?.find((v) => v.id === st.viewpoint)?.name;
 
   return (
-    <div className="story-root" ref={rootRef} tabIndex={-1} onKeyDown={onKeyDown}>
+    <div className={`story-root${narrArt ? " has-narrator" : ""}`} ref={rootRef} tabIndex={-1} onKeyDown={onKeyDown}>
       <TopBar sc={sc} st={st} onClues={() => setShowClues(true)} onBag={() => setShowBag(true)} />
       {sceneBg && sceneFx ? (
         <div className="scene-stage" aria-hidden="true">
@@ -1445,6 +1453,14 @@ export default function App() {
         </div>
       ) : (
         sceneBg && <div className="scene-bg" style={{ backgroundImage: `url(${sceneBg})` }} aria-hidden="true" />
+      )}
+      {narrArt && (
+        <aside className="narrator" aria-hidden="true">
+          <img className="narrator-art" src={narrArt} alt="" />
+          {/* key=lineIndex：每揭一段就重挂载一次，说话的一闪因此能反复播 */}
+          <span className="narrator-pulse" key={st.lineIndex} />
+          {narrName && <span className="narrator-name">{narrName}</span>}
+        </aside>
       )}
       <div className="story-panel" onClick={advance} ref={panelRef} key={scene.id}>
         {scene.title && <div className="scene-title">{scene.title}</div>}

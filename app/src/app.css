@@ -981,6 +981,32 @@ button { font-family: inherit; }
   opacity: .14; filter: var(--scene-filter) grayscale(.25) blur(1px);
   pointer-events: none;
 }
+/* 动态背景（真背景档）：原画底 + anim-forge 特效层 + 可读性遮罩。
+   仅对烘出 motion/<剧本>_<场景>.webp 的场景启用，其余场景仍走上面的淡水印底。
+   底图与特效层共用同一条 scene-drift，镜头推拉不必烘进帧里（省字节且分辨率无关）。 */
+.scene-stage {
+  position: fixed; inset: 0; z-index: -1; overflow: hidden;
+  background: var(--bg); pointer-events: none;
+}
+.scene-bg-img, .scene-fx-img {
+  position: absolute; top: -2%; left: -2%; width: 104%; height: 104%;
+  object-fit: cover;
+  animation: scene-drift 26s ease-in-out infinite alternate;
+}
+.scene-bg-img { opacity: .62; filter: saturate(.92) contrast(1.02); }
+.scene-scrim {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg,
+    rgba(12, 11, 10, .58) 0%, rgba(12, 11, 10, .26) 44%, rgba(12, 11, 10, .66) 100%);
+}
+@keyframes scene-drift {
+  from { transform: scale(1) translate3d(-1%, -.6%, 0); }
+  to   { transform: scale(1.05) translate3d(1%, .6%, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scene-bg-img, .scene-fx-img { animation: none; }
+  .scene-fx-img { display: none; }
+}
 .top-bar {
   display: flex; align-items: center; gap: 14px;
   padding: 10px 18px; border-bottom: 1px solid var(--line);

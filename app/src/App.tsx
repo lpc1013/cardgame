@@ -67,6 +67,11 @@ const _END_ART = import.meta.glob("./assets/endings/*.{png,jpg,jpeg}", { eager: 
 /** 成就图标：assets/achievements/ach_<id>.{jpg,png}（无图时 UI 用 SVG 纹章兜底） */
 const _ACH_ART = import.meta.glob("./assets/achievements/*.{png,jpg,jpeg}", { eager: true, import: "default" }) as Record<string, string>;
 const achArt = (id: string) => _ACH_ART[`./assets/achievements/ach_${id}.jpg`] ?? _ACH_ART[`./assets/achievements/ach_${id}.png`];
+/** 动态背景特效层：assets/scenes/motion/<剧本id>_<场景id>.webp
+ *  anim-forge（Godot）烘出的透明无缝循环粒子层，叠在原画之上；缺文件即回落淡水印底 */
+const _SCENE_MOTION = import.meta.glob("./assets/scenes/motion/*.webp", { eager: true, import: "default" }) as Record<string, string>;
+const sceneMotion = (scenarioId: string, id: string): string | undefined =>
+  _SCENE_MOTION[`./assets/scenes/motion/${scenarioId}_${id}.webp`];
 /** F-13：成就图标缺失时的 SVG 纹章兜底——已达成=金星章，未达成=虚线锁章（U-7 去字化语言，不再回落 emoji） */
 function AchSeal({ on, hidden }: { on: boolean; hidden?: boolean }) {
   return (
@@ -1411,11 +1416,20 @@ export default function App() {
 
   const choices = visibleChoices(scene, st);
   const sceneBg = sceneArt(sc.id, scene.id);
+  const sceneFx = sceneMotion(sc.id, scene.id);
 
   return (
     <div className="story-root" ref={rootRef} tabIndex={-1} onKeyDown={onKeyDown}>
       <TopBar sc={sc} st={st} onClues={() => setShowClues(true)} onBag={() => setShowBag(true)} />
-      {sceneBg && <div className="scene-bg" style={{ backgroundImage: `url(${sceneBg})` }} aria-hidden="true" />}
+      {sceneBg && sceneFx ? (
+        <div className="scene-stage" aria-hidden="true">
+          <img className="scene-bg-img" src={sceneBg} alt="" />
+          <div className="scene-scrim" />
+          <img className="scene-fx-img" src={sceneFx} alt="" />
+        </div>
+      ) : (
+        sceneBg && <div className="scene-bg" style={{ backgroundImage: `url(${sceneBg})` }} aria-hidden="true" />
+      )}
       <div className="story-panel" onClick={advance} ref={panelRef}>
         {scene.title && <div className="scene-title">{scene.title}</div>}
         {scene.desc && <p className="scene-desc">{scene.desc}</p>}

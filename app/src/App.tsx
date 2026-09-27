@@ -1395,7 +1395,11 @@ export default function App() {
     return (
       <div className="story-root">
         <div className="story-panel ending" ref={panelRef}>
-          {endImg && <img className="ending-art" src={endImg} alt={scene.ending.name} />}
+          {endImg && (
+            <div className="ending-art-frame">
+              <img className="ending-art" src={endImg} alt={scene.ending.name} />
+            </div>
+          )}
           {/* ending-body 在 PC 上 display:contents 保持原版居中排版；手机横屏转为右栏文本区（左图右文） */}
           <div className="ending-body">
             <div className="ending-rank">{scene.ending.rank}</div>

@@ -1097,14 +1097,32 @@ button { font-family: inherit; }
 
 /* ---------- 结局 ---------- */
 .story-panel.ending { text-align: center; cursor: default; }
-.ending-art {
+/* 结局演出：画框裁掉溢出，画心做极缓推近（18s 一镜），品级与结局名分层落定 */
+.ending-art-frame {
+  position: relative; overflow: hidden;
   display: block; width: 100%; max-width: 640px; margin: 0 auto 22px;
-  aspect-ratio: 16 / 9; object-fit: cover;
+  aspect-ratio: 16 / 9;
   border: 1px solid var(--line); outline: 1px solid rgba(201,168,106,.18); outline-offset: 3px;
   box-shadow: 0 14px 40px rgba(0,0,0,.55);
 }
-.ending-rank { color: var(--ink-dim); letter-spacing: 4px; margin-bottom: 6px; }
-.ending-name { color: var(--gold); font-size: 34px; letter-spacing: 8px; margin: 0 0 34px; font-weight: 600; }
+.ending-art {
+  display: block; width: 100%; height: 100%; object-fit: cover;
+  animation: ending-kb 18s ease-out both;
+}
+@keyframes ending-kb {
+  from { transform: scale(1.0) translate3d(0, 1.6%, 0); }
+  to   { transform: scale(1.085) translate3d(0, -1.2%, 0); }
+}
+.ending-rank { color: var(--ink-dim); letter-spacing: 4px; margin-bottom: 6px;
+  animation: ending-in .7s .1s ease-out backwards; }
+.ending-name { color: var(--gold); font-size: 34px; letter-spacing: 8px; margin: 0 0 34px; font-weight: 600;
+  animation: ending-in 1s .42s ease-out backwards; }
+@keyframes ending-in {
+  from { opacity: 0; transform: translateY(9px); letter-spacing: .5em; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ending-art, .ending-rank, .ending-name { animation: none; }
+}
 .ending .story-line { text-align: left; }
 .stat-report { display: flex; gap: 20px; justify-content: center; color: var(--ink-dim); margin: 24px 0; }
 .btn-main {
@@ -1994,10 +2012,12 @@ button { font-family: inherit; }
     height: calc(100dvh - 20px); overflow: hidden;
     padding: 14px; text-align: left; cursor: default;
   }
-  .ending-art {
+  .ending-art-frame {
     grid-area: 1 / 1; width: 100%; height: 100%; max-width: none; margin: 0;
-    aspect-ratio: auto; object-fit: contain; min-width: 0; min-height: 0;
+    aspect-ratio: auto; min-width: 0; min-height: 0;
   }
+  /* 手机横屏是 contain 全图，缩放会裁掉画面，缓推只在 PC 开 */
+  .ending-art { object-fit: contain; animation: none; }
   .ending-body {
     grid-area: 1 / 2; display: flex; flex-direction: column;
     overflow-y: auto; -webkit-overflow-scrolling: touch; text-align: left;

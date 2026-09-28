@@ -1,43 +1,45 @@
 import fs from 'fs';
-import path from 'path';
 
 const dir = 'app/src/data';
-const artDir = 'app/src/assets/endings';
 const skip = new Set(['sceneSettings.ts', 'achievements.ts', 'bonus.ts', 'empireShop.ts', 'cardThemes.ts']);
-const arts = new Set(fs.readdirSync(artDir).map((f) => f.replace(/\.(jpg|png|webp)$/i, '')));
+const arts = new Set(fs.readdirSync('app/src/assets/endings').map((f) => f.replace(/\.(jpg|png|webp)$/i, '')));
 
-const missingArt: string[] = [];
-const orphanArt: string[] = [...arts];
-let total = 0;
-
-for (const f of fs.readdirSync(dir).filter((f) => /\.ts$/.test(f) && !skip.has(f))) {
-  const t = fs.readFileSync(`${dir}/${f}`, 'utf8');
-  const sid = (t.match(/id:\s*['"]([a-z_]+)['"]/) || [, f.replace('.ts', '')])[1];
+// 按大括号配对切出 scenes 数组里的每个场景对象（旧版要求 ending: 前面是 { 或 ,，
+// 但数据里常见 `],\n  next: "..."\n  ending: {` 这种前一行以 ] 收尾的写法，会漏）
+function scenesOf(t: string) {
   const start = t.indexOf('scenes:');
-  if (start < 0) continue;
+  if (start < 0) return [];
+  let p = t.indexOf('[', start);
+  const out: { id: string; frag: string }[] = [];
   let depth = 0, objStart = -1;
-  for (const c of []) void c;
-  for (let p = t.indexOf('[', start); p < t.length; p++) {
+  for (; p < t.length; p++) {
     const c = t[p];
     if (c === '{') { if (depth === 0) objStart = p; depth++; }
     else if (c === '}') {
       depth--;
-      if (depth === 0 && objStart >= 0) {
-        const frag = t.slice(objStart, p + 1);
-        const idm = frag.match(/^\{\s*id:\s*['"]([a-zA-Z_0-9]+)['"]/);
-        if (idm && /[,{]\s*ending:/.test(frag)) {
-          const key = `end_${sid}_${idm[1]}`;
-          total++;
-          if (arts.has(key)) { const i = orphanArt.indexOf(key); if (i >= 0) orphanArt.splice(i, 1); }
-          else missingArt.push(`${sid}/${idm[1]}  (期望 ${key}.jpg)`);
-        }
-        objStart = -1;
-      }
+      if (depth === 0 && objStart >= 0) { out.push({ id: '', frag: t.slice(objStart, p + 1) }); objStart = -1; }
     } else if (c === ']' && depth === 0) break;
   }
+  for (const s of out) {
+    const m = s.frag.match(/^\{\s*id:\s*['"]([a-zA-Z_0-9]+)['"]/);
+    s.id = m ? m[1] : '?';
+  }
+  return out;
 }
 
-console.log(`结局幕总数: ${total}   有图: ${total - missingArt.length}   缺图: ${missingArt.length}`);
-for (const m of missingArt) console.log('  缺:', m);
-console.log(`\n落单资产（有图但对不上任何结局幕）: ${orphanArt.length}`);
-for (const o of orphanArt.slice(0, 20)) console.log('  孤:', o);
+let total = 0; const missing: string[] = []; const seen = new Set<string>();
+for (const f of fs.readdirSync(dir).filter((f) => /\.ts$/.test(f) && !skip.has(f))) {
+  const t = fs.readFileSync(`${dir}/${f}`, 'utf8');
+  const sid = (t.match(/id:\s*['"]([a-z_]+)['"]/) || [, f.replace('.ts', '')])[1];
+  for (const s of scenesOf(t)) {
+    // 只看对象自己那一层的 ending 键（嵌套在 options 里的不算结局幕）
+    if (!/(^|[\s{,])ending:\s*\{/.test(s.frag)) continue;
+    const key = `end_${sid}_${s.id}`;
+    total++; seen.add(key);
+    if (!arts.has(key)) missing.push(`${sid}/${s.id} -> ${key}.jpg`);
+  }
+}
+const orphan = [...arts].filter((a) => !seen.has(a));
+console.log(`结局幕: ${total}   缺图: ${missing.length}   落单资产: ${orphan.length}`);
+for (const m of missing) console.log('  缺:', m);
+for (const o of orphan) console.log('  孤:', o);

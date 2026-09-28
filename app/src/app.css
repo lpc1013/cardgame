@@ -394,8 +394,8 @@ input, textarea, [contenteditable="true"] {
   --panel: #211e1a;
   --panel-top: #242019;
   --ink: #d8d0c0;
-  --ink-dim: #8a8274;
-  --accent: #cc5e44;      /* U-2a 对比度审计值：暗底上 4.56:1 */
+  --ink-dim: #a89e8b;     /* 与 3219 那条保持一致，别留两份不同值 */
+  --accent: #d16a52;      /* 原 #cc5e44 压 --panel 实测只有 4.24（.ach-reward/.deck-tag） */
   --accent-soft: #6e3524;
   --gold: #c9a86a;
   --line: #3a352d;
@@ -989,7 +989,42 @@ button { font-family: inherit; }
 .tree-reset { padding: 4px 12px; font-size: 12px; }
 
 /* ---------- 阅读页 ---------- */
-.story-root { height: 100%; display: flex; flex-direction: column; position: relative; }
+/* isolation 必须有：#root 现在铺了不透明宣纸，而 .scene-bg / .scene-stage 都是 z-index:-1。
+   没有独立堆叠上下文时负 z-index 会一路逃到根，被 #root 自己的背景整个盖住——
+   实测桌面截图里对弈图与复用底纹全部消失，只剩一片米黄（1440x900 像素核对）。 */
+.story-root { height: 100%; display: flex; flex-direction: column; position: relative; isolation: isolate; }
+/* 全出血档下正文必须有纸底：画作的天空/雪面太亮，深字直接压上去读不出
+   （1440x900 实测「棋 · 金陵御花园」「殿下，该您了。」几乎不可见）。
+   参考图「本回合奏报」正是这个做法——一条宣纸栏承文字，水墨在它四周透出。
+   面板还要贴着正文收高：flex:1 会把它拉满整屏，实测四行字下面挂着 460px 空白，
+   把对弈图最好看的那半张棋盘整个糊掉了。长文仍可滚（max-height + overflow-y:auto）。 */
+.story-root:has(.scene-stage) .story-panel {
+  flex: 0 1 auto; min-height: 0; max-height: 100%;
+  padding-bottom: 44px;
+  background: linear-gradient(180deg, rgba(239, 227, 205, .93) 0%, rgba(232, 218, 192, .95) 100%);
+  border: 1px solid var(--paper-edge);
+  outline: 1px solid rgba(189, 168, 127, .6);
+  outline-offset: -4px;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, .35);
+  margin-top: 18px;
+}
+/* 纸栏自己承文字后，画面遮罩可以放轻，让水墨透出来 */
+.story-root:has(.scene-stage) .scene-scrim {
+  background: linear-gradient(180deg,
+    rgba(12, 11, 10, .30) 0%, rgba(12, 11, 10, .10) 44%, rgba(12, 11, 10, .42) 100%);
+}
+.story-root:has(.scene-stage) .story-line { opacity: .82; }
+.story-root:has(.scene-stage) .story-line.show { opacity: 1; }
+/* 浅底纸栏是浅色的，深色模式下正文 --ink 会翻成米白 → 浅字压浅底直接读不出。
+   深色档给一条墨纸栏，边线跟着换成金线。底色必须贴着 --bg 走：
+   比 #171512 亮到 rgb(32,29,26) 时 .scene-title 的朱色掉到 4.18:1（实测），
+   压回近底亮度才有 4.6:1 的余量——分界靠金线边与投影，不靠提亮。 */
+[data-mode="dark"] .story-root:has(.scene-stage) .story-panel {
+  background: linear-gradient(180deg, rgba(22, 20, 17, .95) 0%, rgba(18, 16, 14, .97) 100%);
+  border-color: rgba(201, 168, 106, .26);
+  outline-color: rgba(201, 168, 106, .16);
+}
+
 .scene-bg {
   position: fixed; inset: 0; z-index: -1;
   background-size: cover; background-position: center;
@@ -3181,7 +3216,10 @@ button { font-family: inherit; }
   --ink-dim: #574a38;
   --gold: #63481a;        /* 再压暗：#7a5a22 在面板内底 (207,199,184) 上仍只 3.78 */
 }
-[data-mode="dark"] { --ink-dim: #8a8274; --gold: #c9a86a; }
+/* #8a8274 压 --panel #211e1a 只有 4.37，压成就行的金棕底 (53,45,30) 更掉到 3.96
+   （.stat-chip「军功/帝心/民心」12px、.ach-cond 达成条件、.muted 计数）。
+   取到 #a89e8b：最差那档 5.13，暗底面板上 5.9，仍明显低于正文 --ink #d8d0c0。 */
+[data-mode="dark"] { --ink-dim: #a89e8b; --gold: #c9a86a; }
 
 /* 朱砂压米黄 3.97~4.26，正文级的小字改用深朱 */
 :root:not([data-mode="dark"]) .ach-reward, :root:not([data-mode="dark"]) .deck-tag { color: var(--accent-soft); }
@@ -3223,6 +3261,7 @@ button { font-family: inherit; }
   --suit-shi: #8d3320;    /* 势 · 朱褐 */
   --suit-yin: #533378;    /* 隐 · 紫棠 */
 }
+/* 隐紫 #9a72c0 压图鉴格底 (32,28,22) 实测 4.47，差 0.03 卡在阈值下；提到 #9d77c3 → 4.73 */
 [data-mode="dark"] {
-  --suit-ce: #5b8fb8; --suit-qi: #c9a13a; --suit-shi: #c96b57; --suit-yin: #9a72c0;
+  --suit-ce: #5b8fb8; --suit-qi: #c9a13a; --suit-shi: #c96b57; --suit-yin: #9d77c3;
 }

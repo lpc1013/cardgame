@@ -184,6 +184,15 @@ def main():
            for f in os.listdir(os.path.join(HERE, "../../app/src/assets/scenes"))
            if f.endswith(".jpg")}
     plan = {}
+    # 读回既有映射作为冻结基线（首次运行时文件还不存在，则全量新定）
+    map_path = os.path.join(HERE, "../../app/src/data/sceneSettings.ts")
+    frozen = {}
+    if os.path.exists(map_path):
+        raw_prev = open(map_path, encoding="utf-8").read()
+        try:
+            frozen = json.loads(raw_prev.split("=", 1)[1].rsplit(";", 1)[0])
+        except Exception:
+            frozen = {}
     for sid, scenes in sc.items():
         # 剧情边直接从数据文件取：scene_text.json 只有标题与首行
         raw = open(os.path.join(HERE, f"../../app/src/data/{sid}.ts"), encoding="utf-8").read()
@@ -197,6 +206,11 @@ def main():
         edges = {parts[k]: build_edges(parts[k + 1]) for k in range(1, len(parts), 2)}
         setting_of = classify_all(scenes)
         propagate(sid, scenes, setting_of, edges)
+        # 冻结已定地点：聚类依赖传播顺序，重算会漂移；而背景图一旦产出就绑死了这个键，
+        # 换了键等于同一间房在通关中途变样。只给尚无赋值的幕定新地点。
+        for scene_id, prev in (frozen.get(sid) or {}).items():
+            if prev != "other":
+                setting_of[scene_id] = prev
         for scene_id, meta in scenes.items():
             if f"{sid}_{scene_id}".lower() in art:
                 continue

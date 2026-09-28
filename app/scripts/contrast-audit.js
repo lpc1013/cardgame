@@ -9,6 +9,9 @@
 //  1) 祖先只有 background-image 没 background-color 时，只取到渐变第一个色阶 → 给容器补实色底
 //  2) CSS 热替换后 150ms 颜色过渡的中间态 → 等 ≥1s 再测
 //  3) 面板背后仍挂载着的首屏元素也会被扫到（这里只跳零尺寸，不跳被遮挡）
+//  4) 文字压在 <img> 上时取到的是 img 之后的页面底，不是图本身。
+//     已知唯一命中：封面 .cover-info .sub 恒报 1.07（浅字压米黄底），
+//     实际它画在封面立绘上、带 text-shadow，是假阳性，别再当缺陷查。
 window.__sweep = async function (labels) {
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const out = [];

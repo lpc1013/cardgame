@@ -1848,10 +1848,13 @@ button { font-family: inherit; }
   border: 1px solid rgba(0,0,0,.45);
   box-shadow: 0 2px 6px rgba(0,0,0,.35);
 }
-.wine-chip.suit-策 { background: linear-gradient(170deg, #5c7a4a, #3a5230); }
-.wine-chip.suit-器 { background: linear-gradient(170deg, #8a7030, #5a4a1e); }
-.wine-chip.suit-势 { background: linear-gradient(170deg, #96402c, #5e2618); }
-.wine-chip.suit-隐 { background: linear-gradient(170deg, #5c5478, #3a3550); }
+/* 四枚酒筹是渐变底：探针在容器只有 background-image 时只取第一个色阶，
+   所以「补一层实色底」既让测量诚实、也让渐变失效时不露骨。
+   器 那道顶色 #8a7030 压奶白字 #f4ebd8 只有 3.99（实测），顶色压暗一档到 #7d6529 → 4.71。 */
+.wine-chip.suit-策 { background: linear-gradient(170deg, #5c7a4a, #3a5230) #3a5230; }
+.wine-chip.suit-器 { background: linear-gradient(170deg, #7d6529, #5a4a1e) #5a4a1e; }
+.wine-chip.suit-势 { background: linear-gradient(170deg, #96402c, #5e2618) #5e2618; }
+.wine-chip.suit-隐 { background: linear-gradient(170deg, #5c5478, #3a3550) #3a3550; }
 
 /* ---------- 移动端适配 ---------- */
 @media (max-width: 640px) and (orientation: portrait) {
@@ -3259,7 +3262,7 @@ button { font-family: inherit; }
    它们与参考图的深木顶栏一致，是有意保留的。但浅底模式下 --gold/--ink-dim
    已为宣纸压暗，放进去就变成深字压深底（实测 h2/.chip-silver/.shop-tab 1.72~1.98）。
    故在这些容器上就地恢复"深底配浅字"的令牌，内部所有子元素自动跟着走。 */
-.shop-header, .tcard, .prep-card, .qi-bar, .gsc-progress {
+.shop-header, .tcard, .prep-card, .qi-bar, .gsc-progress, .paijiu-tile {
   --ink: #ece0c8;
   --ink-dim: #b5a583;
   --gold: #c9a86a;

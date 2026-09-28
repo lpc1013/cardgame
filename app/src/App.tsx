@@ -68,6 +68,8 @@ const _END_ART = import.meta.glob("./assets/endings/*.{png,jpg,jpeg}", { eager: 
 /** 成就图标：assets/achievements/ach_<id>.{jpg,png}（无图时 UI 用 SVG 纹章兜底） */
 const _ACH_ART = import.meta.glob("./assets/achievements/*.{png,jpg,jpeg}", { eager: true, import: "default" }) as Record<string, string>;
 const achArt = (id: string) => _ACH_ART[`./assets/achievements/ach_${id}.jpg`] ?? _ACH_ART[`./assets/achievements/ach_${id}.png`];
+/** 浅/深模式持久化键（与 dicun_save_v4 解耦——它是显示偏好，不属于周目进度） */
+const MODE_KEY = "dicun_mode_v1";
 /** 动态背景特效层：assets/scenes/motion/<剧本id>_<场景id>.webp
  *  anim-forge（Godot）烘出的透明无缝循环粒子层，叠在原画之上；缺文件即回落淡水印底 */
 const _SCENE_MOTION = import.meta.glob("./assets/scenes/motion/*.webp", { eager: true, import: "default" }) as Record<string, string>;
@@ -485,6 +487,15 @@ export default function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = empire.theme;
   }, [empire.theme]);
+
+  // 浅/深模式：独立于墨铤解锁的主题，是基础偏好开关，默认浅（朝堂宣纸）
+  const [mode, setMode] = useState<"light" | "dark">(() => {
+    try { return localStorage.getItem(MODE_KEY) === "dark" ? "dark" : "light"; } catch { return "light"; }
+  });
+  useEffect(() => {
+    document.documentElement.dataset.mode = mode;
+    try { localStorage.setItem(MODE_KEY, mode); } catch { /* 隐私模式等场景静默失败 */ }
+  }, [mode]);
 
   const closePanel = () => { setPanel(null); setEmpTick((t) => t + 1); };
 
@@ -1061,6 +1072,9 @@ export default function App() {
             </span>
             <span className="nav-sep" aria-hidden="true" />
             <button onClick={() => { sfx.choice(); setShowGuide(true); }}>规则书</button>
+            <button onClick={() => { sfx.choice(); setMode((m) => (m === "light" ? "dark" : "light")); }}>
+              {mode === "light" ? "转墨" : "还宣"}
+            </button>
             <button onClick={() => { sfx.choice(); setPanel("settings"); }}>设置</button>
           </div>
         </nav>

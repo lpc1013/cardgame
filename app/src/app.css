@@ -337,16 +337,17 @@ input, textarea, [contenteditable="true"] {
    全局 CSS 变量系统（V-1 · 视觉设计令牌）
    ============================================================ */
 :root {
-  /* 基础色彩 - 默认主题「墨褐古卷」（U-2a 对比度审计值，勿随意改动） */
-  --bg: #171512;
-  --panel: #211e1a;
-  --panel-top: #242019;   /* 面板渐变亮端 */
-  --ink: #d8d0c0;
-  --ink-dim: #8a8274;
-  --accent: #cc5e44;      /* 主红 4.56:1（U-2a，原 #b3452c 3.30:1） */
-  --accent-soft: #6e3524;
-  --gold: #c9a86a;
-  --line: #3a352d;
+  /* 基础色彩 - 默认主题「朝堂宣纸」：大漆木框 + 宣纸面板 + 墨字 + 朱砂。
+     外圈仍取深色木漆（参考图最外即深木），内容面转米黄，浅/深由 data-mode 切 */
+  --bg: #241c14;
+  --panel: #efe3cd;
+  --panel-top: #f4ead8;   /* 面板渐变亮端 */
+  --ink: #241d16;         /* 纸上墨字 */
+  --ink-dim: #6d5f4b;
+  --accent: #a8322a;      /* 朱砂 */
+  --accent-soft: #7c211b;
+  --gold: #8a6a2f;        /* 纸上须用暗金/赭，亮金压米黄对比不足 */
+  --line: #bda87f;        /* 纸上细线 */
   --scene-filter: none;   /* 场景衬底色调（主题可覆写） */
   
   /* V-1b: 四色相克环 */
@@ -383,6 +384,21 @@ input, textarea, [contenteditable="true"] {
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
+}
+
+/* 深底模式（原「墨褐古卷」默认值）——浅/深开关置 dark 时整体回落旧观感。
+   注意：这套值同时是四套解锁主题（zhusha/daiqing/liujin）的底色基座，
+   那三套只覆写 accent/底/线，故 dark 下它们维持原样。 */
+[data-mode="dark"] {
+  --bg: #171512;
+  --panel: #211e1a;
+  --panel-top: #242019;
+  --ink: #d8d0c0;
+  --ink-dim: #8a8274;
+  --accent: #cc5e44;      /* U-2a 对比度审计值：暗底上 4.56:1 */
+  --accent-soft: #6e3524;
+  --gold: #c9a86a;
+  --line: #3a352d;
 }
 
 /* 帝国主题外观（商市解锁，data-theme 由 App 按存档切换）：主色/底色/边框/场景色调差异 */
@@ -490,8 +506,7 @@ html, body, #root {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family: "Noto Serif SC", "Source Han Serif SC", "STSong", "SimSun", serif;
-}
+  font-family: "Noto Serif SC", "Source Han Serif SC", "STSong", "SimSun", serif;}
 
 button { font-family: inherit; }
 
@@ -3130,4 +3145,79 @@ button { font-family: inherit; }
 }
 .cover-actions button:not(.btn-cta):hover {
   background: var(--paper); border-color: var(--vermilion); color: var(--vermilion-deep);
+}
+
+/* ---------- 浅底结构性修正 ----------
+   根因：html/body/#root 原本整块铺 --bg，等于内容全坐在大漆上，
+   而 --ink/--ink-dim 是为宣纸调的——一个 --ink 同时服务「漆」与「纸」必失败。
+   参考图的答案是内容区整块宣纸、只有顶栏与最外圈是木漆，故让 #root 铺纸。 */
+#root {
+  background-color: var(--paper);   /* 实色底：渐变之外必须有，否则渐变失败即露漆底 */
+  background-image:
+    radial-gradient(120% 80% at 50% -10%, rgba(255, 252, 244, .5), transparent 60%),
+    linear-gradient(168deg, var(--paper) 0%, var(--paper-2) 100%);
+  color: var(--ink);
+}
+[data-mode="dark"] #root { background-color: var(--bg); background-image: none; }
+
+/* 实底按钮：暗红/墨底上必须始终是浅色字，不能跟 --ink 走（浅底模式下会墨压墨） */
+.btn-main, .btn-cta, .vermilion-btn, .ink-btn { color: #f7ead6; }
+.btn-main:hover { color: #fff8ea; }
+
+/* 亮金压米黄只有 3.95:1，浅底改用暗赭金；深底维持原审计值 */
+:root { --gold: #7a5a22; }
+[data-mode="dark"] { --gold: #c9a86a; }
+
+/* ---------- 浅底对比度补丁（逐屏审计得出，非猜测） ----------
+   审计法：遍历叶子文字节点，向上合成真实背景（含 background-image 渐变），
+   按 WCAG 尺寸阈值判 4.5/3。首页与行囊 0 失败；以下五屏各报出真实缺陷。 */
+:root {
+  /* --ink-dim #6d5f4b 压米黄只有 3.69~3.97（.muted/.ach-cond/.emporia-desc 共 76 处） */
+  --ink-dim: #574a38;
+  --gold: #63481a;        /* 再压暗：#7a5a22 在面板内底 (207,199,184) 上仍只 3.78 */
+}
+[data-mode="dark"] { --ink-dim: #8a8274; --gold: #c9a86a; }
+
+/* 朱砂压米黄 3.97~4.26，正文级的小字改用深朱 */
+.ach-reward, .deck-tag { color: var(--accent-soft); }
+.danger-ghost { color: var(--accent-soft); border-color: var(--accent-soft); }
+.danger-ghost:hover { color: #f7ead6; background: var(--accent-soft); }
+/* 实心选中态是金底深字（实测 2.87）——浅底上改深金底配纸白字。
+   必须用 .album-chip.fix-chip-solid 提特异度：.album-chip.on 是 (0,2,0)，
+   单写 .fix-chip-solid (0,1,0) 压不住，实测颜色仍是旧的 --bg 深字。 */
+.album-chip.fix-chip-solid { background: var(--gold); color: #f7ead6; border-color: var(--gold); }
+/* 上面那条压不住：2608-2620 有 .album-chip.fix-chip-solid.on (0,3,0) 写死
+   color:#171512（暗底时代的"亮底配深字"假设），浅底上变成深字压深金。
+   同特异度后置取胜，实心态一律纸白字。 */
+.album-chip.fix-chip-solid.on { color: #f7ead6; }
+
+/* 深漆岛：某些表面本来就写死了深色渐变（商市顶栏、卡牌底等），
+   它们与参考图的深木顶栏一致，是有意保留的。但浅底模式下 --gold/--ink-dim
+   已为宣纸压暗，放进去就变成深字压深底（实测 h2/.chip-silver/.shop-tab 1.72~1.98）。
+   故在这些容器上就地恢复"深底配浅字"的令牌，内部所有子元素自动跟着走。 */
+.shop-header, .tcard, .prep-card, .qi-bar, .gsc-progress {
+  --ink: #ece0c8;
+  --ink-dim: #b5a583;
+  --gold: #c9a86a;
+  --accent: #d96b5b;
+  --accent-soft: #a8322a;
+  --line: #4a3a28;
+  color: var(--ink);
+}
+/* 卡脚里的价格/链接走 --gold，但 .tcard 的金色覆写没穿透到它（实测 #6e5a28
+   压在卡底上只 2.75:1），定点给亮金 */
+.tcard .link-btn { color: #c9a86a; }
+button.danger-ghost { color: var(--accent-soft); border-color: var(--accent-soft); }
+button.danger-ghost:hover { color: #f7ead6; background: var(--accent-soft); }
+
+/* 四套花色原为暗底而调，压米黄只有 1.45~2.26:1（策/器/势/隐全废）。
+   浅底换一组深色系，色相不变、只压明度，保证四色相克环仍可辨。 */
+:root {
+  --suit-ce: #265371;     /* 策 · 靛青 */
+  --suit-qi: #6b4e0f;     /* 器 · 赭金 */
+  --suit-shi: #8d3320;    /* 势 · 朱褐 */
+  --suit-yin: #533378;    /* 隐 · 紫棠 */
+}
+[data-mode="dark"] {
+  --suit-ce: #5b8fb8; --suit-qi: #c9a13a; --suit-shi: #c96b57; --suit-yin: #9a72c0;
 }

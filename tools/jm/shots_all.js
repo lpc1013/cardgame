@@ -15,18 +15,36 @@ const SAVE = (sc, scene, vp) => JSON.stringify({
   },
 });
 
-const shots = [];
-const audit = {};
-
 // 每屏都要重开页面并预置存档：应用会按 sceneId 自行分派对局/剧情相位
-const targets = [
-  ['motion', 'changjiang', 'start', null],       // 全出血真背景 + anim-forge 特效层
-  ['story', 'fuma', 'start', null],              // 复用底纹 + 叙述者立绘
-  ['narrator', 'jieyu', 'start', 'vp_yuqian'],   // 于谦立绘
+// 覆盖面：12 部 × 浅/深 = 24 屏。原先只手挑三部，
+// 其余九部的复用底纹与叙述者立绘从没在桌面上核对过像素。
+const TARGETS = [
+  ['fuma', 'start', null],
+  ['qiuwei', 'start', null],
+  ['sichou', 'start', null],
+  ['xie', 'start', null],
+  ['qinhuai', 'start', null],
+  ['changjiang', 'start', null],
+  ['changhen', 'start', null],
+  ['jianfeng', 'start', null],
+  ['jieyu', 'start', null],
+  ['diaolan', 'start', null],
+  // 开场幕 id 不统一是 "start"，这三个各是别的名字（照实取自 SCENE_SETTING）
+  ['shumian', 'a1_intro', null],
+  ['touming', 'hall_laugh', null],
+  ['xingxing', 'zhengzhi', null],
 ];
 
-for (const [name, sc, scene, vp] of targets) {
+const shots = [];
+const FILE = `${OUT}/shots_audit.json`;
+// 24 屏一次跑不完 180s 硬时限，所以可续跑：已出结果的键直接跳过，中断后重跑接着往下走
+const audit = fs.existsSync(FILE) ? JSON.parse(fs.readFileSync(FILE, 'utf8')).audit || {} : {};
+
+for (const [sc, scene, vp] of TARGETS) {
+  const name = sc;
   for (const mode of ['light', 'dark']) {
+    const key = `${name}_${mode}`;
+    if (audit[key]) { shots.push(key); continue; }
     await page.goto('about:blank');
     await page.waitForTimeout(400);
     await page.goto(BASE, { waitUntil: 'load', timeout: 60000 });
@@ -35,16 +53,23 @@ for (const [name, sc, scene, vp] of targets) {
     await page.reload({ waitUntil: 'load' });
     await page.waitForTimeout(2600);
     const b = await page.$('button:has-text("继续上次")');
-    if (b) { await b.click(); await page.waitForTimeout(1600); }
+    // 新揭示段有最长 ~1.1s 的错峰 + .5s 擦入，等太短会把句子截在擦到一半的状态，
+    // 看上去像文字被面板右缘切掉（jianfeng 首拍就是这样误判过一次）
+    if (b) { await b.click(); await page.waitForTimeout(2800); }
     await page.addScriptTag({ url: BASE + 'scripts/contrast-audit.js' });
     await page.waitForTimeout(400);
-    const a = await page.evaluate(() => { const x = window.__audit(); return { f: x.fails, c: x.checked, l: x.list.slice(0, 4).map(y => y[0] + ':' + y[1]) }; });
+    const a = await page.evaluate(() => {
+      const x = window.__audit();
+      return {
+        f: x.fails, c: x.checked,
+        l: x.list.slice(0, 4).map((y) => y[0] + ':' + y[1] + '@' + y[4]),
+        phase: document.querySelector('.story-root') ? 'story' : document.querySelector('.duel-root') ? 'duel' : 'other',
+      };
+    });
     audit[`${name}_${mode}`] = a;
     const p = `${OUT}/s_${name}_${mode}.png`;
     await page.screenshot({ path: p });
     shots.push(`${name}_${mode}`);
+    fs.writeFileSync(FILE, JSON.stringify({ audit, shots, pageCount: context.pages().length }, null, 1));
   }
 }
-
-fs.writeFileSync(`${OUT}/shots_audit.json`, JSON.stringify({ audit, shots }, null, 1));
-console.log(JSON.stringify({ pageCount: context.pages().length, shots, audit }));

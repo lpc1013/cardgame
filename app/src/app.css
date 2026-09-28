@@ -384,6 +384,22 @@ input, textarea, [contenteditable="true"] {
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
+
+  /* 全出血剧情页的正文读稿表面。单独一组令牌而不是就地写死米黄：
+     data-theme 与 data-mode 是两个正交轴、都往 --ink 上写。一套主题只要把 --ink
+     翻成冷白/象牙白（indigo/luxury），米黄栏上就变成浅字压浅底（实测 1.01 / 1.21）。
+     所以**换主题必须同时换读稿表面**。
+     ⚠ 令牌必须定义在所有 [data-theme] 块之前：它与 [data-theme=x] 特异度同为 (0,1,0)，
+     写在后面就会盖掉主题自带的值（第一版就踩中，改完全文读数一个没变）。 */
+  --read-bg: rgba(239, 227, 205, .93);
+  --read-bg-2: rgba(232, 218, 192, .95);
+  --read-edge: rgba(189, 168, 127, .6);
+  /* 封面徽章/次级按钮的半透明覆膜。原来三处写死 rgba(255,252,244,.5)——
+     那是"宣纸一定浅"的假设：主题把 --paper 翻成深底后，这层浅膜把深底提亮成
+     中灰（0.5·(255,252,244)+0.5·(36,26,21)=(145,139,132) 实测），
+     而徽章字走的是主题的浅墨，浅字压中灰只剩 1.39。
+     覆膜方向必须跟着皮肤走：浅皮提亮、深皮压暗。 */
+  --paper-wash: rgba(255, 252, 244, .5);
 }
 
 /* 深底模式（原「墨褐古卷」默认值）——浅/深开关置 dark 时整体回落旧观感。
@@ -399,9 +415,17 @@ input, textarea, [contenteditable="true"] {
   --accent-soft: #6e3524;
   --gold: #c9a86a;
   --line: #3a352d;
+  /* 深色档的读稿面：底色要贴着 --bg 走，一旦亮到 rgb(32,29,26)，
+     .scene-title 的朱色就掉到 4.18:1（实测）。分界靠金线边与投影，不靠提亮栏面。 */
+  --read-bg: rgba(22, 20, 17, .95);
+  --read-bg-2: rgba(18, 16, 14, .97);
+  --read-edge: rgba(201, 168, 106, .26);
 }
 
-/* 帝国主题外观（商市解锁，data-theme 由 App 按存档切换）：主色/底色/边框/场景色调差异 */
+/* 帝国主题外观（商市解锁，data-theme 由 App 按存档切换）：主色/底色/边框/场景色调差异。
+   ⚠ 主题若要覆写 --ink/--ink-dim/--read-*，必须写到文件末尾的「主题墨色与读稿面」块，
+   不能写在这里：后面还有好几个 :root 补丁块（浅底 --ink-dim/--gold 等）特异度同为 (0,1,0)，
+   写在 405 这一带会被它们盖掉（第一版就这么白改过一轮，全文读数一个没变）。 */
 [data-theme="zhusha"] {
   --accent: #c96b57; --accent-soft: #7a3325; --gold: #e0b070; /* accent 同势色提亮（U-2a） */
   --bg: #1b1210; --panel: #261a15; --panel-top: #2d1e17; --line: #4c332a;
@@ -1001,9 +1025,9 @@ button { font-family: inherit; }
 .story-root:has(.scene-stage) .story-panel {
   flex: 0 1 auto; min-height: 0; max-height: 100%;
   padding-bottom: 44px;
-  background: linear-gradient(180deg, rgba(239, 227, 205, .93) 0%, rgba(232, 218, 192, .95) 100%);
-  border: 1px solid var(--paper-edge);
-  outline: 1px solid rgba(189, 168, 127, .6);
+  background: linear-gradient(180deg, var(--read-bg) 0%, var(--read-bg-2) 100%);
+  border: 1px solid var(--read-edge);
+  outline: 1px solid var(--read-edge);
   outline-offset: -4px;
   box-shadow: 0 10px 34px rgba(0, 0, 0, .35);
   margin-top: 18px;
@@ -1015,15 +1039,6 @@ button { font-family: inherit; }
 }
 .story-root:has(.scene-stage) .story-line { opacity: .82; }
 .story-root:has(.scene-stage) .story-line.show { opacity: 1; }
-/* 浅底纸栏是浅色的，深色模式下正文 --ink 会翻成米白 → 浅字压浅底直接读不出。
-   深色档给一条墨纸栏，边线跟着换成金线。底色必须贴着 --bg 走：
-   比 #171512 亮到 rgb(32,29,26) 时 .scene-title 的朱色掉到 4.18:1（实测），
-   压回近底亮度才有 4.6:1 的余量——分界靠金线边与投影，不靠提亮。 */
-[data-mode="dark"] .story-root:has(.scene-stage) .story-panel {
-  background: linear-gradient(180deg, rgba(22, 20, 17, .95) 0%, rgba(18, 16, 14, .97) 100%);
-  border-color: rgba(201, 168, 106, .26);
-  outline-color: rgba(201, 168, 106, .16);
-}
 
 .scene-bg {
   position: fixed; inset: 0; z-index: -1;
@@ -3073,6 +3088,7 @@ button { font-family: inherit; }
   --paper-edge: #8a7455;
   --vermilion: #a8322a;      /* 朱砂 */
   --vermilion-deep: #7c211b;
+  --vermilion-text: #7c211b;  /* 朱批**文字**专用；深皮主题要提亮，不能动 --vermilion（那是 CTA 的底） */
   --seal: #b23a2c;
 }
 
@@ -3171,9 +3187,9 @@ button { font-family: inherit; }
 .cover-ends { text-shadow: 0 1px 4px rgba(0, 0, 0, .6); }
 .badge {
   border-radius: 2px; border-color: var(--paper-line); color: var(--paper-ink-dim);
-  background: rgba(255, 252, 244, .5);
+  background: var(--paper-wash);
 }
-.badge-v2 { color: var(--vermilion-deep); border-color: var(--vermilion); }
+.badge-v2 { color: var(--vermilion-text); border-color: var(--vermilion); }
 .badge-ends { color: var(--paper-ink); border-color: var(--paper-edge); }
 /* 出征 CTA：朱批阳文印钮，保留 cta.md 的官印化形制，只换朱砂色与双线 */
 .btn-cta {
@@ -3184,7 +3200,7 @@ button { font-family: inherit; }
 /* 次级按钮：暗色主题遗留的半透明深底 + 灰字坐在宣纸上对比度不足（实测
    color lum .50 / 复合底 lum ~.35）。改为墨线勾边、纸上墨字。 */
 .cover-actions button:not(.btn-cta) {
-  background: rgba(255, 252, 244, .45);
+  background: var(--paper-wash);
   color: var(--paper-ink);
   border: 1px solid var(--paper-edge);
 }
@@ -3282,3 +3298,70 @@ button { font-family: inherit; }
 [data-mode="dark"] {
   --suit-ce: #5b8fb8; --suit-qi: #c9a13a; --suit-shi: #c96b57; --suit-yin: #9d77c3;
 }
+
+/* ============================================================
+   主题墨色与读稿面（2026-09-29 对比度审计得出）
+   必须放在文件最末尾：上面有 :root{--ink-dim:#574a38;--gold:#63481a}
+   和 [data-mode="dark"]{--ink-dim:…;--gold:…} 两组浅/深补丁，
+   特异度都是 (0,1,0)，写在前面会被它们把主题的 --ink-dim/--gold 整片盖掉
+   ——第一版就是这样，改完 28 组读数一个都没变。
+   规则：**主题翻了 --panel 就必须同时翻 --ink/--ink-dim/--gold/--read-***，
+   否则 data-theme 与 data-mode 两个正交轴会互相打脸。
+   ============================================================ */
+/* 三套深底帝国主题：原块只覆写底色，浅档的深墨字压深底（.stat-chip/.tb-title/.clue-btn 1.88~1.99） */
+[data-theme="zhusha"] {
+  --ink: #ece0c8; --ink-dim: #b5a583; --gold: #e0b070;
+  --read-bg: rgba(27, 18, 16, .95); --read-bg-2: rgba(21, 14, 12, .97); --read-edge: rgba(224, 176, 112, .26);
+  --paper: #241a15; --paper-2: #1b1210; --paper-ink: #ece0c8; --paper-ink-dim: #b5a583;
+  --paper-line: #4c332a; --paper-edge: #6e4b34; --paper-wash: rgba(9, 5, 3, .3);
+}
+[data-theme="daiqing"] {
+  --ink: #dde6ee; --ink-dim: #9fb0bf; --gold: #b8d0e0;
+  --read-bg: rgba(17, 21, 25, .95); --read-bg-2: rgba(12, 16, 20, .97); --read-edge: rgba(184, 208, 224, .26);
+  --paper: #19212a; --paper-2: #111519; --paper-ink: #dde6ee; --paper-ink-dim: #9fb0bf;
+  --paper-line: #2e3e4b; --paper-edge: #44586b; --paper-wash: rgba(4, 7, 10, .3);
+}
+[data-theme="liujin"] {
+  --ink: #ece0c8; --ink-dim: #bfae83; --gold: #ecd9a0;
+  --read-bg: rgba(26, 21, 9, .95); --read-bg-2: rgba(20, 16, 7, .97); --read-edge: rgba(236, 217, 160, .26);
+  --paper: #262010; --paper-2: #1a1509; --paper-ink: #ece0c8; --paper-ink-dim: #bfae83;
+  --paper-line: #4d4122; --paper-edge: #7a6222; --paper-wash: rgba(8, 6, 2, .3);
+}
+/* 青瓷是唯一的浅底主题：深色档下它的黛蓝正文必须配浅色读稿面（否则 .story-line 1.49） */
+[data-theme="celadon"] {
+  --ink: #2c3e50; --ink-dim: #5f7071; --gold: #b03526;
+  --read-bg: rgba(255, 255, 255, .94); --read-bg-2: rgba(247, 249, 248, .96); --read-edge: rgba(44, 62, 80, .2);
+  --paper: #ffffff; --paper-2: #f0f4f3; --paper-ink: #2c3e50; --paper-ink-dim: #5f7071;
+  --paper-line: #dfe6e9; --paper-edge: #b8c6cb; --paper-wash: rgba(240, 244, 243, .72);
+}
+/* 这两套把 --ink 定成冷白/象牙白：浅档默认的米黄读稿面会让正文变成浅字压浅底（1.01 / 1.21） */
+[data-theme="indigo"] {
+  --ink: #e0e6ed; --ink-dim: #8fa2b5; --gold: #ff5df0;
+  --read-bg: rgba(10, 10, 18, .95); --read-bg-2: rgba(7, 7, 14, .97); --read-edge: rgba(0, 245, 255, .22);
+  --paper: #121220; --paper-2: #0a0a12; --paper-ink: #e0e6ed; --paper-ink-dim: #8fa2b5;
+  --paper-line: #23233a; --paper-edge: #3a3a5c; --paper-wash: rgba(3, 3, 8, .32);
+}
+[data-theme="luxury"] {
+  --ink: #fff8e7; --ink-dim: #cbb596; --gold: #ffef96;
+  --read-bg: rgba(13, 8, 5, .95); --read-bg-2: rgba(10, 6, 4, .97); --read-edge: rgba(255, 215, 0, .24);
+  --paper: #1a120a; --paper-2: #0d0805; --paper-ink: #fff8e7; --paper-ink-dim: #cbb596;
+  --paper-line: #4a3828; --paper-edge: #8a6d1f; --paper-wash: rgba(4, 2, 1, .32);
+}
+/* 亮底主题的实底主按钮：.btn-main 写死纸白字，压在天青/霓虹青/亮金上只有 2.65~3.48。
+   这几套的 accent 本身就亮，按钮字改走各自底色——深字压亮底才是对的方向。
+   ⚠ 只动 .btn-main：.btn-cta 的底是 --vermilion 深朱（rgb(168,50,42)），
+   一并覆成深字反而掉到 2.09（实测），它本来就不在这个问题里。 */
+[data-theme="celadon"] .btn-main { color: #0e2831; }
+[data-theme="indigo"] .btn-main { color: #06121a; }
+[data-theme="luxury"] .btn-main { color: #241a05; }
+/* 青瓷的 accent 是天青 #7ab8c9，压白底只有 2.2——幕题是 15px 小字，必须换。
+   用它自己的朱红印泥（--gold #b03526），与默认皮肤「幕题走朱砂」同一路子。 */
+[data-theme="celadon"] .scene-title { color: var(--gold); }
+/* 朱批在默认皮肤里身兼两职：既是 .badge-v2 的**文字**色，又是 .btn-cta 的**底**色。
+   深皮要提亮它才能让浅字读出来，但一并提亮就把 CTA 的深朱底做成浅红、
+   奶白字掉到 2.2（实测）。所以把两个职责拆开：--vermilion-text 只管字。 */
+[data-theme="zhusha"], [data-theme="daiqing"], [data-theme="liujin"],
+[data-theme="indigo"], [data-theme="luxury"] {
+  --vermilion-text: #e08a6f;
+}
+[data-theme="celadon"] { --vermilion-text: #8f2a1d; }

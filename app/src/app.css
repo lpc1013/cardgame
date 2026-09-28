@@ -3179,17 +3179,17 @@ button { font-family: inherit; }
 [data-mode="dark"] { --ink-dim: #8a8274; --gold: #c9a86a; }
 
 /* 朱砂压米黄 3.97~4.26，正文级的小字改用深朱 */
-.ach-reward, .deck-tag { color: var(--accent-soft); }
+:root:not([data-mode="dark"]) .ach-reward, :root:not([data-mode="dark"]) .deck-tag { color: var(--accent-soft); }
 .danger-ghost { color: var(--accent-soft); border-color: var(--accent-soft); }
 .danger-ghost:hover { color: #f7ead6; background: var(--accent-soft); }
 /* 实心选中态是金底深字（实测 2.87）——浅底上改深金底配纸白字。
    必须用 .album-chip.fix-chip-solid 提特异度：.album-chip.on 是 (0,2,0)，
    单写 .fix-chip-solid (0,1,0) 压不住，实测颜色仍是旧的 --bg 深字。 */
-.album-chip.fix-chip-solid { background: var(--gold); color: #f7ead6; border-color: var(--gold); }
+:root:not([data-mode="dark"]) .album-chip.fix-chip-solid { background: var(--gold); color: #f7ead6; border-color: var(--gold); }
 /* 上面那条压不住：2608-2620 有 .album-chip.fix-chip-solid.on (0,3,0) 写死
    color:#171512（暗底时代的"亮底配深字"假设），浅底上变成深字压深金。
    同特异度后置取胜，实心态一律纸白字。 */
-.album-chip.fix-chip-solid.on { color: #f7ead6; }
+:root:not([data-mode="dark"]) .album-chip.fix-chip-solid.on { color: #f7ead6; }
 
 /* 深漆岛：某些表面本来就写死了深色渐变（商市顶栏、卡牌底等），
    它们与参考图的深木顶栏一致，是有意保留的。但浅底模式下 --gold/--ink-dim
@@ -3207,8 +3207,8 @@ button { font-family: inherit; }
 /* 卡脚里的价格/链接走 --gold，但 .tcard 的金色覆写没穿透到它（实测 #6e5a28
    压在卡底上只 2.75:1），定点给亮金 */
 .tcard .link-btn { color: #c9a86a; }
-button.danger-ghost { color: var(--accent-soft); border-color: var(--accent-soft); }
-button.danger-ghost:hover { color: #f7ead6; background: var(--accent-soft); }
+:root:not([data-mode="dark"]) button.danger-ghost { color: var(--accent-soft); border-color: var(--accent-soft); }
+:root:not([data-mode="dark"]) button.danger-ghost:hover { color: #f7ead6; background: var(--accent-soft); }
 
 /* 四套花色原为暗底而调，压米黄只有 1.45~2.26:1（策/器/势/隐全废）。
    浅底换一组深色系，色相不变、只压明度，保证四色相克环仍可辨。 */

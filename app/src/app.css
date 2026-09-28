@@ -3123,7 +3123,12 @@ button { font-family: inherit; }
   padding: 8px 20px 9px;
   clip-path: polygon(1% 12%, 4% 0, 96% 5%, 100% 84%, 97% 100%, 3% 95%);
 }
-.cover-info .sub { color: var(--paper-ink-dim); }
+/* 封面信息层是 absolute 压在封面插画上的——背景是画不是纸，
+   所以文字必须按"深底配浅字 + 投影"处理，且与浅/深模式无关。
+   （上一轮误给 .sub 设了纸墨深色，桌面截图实测在夜景封面上几乎读不出；
+    对比度探针看不见这类问题，它读到的是背后的宣纸。） */
+.cover-info .sub { color: #e8dcc3; text-shadow: 0 1px 6px rgba(0, 0, 0, .75); }
+.cover-ends { text-shadow: 0 1px 4px rgba(0, 0, 0, .6); }
 .badge {
   border-radius: 2px; border-color: var(--paper-line); color: var(--paper-ink-dim);
   background: rgba(255, 252, 244, .5);

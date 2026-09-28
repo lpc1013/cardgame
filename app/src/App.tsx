@@ -1355,7 +1355,7 @@ export default function App() {
     const clueReveal = Math.max(0, ...(st?.bag ?? []).map((id) => sc.cards.find((c) => c.id === id)?.clueReveal ?? 0));
     return (
       <div className="story-root">
-        <TopBar sc={sc} st={st} onClues={() => setShowClues(true)} onBag={() => setShowBag(true)} />
+        <TopBar sc={sc} st={st} mode={mode} onMode={() => setMode((m) => (m === "light" ? "dark" : "light"))} onClues={() => setShowClues(true)} onBag={() => setShowBag(true)} />
         <div className="story-panel" ref={panelRef}>
           <h2>结案陈词 · 拣选线索（{picked.length}/{v.mustPick}）</h2>
           <p className="muted">呈上御案的线索，将决定此案能否经得起百官诘难。</p>
@@ -1471,7 +1471,7 @@ export default function App() {
 
   return (
     <div className={`story-root${narrArt ? " has-narrator" : ""}`} ref={rootRef} tabIndex={-1} onKeyDown={onKeyDown}>
-      <TopBar sc={sc} st={st} onClues={() => setShowClues(true)} onBag={() => setShowBag(true)} />
+      <TopBar sc={sc} st={st} mode={mode} onMode={() => setMode((m) => (m === "light" ? "dark" : "light"))} onClues={() => setShowClues(true)} onBag={() => setShowBag(true)} />
       {sceneBg && sceneFx ? (
         <div className="scene-stage" aria-hidden="true">
           <img className="scene-bg-img" src={sceneBg} alt="" />
@@ -1544,7 +1544,7 @@ export default function App() {
   );
 }
 
-function TopBar({ sc, st, onClues, onBag }: { sc: Scenario; st: RunState; onClues: () => void; onBag: () => void }) {
+function TopBar({ sc, st, mode, onMode, onClues, onBag }: { sc: Scenario; st: RunState; mode: "light" | "dark"; onMode: () => void; onClues: () => void; onBag: () => void }) {
   const [snd, setSnd] = useState(sfxEnabled());
   // R-1：资源变化浮动提示——数值一变在字牌上浮出「+n / −n」+ 微光脉冲（朝望-2 之类不再悄无声息）。
   // 同帧多项变动（如 朝望-2 且 银+10）各浮各的；applyEffects 就地改 stats（浅拷贝共享引用），依赖用整个 st。
@@ -1600,6 +1600,9 @@ function TopBar({ sc, st, onClues, onBag }: { sc: Scenario; st: RunState; onClue
       {sc.cardSystem && (
         <button className="clue-btn" onClick={() => { sfx.choice(); onBag(); }}>背包（{st.deck.length}/{sc.deckLimit ?? 12}）</button>
       )}
+      <button className="clue-btn" onClick={() => { sfx.choice(); onMode(); }} title={mode === "light" ? "切到深色" : "切回宣纸浅色"}>
+        {mode === "light" ? "转墨" : "还宣"}
+      </button>
       <button className="clue-btn snd-btn" onClick={() => setSnd(toggleSfx())} title={snd ? "关闭音效" : "开启音效"}>
         {snd ? "♪" : "✕♪"}
       </button>

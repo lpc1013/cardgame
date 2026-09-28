@@ -1047,6 +1047,7 @@ export default function App() {
     return (
       <div className="title-screen title-v2">
         <nav className="title-nav">
+          <span className="seal-badge nav-seal" aria-hidden="true">帝</span>
           <span className="nav-logo">帝成观止</span>
           <span className="ink-chip" title={`每解锁一个结局奖励 ${INK_PER_ENDING} 墨铤`}><IngotIcon /> 墨铤 {empire.ink}</span>
           <div className="nav-btns">

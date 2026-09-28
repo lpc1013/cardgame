@@ -2998,3 +2998,136 @@ button { font-family: inherit; }
 * {
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* ============================================================
+   朝堂视觉语汇（参考明代朝堂经营类 UI · 2026-09-28）
+   要点：不是"整体改浅色"——参考图本身是 大漆深木底 + 宣纸米黄面板 +
+   墨笔题签 + 朱砂印 + 双线卡框。故另立一套纸质令牌族，自带上下文，
+   只在套用了下列构件类的表面上生效，不动既有暗色组件与四主题。
+   （app.css 实测 453 处走 token、530 处写死颜色，直接翻 --panel 会做出
+    半浅半深的坏界面，所以走"局部纸质岛"而非全局翻转。）
+   ============================================================ */
+:root {
+  --lacquer: #241c14;        /* 大漆/木框 */
+  --lacquer-2: #171310;
+  --paper: #efe3cd;          /* 宣纸亮端 */
+  --paper-2: #e3d4b8;        /* 宣纸暗端 */
+  --paper-ink: #241d16;      /* 纸上墨字 */
+  --paper-ink-dim: #6d5f4b;
+  --paper-line: #bda87f;     /* 纸上细线 */
+  --paper-edge: #8a7455;
+  --vermilion: #a8322a;      /* 朱砂 */
+  --vermilion-deep: #7c211b;
+  --seal: #b23a2c;
+}
+
+/* 宣纸面板：双线卡框（外墨线 + 内偏线），与参考图的奏章/朝堂卡框一致 */
+.paper-panel {
+  background: linear-gradient(168deg, var(--paper) 0%, var(--paper-2) 100%);
+  color: var(--paper-ink);
+  border: 1px solid var(--paper-edge);
+  outline: 1px solid var(--paper-line);
+  outline-offset: 3px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
+}
+/* 墨笔题签：黑底白字，边缘做不规则破口，替代平涂标题条 */
+.brush-banner {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 18px 7px;
+  background: var(--lacquer);
+  color: #f1e6d2;
+  font-family: "STKaiti", "KaiTi", "Noto Serif SC", serif;
+  letter-spacing: 4px;
+  clip-path: polygon(1% 12%, 4% 0, 96% 5%, 100% 84%, 97% 100%, 3% 95%);
+}
+/* 朱砂印章：方形阳文，用于徽识与主 CTA 的角标 */
+.seal-badge {
+  display: inline-grid; place-items: center;
+  width: 34px; height: 34px; flex-shrink: 0;
+  background: var(--seal);
+  color: #f7ead6;
+  font-family: "STKaiti", "KaiTi", "Noto Serif SC", serif;
+  font-size: 19px; font-weight: 700; line-height: 1;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1.5px rgba(247, 234, 214, .55), 0 2px 6px rgba(0, 0, 0, .4);
+}
+/* 墨块按钮 / 朱批按钮：参考图右下"去庭议·结束本月"与"以此朱批形成草案" */
+.ink-btn {
+  background: var(--lacquer); color: #efe3cd;
+  border: 1px solid #4a3a28; letter-spacing: 3px;
+  padding: 9px 22px; cursor: pointer;
+}
+.ink-btn:hover { background: #322618; color: #f7ead6; }
+.vermilion-btn {
+  background: linear-gradient(180deg, var(--vermilion) 0%, var(--vermilion-deep) 100%);
+  color: #f7ead6; border: 1px solid #d06a52; letter-spacing: 3px;
+  padding: 9px 22px; cursor: pointer;
+}
+.vermilion-btn:hover { filter: brightness(1.1); }
+/* 发丝横线：参考图的分区线极细，不用我们默认的 1px var(--line) 粗感 */
+.hairline { height: 1px; background: var(--paper-line); border: 0; opacity: .8; }
+/* 竖排墨笔标题（参考图左侧「在办」那条签） */
+.vert-title {
+  writing-mode: vertical-rl; text-orientation: upright;
+  font-family: "STKaiti", "KaiTi", "Noto Serif SC", serif;
+  letter-spacing: 8px;
+}
+
+/* ---------- 套用到主 UI ---------- */
+/* 顶栏：大漆通栏 + 朱印徽识，对应参考图最上方那条木色状态栏 */
+.title-nav {
+  background: linear-gradient(180deg, var(--lacquer) 0%, var(--lacquer-2) 100%);
+  border-bottom: 1px solid #4a3a28;
+  box-shadow: inset 0 -1px 0 rgba(201, 168, 106, .18);
+}
+.nav-seal { margin-right: 2px; }
+.nav-logo { color: #f1e6d2; letter-spacing: 12px; }
+.ink-chip {
+  color: var(--paper); border-color: #5a4630;
+  background: rgba(239, 227, 205, .07); border-radius: 3px;
+}
+.nav-btns button {
+  background: transparent; border: 1px solid #4a3a28; color: #d9cbb2;
+  border-radius: 3px;
+}
+.nav-btns button:hover {
+  color: #f7ead6; border-color: var(--vermilion);
+  background: linear-gradient(180deg, var(--vermilion) 0%, var(--vermilion-deep) 100%);
+}
+/* 封面：给剧本封面加一层宣纸卡纸衬底 + 双线框，标题走墨笔题签 */
+.cover-main {
+  border: 1px solid var(--paper-edge);
+  outline: 1px solid var(--paper-line);
+  outline-offset: 4px;
+  background: linear-gradient(168deg, var(--paper) 0%, var(--paper-2) 100%);
+  padding: 10px;
+}
+.cover-info h1 {
+  align-self: flex-start;
+  background: var(--lacquer); color: #f1e6d2;
+  padding: 8px 20px 9px;
+  clip-path: polygon(1% 12%, 4% 0, 96% 5%, 100% 84%, 97% 100%, 3% 95%);
+}
+.cover-info .sub { color: var(--paper-ink-dim); }
+.badge {
+  border-radius: 2px; border-color: var(--paper-line); color: var(--paper-ink-dim);
+  background: rgba(255, 252, 244, .5);
+}
+.badge-v2 { color: var(--vermilion-deep); border-color: var(--vermilion); }
+.badge-ends { color: var(--paper-ink); border-color: var(--paper-edge); }
+/* 出征 CTA：朱批阳文印钮，保留 cta.md 的官印化形制，只换朱砂色与双线 */
+.btn-cta {
+  background: linear-gradient(180deg, var(--vermilion) 0%, var(--vermilion-deep) 100%);
+  border: 1px solid #d06a52;
+  box-shadow: inset 0 0 0 1px rgba(247, 234, 214, .35), 0 6px 18px rgba(0, 0, 0, .45);
+}
+/* 次级按钮：暗色主题遗留的半透明深底 + 灰字坐在宣纸上对比度不足（实测
+   color lum .50 / 复合底 lum ~.35）。改为墨线勾边、纸上墨字。 */
+.cover-actions button:not(.btn-cta) {
+  background: rgba(255, 252, 244, .45);
+  color: var(--paper-ink);
+  border: 1px solid var(--paper-edge);
+}
+.cover-actions button:not(.btn-cta):hover {
+  background: var(--paper); border-color: var(--vermilion); color: var(--vermilion-deep);
+}

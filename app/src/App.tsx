@@ -72,13 +72,17 @@ const achArt = (id: string) => _ACH_ART[`./assets/achievements/ach_${id}.jpg`] ?
 const _SCENE_MOTION = import.meta.glob("./assets/scenes/motion/*.webp", { eager: true, import: "default" }) as Record<string, string>;
 const sceneMotion = (scenarioId: string, id: string): string | undefined =>
   _SCENE_MOTION[`./assets/scenes/motion/${scenarioId}_${id}.webp`];
-/** 叙述者立绘：优先 assets/narrators/<视角id>.jpg（多视角剧本），
- *  单视角剧本没有 viewpoint，回落到 <剧本id>.jpg。缺图即不出栏，布局自动回落全宽。
- *  台词是小说化第一人称，说话人即叙述主体，故不做逐句 speaker 解析 */
+/** 叙述者立绘：优先 assets/narrators/<视角id>.jpg（多视角剧本），单视角剧本按
+ *  CASE_SCENARIOS / <剧本id>.jpg 回落。台词是小说化第一人称，说话人即叙述主体，
+ *  故不做逐句 speaker 解析。缺图即不出栏，布局自动回落全宽。 */
 const _NARRATOR_ART = import.meta.glob("./assets/narrators/*.{png,jpg,jpeg}", { eager: true, import: "default" }) as Record<string, string>;
 const _NARRATOR_IDX = buildArtIndex(_NARRATOR_ART);
+/** 五桩案件同属一名大理寺卿的断案卷宗（用户 2026-09-28 确认），共用一张立绘与一个名牌 */
+const CASE_SCENARIOS: Record<string, string> = {
+  fuma: "大理寺卿", qiuwei: "大理寺卿", sichou: "大理寺卿", xie: "大理寺卿", qinhuai: "大理寺卿",
+};
 const narratorArt = (scenarioId: string, vpId?: string): string | undefined =>
-  _artUrl(_NARRATOR_IDX, vpId ?? "") ?? _artUrl(_NARRATOR_IDX, scenarioId);
+  _artUrl(_NARRATOR_IDX, vpId ?? "") ?? _artUrl(_NARRATOR_IDX, CASE_SCENARIOS[scenarioId] ? "dalisi" : scenarioId);
 /** 对话演出：把「」/“”里的直接引语拆出来着暖色，与叙述文分开——
  *  台词是小说化第一人称（"我说：高。"），没有说话人字段，故只标引语不标人 */
 function saidSpans(l: string): ReactNode {
@@ -1441,9 +1445,9 @@ export default function App() {
   const sceneBg = sceneArt(sc.id, scene.id);
   const sceneFx = sceneMotion(sc.id, scene.id);
   const narrArt = narratorArt(sc.id, st.viewpoint);
-  // 名牌只写 viewpoints 里游戏自己给的名字：单视角剧本通篇「朕/柴大人」，
-  // 文本没给姓名就不编一个上去
-  const narrName = sc.viewpoints?.find((v) => v.id === st.viewpoint)?.name;
+  // 名牌只写游戏自己给过的称谓：多视角取 viewpoints 的 name，五桩案件取「大理寺卿」；
+  // 其余单视角剧本通篇只有「朕/柴大人」，文本没给姓名就不编一个上去
+  const narrName = sc.viewpoints?.find((v) => v.id === st.viewpoint)?.name ?? CASE_SCENARIOS[sc.id];
 
   return (
     <div className={`story-root${narrArt ? " has-narrator" : ""}`} ref={rootRef} tabIndex={-1} onKeyDown={onKeyDown}>

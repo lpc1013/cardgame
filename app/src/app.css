@@ -1328,7 +1328,10 @@ button { font-family: inherit; }
 .wager-btn.skip { border-color: var(--line); color: var(--ink-dim); }
 .wager-on { margin-top: 6px; color: var(--suit-qi); }
 /* 虚张提示与博弈动作条 */
-.gambit-hint { color: color-mix(in srgb, var(--suit-yin) 72%, #f4ebd8); font-size: 13px; }
+/* 原来往米白里混 28%（color-mix … 72% + #f4ebd8）是暗底时代的提亮手法，
+   混出来 rgb(128,103,147) 压米黄只有 3.86。直接吃 --suit-yin：
+   浅底 #533378 → 7.83，深底 #9d77c3 → 5.09，两档都过且仍辨得出是「隐」紫。 */
+.gambit-hint { color: var(--suit-yin); font-size: 13px; }
 .gambit-bar { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
 .gambit-btn {
   background: color-mix(in srgb, var(--suit-yin) 10%, transparent); color: var(--ink);
@@ -2694,7 +2697,9 @@ button { font-family: inherit; }
 .turn-banner .st-label { margin-right: 6px; }
 .opp-attack-turn { color: #d9a05a; }
 .opp-attack-turn b { color: var(--gold); }
-.opp-action { color: #8a8375; font-size: 13px; }
+/* 原写死 #8a8375（暗底时代的次级灰），压米黄只有 2.96（1440x900 实测）。
+   改走 --ink-dim：浅底 #574a38 / 深底 #a89e8b 两档都在线 above。 */
+.opp-action { color: var(--ink-dim); font-size: 13px; }
 .pc-preview { font-size: 12px; color: #c9a86a; border-top: 1px dashed rgba(190,160,90,.35); margin-top: 4px; padding-top: 3px; }
 .duel-history { font-size: 12px; color: #9a927f; margin-top: 6px; }
 .duel-history summary { cursor: pointer; color: #b0a88f; }
@@ -3250,6 +3255,18 @@ button { font-family: inherit; }
 /* 卡脚里的价格/链接走 --gold，但 .tcard 的金色覆写没穿透到它（实测 #6e5a28
    压在卡底上只 2.75:1），定点给亮金 */
 .tcard .link-btn { color: #c9a86a; }
+/* 对手心境横幅写死 #1c1915 深漆底，但浅底档的 --ink 与 --suit-* 都是为宣纸压暗过的
+   深色系，落进去直接读不出（1440x900 实测 .opp-line 1.05、.mood-suit-name 2.13）。
+   没并进上面那条共享覆写：它还要额外覆 --suit-*，而 .tcard 那批表面已过审计，
+   共享块里加花色令牌会连带改掉卡面观感。这里给的值就是深色档原值，深色模式零变化。 */
+.mood-banner {
+  --ink: #ece0c8;
+  --ink-dim: #b5a583;
+  --gold: #c9a86a;
+  --line: #4a3a28;
+  --suit-ce: #5b8fb8; --suit-qi: #c9a13a; --suit-shi: #c96b57; --suit-yin: #9d77c3;
+  color: var(--ink);
+}
 :root:not([data-mode="dark"]) button.danger-ghost { color: var(--accent-soft); border-color: var(--accent-soft); }
 :root:not([data-mode="dark"]) button.danger-ghost:hover { color: #f7ead6; background: var(--accent-soft); }
 

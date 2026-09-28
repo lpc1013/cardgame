@@ -1,6 +1,7 @@
 // 图片引用核对：数据 id 约定（卡=id、场景=剧本_幕、结局=end_剧本_幕、封面=cover_剧本、成就=ach_图标）× src/assets 实际文件
 // 用法：node --experimental-strip-types scripts/audit-art.mts
 import { readdirSync, existsSync } from "node:fs";
+import { SCENE_SETTING } from "../src/data/sceneSettings.ts";
 import { join } from "node:path";
 import { fuma } from "../src/data/fuma.ts";
 import { qiuwei } from "../src/data/qiuwei.ts";
@@ -84,11 +85,15 @@ for (const sc of SCENARIOS) {
   }
 }
 
-// 4) 场景底图与结局图：与 sceneArt 的三级回退一致（剧本前缀 → scn_旧命名 → 裸 id）
+// 4) 场景底图与结局图：与 sceneArt 的四级回退一致
+//    （剧本前缀 → scn_旧命名 → 裸 id → SCENE_SETTING 地点复用 <剧本>__<地点键>）
 let noScene = 0, noEnd = 0;
 for (const sc of SCENARIOS) {
   for (const s of sc.scenes) {
-    if (!scenes.has(`${sc.id}_${s.id}`) && !scenes.has(`scn_${s.id}`) && !scenes.has(s.id)) { noScene++; console.log(`  · 无场景图 ${sc.id}/${s.id}`); }
+    const key = SCENE_SETTING[sc.id]?.[s.id];
+    const covered = scenes.has(`${sc.id}_${s.id}`) || scenes.has(`scn_${s.id}`) || scenes.has(s.id)
+      || (key !== undefined && scenes.has(`${sc.id}__${key}`));
+    if (!covered) { noScene++; console.log(`  · 无场景图 ${sc.id}/${s.id}`); }
     if (s.ending && !endings.has(`end_${sc.id}_${s.id}`)) { noEnd++; console.log(`  · 无结局图 end_${sc.id}_${s.id}`); }
   }
 }
@@ -105,6 +110,8 @@ const used = new Set<string>([
     ...sc.duels.flatMap((d) => [...(d.oppCards ?? []).map((c) => c.id), ...(d.loseScene ? [`end_${sc.id}_${d.loseScene}`] : [])]),
     ...sc.scenes.map((s) => `${sc.id}_${s.id}`),
     ...sc.scenes.map((s) => `scn_${s.id}`),
+    // 地点复用图一张服务多幕，不列进来会被误判成孤儿
+    ...Object.values(SCENE_SETTING[sc.id] ?? {}).map((k) => `${sc.id}__${k}`),
     ...sc.scenes.filter((s) => s.ending).map((s) => `end_${sc.id}_${s.id}`),
     `cover_${sc.id}`,
   ]),

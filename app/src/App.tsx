@@ -9,6 +9,7 @@ import {
   unsealScenario, UNSEAL_COST,
   getBonuses, unlockBonus,
 } from "./engine/save";
+import { SCENE_SETTING } from "./data/sceneSettings";
 import { SHOP_BOOSTS, SHOP_THEMES } from "./data/empireShop";
 import { ACHIEVEMENTS, checkDuelAchievements, checkMinigameAchievements, checkEndingAchievements, type AchCategory, type AchievementDef } from "./data/achievements";
 import { getAchievements, unlockAchievement } from "./engine/save";
@@ -138,7 +139,11 @@ function cardArt(id: string): string | undefined {
 }
 function sceneArt(scenarioId: string, id: string): string | undefined {
   // 优先「剧本前缀」命名（跨剧本场景 id 会重名，如 start）；兼容旧的 scn_* 全局唯一命名
-  return _artUrl(_SCENE_ART_IDX, `${scenarioId}_${id}`) ?? _artUrl(_SCENE_ART_IDX, `scn_${id}`) ?? _artUrl(_SCENE_ART_IDX, id);
+  const direct = _artUrl(_SCENE_ART_IDX, `${scenarioId}_${id}`) ?? _artUrl(_SCENE_ART_IDX, `scn_${id}`) ?? _artUrl(_SCENE_ART_IDX, id);
+  if (direct) return direct;
+  // 缺图幕按「地点」复用：同一间房在不同幕必须长得一样，故 487 幕塌成 116 个地点共用背景
+  const key = SCENE_SETTING[scenarioId]?.[id];
+  return key ? _artUrl(_SCENE_ART_IDX, `${scenarioId}__${key}`) : undefined;
 }
 /** 结局插画：src/assets/endings/end_<剧本id>_<结局场景id>.{jpg,png} */
 function endArt(scenarioId: string, sceneId: string): string | undefined {

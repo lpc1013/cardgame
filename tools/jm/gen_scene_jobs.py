@@ -157,6 +157,9 @@ def emit_jobs(plan, only=None, per_job=4):
                 continue
             base = key.split("_")[0]
             t = key.split("_", 1)[1] if "_" in key else ""
+            # 已产过的地点跳过，可反复增量跑
+            if os.path.exists(os.path.join(HERE, "../../app/src/assets/scenes", f"{sid}__{key}.jpg")):
+                continue
             cue = v["cues"][0] if v["cues"] else ""
             prompt = (f"{STYLE.get(sid, '明代哑光电影感水墨')}，横屏16:9游戏场景背景。"
                       f"{SETTING_DESC.get(base, '')}。{TIME_CLAUSE.get(t, '自然光，明暗层次清楚但不极端')}。"
@@ -220,8 +223,7 @@ def main():
         fh.write(ts)
     print(f"已写 app/src/data/sceneSettings.ts（{sum(len(v) for v in mapping.values())} 幕）")
     only = sys.argv[1] if len(sys.argv) > 1 else None
-    if only:
-        emit_jobs(plan, only=only)
+    emit_jobs(plan, only=only)
     others = {f"{sid}:{k}": v["scenes"] for sid, d in plan.items() for k, v in d.items() if k == "other"}
     if others:
         print("\n未归类 other（需人工安置，不给它产图）：")

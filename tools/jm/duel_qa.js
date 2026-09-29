@@ -48,7 +48,12 @@ for (const mode of ['light', 'dark']) {
     const a = window.__audit();
     return { checked: a.checked, fails: a.fails, list: a.list.map((x) => ({ sel: x[0], r: x[1], need: x[2], fg: x[3], bg: x[4], n: x[5], t: x[6] })) };
   });
-  await page.screenshot({ path: `${OUT}/duel_${mode}.png`, fullPage: false });
+  // 先落盘再截图：窗口被遮挡时 screenshot 会等合成帧等到 30s 超时，
+  // 顺序反了就把已经跑完的审计一起丢掉（这条已栽过三次）
+  save();
+  const p = `${OUT}/duel_${mode}.png`;
+  try { await page.screenshot({ path: p, fullPage: false }); }
+  catch (e1) { try { await page.screenshot({ path: p, clip: { x: 0, y: 0, width: 1440, height: 900 } }); } catch (e2) {} }
   save();
 }
 res.pageCount = (typeof pages === 'function' ? pages().length : -1);

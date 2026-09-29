@@ -1716,7 +1716,31 @@ button { font-family: inherit; }
     7px calc(100% - 7px), 7px calc(100% - 7px),
     calc(100% - 7px) calc(100% - 7px), calc(100% - 7px) calc(100% - 7px);
 }
-/* 品级阶梯：凡=素面无饰无金；良=一道金细线；精=线+角饰；传=加宽卡带+光泽；孤品=朱红+外发光 */
+/* ---- 小卡只给卡名，描述收进放大态（2026-09-29 用户定）----
+   小卡上那段 12px 描述是"表格感"的另一半：三行小字居中，卡面被切成表单。
+   收起后画窗吃满剩余高度，题签压底 —— 这才是收藏卡的读法。
+   信息不丢：图鉴/卡册走 CardZoomView 详情面板（名/层/花/品/由来/作用），
+   对局走 .hand-detail 详情条（两段式：先选中读全，再点出牌）。
+   ⚠ 但花色章与点数**不能收**——"牌面要算给玩家看"是这项目的既定口径，
+      手牌看不见点数就没法比牌，所以只收文字描述，不收数值位。 */
+.tcard:not(.fix-zoom-collapsed) .tcard-bottom { display: none; }
+.tcard:not(.fix-zoom-collapsed) .tcard-art { flex: 1 1 auto; aspect-ratio: auto; min-height: 0; }
+/* 描述收起后，题签就是小卡唯一的文字位，给它更足的呼吸与更强的底衬 */
+.tcard:not(.fix-zoom-collapsed) .tcard-top { padding: 7px 8px; }
+/* 放大态反过来：恢复全文、不截断（.card-zoom-body 那条已有，这里保证画窗不被撑变形） */
+.card-zoom-body .tcard.fix-zoom-collapsed .tcard-art { flex: none; aspect-ratio: 3 / 2; }
+/* 孤品按口径是"阶梯外的纪念标记"，不该比传更亮——收掉外发光，只留朱红卡带 */
+/* 品级装饰阶梯：凡=素面无饰无金 / 良=一道内细线 / 精=细线+四角饰 /
+   传=鎏金卡带+外发光 / 孤品=朱红卡带但**不给发光**——
+   按口径 孤品 是阶梯外的纪念标记，不该比 传 更贵。 */
+.tcard.rarity-孤品 {
+  --card-g1: #5c2520; --card-g2: #331412; --card-band: #e0745a; --card-keyline: rgba(240, 168, 140, .4); --card-orn: #f0a88c;
+  box-shadow:
+    0 0 0 1px #e0745a,
+    inset 0 0 0 1px rgba(0, 0, 0, .5),
+    inset 0 1px 0 rgba(255, 210, 190, .14),
+    0 3px 12px rgba(0, 0, 0, .5);
+}
 .tcard.rarity-凡 {
   --card-g1: #35322b; --card-g2: #232019; --card-band: #4d473c;
   /* 凡档不给角饰与内细线（装饰阶梯的起点），只留一条压深的边 */
@@ -1738,15 +1762,7 @@ button { font-family: inherit; }
     0 3px 12px rgba(0, 0, 0, .5),
     0 0 14px rgba(210, 164, 79, .18);
 }
-.tcard.rarity-孤品 {
-  --card-g1: #5c2520; --card-g2: #331412; --card-band: #e0745a; --card-keyline: rgba(240, 168, 140, .5); --card-orn: #f0a88c;
-  box-shadow:
-    0 0 0 1px #e0745a,
-    inset 0 0 0 1px rgba(0, 0, 0, .5),
-    inset 0 1px 0 rgba(255, 210, 190, .16),
-    0 3px 12px rgba(0, 0, 0, .5),
-    0 0 16px rgba(224, 116, 90, .22);
-}
+/* 孤品的去发光版已并到上面品级阶梯里（这份排在后面会反向覆盖，删掉） */
 .tcard.clickable { cursor: pointer; }
 .tcard.clickable:hover {
   transform: translateY(-3px);

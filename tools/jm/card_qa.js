@@ -39,17 +39,24 @@ for (const skin of SKINS) {
     }, [skin, mode]);
     await page.waitForTimeout(900);
     const opened = await page.evaluate(async () => {
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       const b = [...document.querySelectorAll('button')].find((x) => x.innerText.trim() === '图鉴');
       if (!b) return 'no-album';
       b.click();
-      await new Promise((r) => setTimeout(r, 900));
-      // 图鉴是两层：结局图鉴卡块 + 「卡牌图鉴」下按剧本的 .gallery-sc-btn。
-      // 上一版只点了「图鉴」，默认停在结局页签，.tcard 恒为 0——卡墙根本没入镜。
-      const sc = [...document.querySelectorAll('.gallery-sc-btn')]
-        .find((x) => x.innerText.trim().startsWith('驸马醉酒杀人案'));
+      // 首轮必挂：冷启动要加载卡图与字体，固定 900ms 等不到 .gallery-sc-btn，
+      // 于是 cards=0、审计只测到结局页签——而 "0 命中" 和 "全过" 长得一样。改成轮询。
+      let sc = null;
+      for (let i = 0; i < 14; i++) {
+        await sleep(500);
+        sc = [...document.querySelectorAll('.gallery-sc-btn')].find((x) => x.innerText.trim().startsWith('驸马醉酒杀人案'));
+        if (sc) break;
+      }
       if (!sc) return 'no-sc-btn';
       sc.click();
-      await new Promise((r) => setTimeout(r, 900));
+      for (let i = 0; i < 10; i++) {
+        await sleep(400);
+        if (document.querySelectorAll('.tcard').length > 0) break;
+      }
       return 'ok';
     });
     await page.addScriptTag({ url: BASE + 'scripts/contrast-audit.js' });

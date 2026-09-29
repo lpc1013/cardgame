@@ -43,4 +43,26 @@ for (const b of boxes) {
   await page.screenshot({ path: f, clip: { x: b.x - 4, y: b.y - 4, width: b.w + 8, height: Math.min(b.h + 8, 900 - b.y) } }).catch(() => {});
   shots.push(f);
 }
-fs.writeFileSync(`${OUT}/card_close.json`, JSON.stringify({ boxes, shots, pageCount: (typeof pages === 'function' ? pages().length : -1) }, null, 1));
+
+// 小卡收掉描述之后，必须确认放大态仍然给全文（否则信息就真丢了）
+await page.evaluate(() => {
+  const c = document.querySelector('.tcard.clickable');
+  if (c) c.click();
+});
+await page.waitForTimeout(1200);
+const zoom = await page.evaluate(() => {
+  const body = document.querySelector('.card-zoom-body');
+  if (!body) return null;
+  const t = body.querySelector('.tcard-bottom');
+  const secs = [...body.querySelectorAll('.card-detail-sec-title')].map((x) => x.innerText.trim());
+  return {
+    smallCardTextVisible: t ? getComputedStyle(t).display !== 'none' : null,
+    detailSections: secs,
+    hasName: !!body.querySelector('.card-detail-name'),
+    text: (body.querySelector('.card-detail') || {}).innerText ? body.querySelector('.card-detail').innerText.replace(/\s+/g, ' ').slice(0, 90) : null,
+  };
+});
+await page.screenshot({ path: `${OUT}/card_zoom.png` }).catch(() => {});
+shots.push(`${OUT}/card_zoom.png`);
+
+fs.writeFileSync(`${OUT}/card_close.json`, JSON.stringify({ boxes, shots, zoom, pageCount: (typeof pages === 'function' ? pages().length : -1) }, null, 1));

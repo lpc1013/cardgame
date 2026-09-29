@@ -9,8 +9,12 @@ await page.setViewportSize({ width: 1440, height: 900 });
 
 // 对局屏的手牌要靠存档 deck，伪造存档 deck 为空就一张卡面都拍不到（实测 cards=0）。
 // 改走卡牌图鉴：把 dicun_cards_v1（scenarioId -> 已见卡 id）灌满，整面卡墙都是真卡面。
-const SC = 'changjiang';
-const IDS = ['c_qi_gong', 'c_qi_shou', 'c_qi_jie', 'c_qi_qi', 'c_ben_xi', 'c_ben_duan', 'c_ben_fu', 'c_ben_yi', 'c_ben_zhen', 'c_jiangjiao', 'c_chenchen', 'c_zhoudu', 'c_shuizhen', 'c_chaoji', 'c_yezhang', 'c_fenghuo', 'c_junxin', 'c_dushi', 'c_paoshou', 'c_gongnu', 'c_xiangji', 'c_macheng', 'c_sifang', 'c_yuanjun', 'c_zhongjun', 'c_dianjiang', 'c_jijiang', 'c_caiyuan', 'c_duankai', 'c_jieming'];
+const SC = 'fuma';
+// 从 app/src/data/fuma.ts 的 cards 数组按括号配对抽出来的真实 id（40 张，含资源卡）。
+// 上一版这里是我手编的 30 个 changjiang id，一半不存在；不存在的 id 不报错，
+// 只是卡墙显示「？？？」，拍出来的全是封印态，等于没验。
+// 而且 changjiang 根本不是 cardSystem 剧本（五部大理寺案才是），列表里压根没有它。
+const IDS = ["c_wei_yamen", "c_wei_liang", "c_li_qian", "c_li_mian", "c_qing_tong", "c_qing_nv", "c_li_lun", "c_li_falv", "i_xin", "i_yu", "i_dao", "i_zhu", "i_shu", "i_yinpiao", "r_li_sanj", "r_zhang", "r_zhou", "r_shen", "r_wang", "s_yin10", "s_yin30", "c_yin_shu", "c_quan_jiang", "c_she_duan", "c_wen_xing", "f_diantang", "f_tangji", "f_yeyan", "f_gongnei", "f_anxiang", "f_yandu", "i_jinzan", "i_guici", "r_cuiping", "s_huangcai", "f_renxin", "t_youji", "t_jieli", "t_huosheng", "i_jiedi"];
 
 const SKINS = ['default', 'zhusha', 'daiqing', 'liujin', 'celadon', 'indigo', 'luxury'];
 const res = fs.existsSync(FILE) ? JSON.parse(fs.readFileSync(FILE, 'utf8')) : {};
@@ -36,10 +40,17 @@ for (const skin of SKINS) {
     await page.waitForTimeout(900);
     const opened = await page.evaluate(async () => {
       const b = [...document.querySelectorAll('button')].find((x) => x.innerText.trim() === '图鉴');
-      if (!b) return false;
+      if (!b) return 'no-album';
       b.click();
       await new Promise((r) => setTimeout(r, 900));
-      return true;
+      // 图鉴是两层：结局图鉴卡块 + 「卡牌图鉴」下按剧本的 .gallery-sc-btn。
+      // 上一版只点了「图鉴」，默认停在结局页签，.tcard 恒为 0——卡墙根本没入镜。
+      const sc = [...document.querySelectorAll('.gallery-sc-btn')]
+        .find((x) => x.innerText.trim().startsWith('驸马醉酒杀人案'));
+      if (!sc) return 'no-sc-btn';
+      sc.click();
+      await new Promise((r) => setTimeout(r, 900));
+      return 'ok';
     });
     await page.addScriptTag({ url: BASE + 'scripts/contrast-audit.js' });
     await page.waitForTimeout(500);
@@ -52,8 +63,10 @@ for (const skin of SKINS) {
           .map((y) => y[0] + ':' + y[1] + '@' + y[4] + 'x' + y[5]),
       };
     });
-    // opened 是 Node 侧变量，塞进 page.evaluate 会 ReferenceError（浏览器上下文看不到闭包）
-    res[key] = { opened, ...a };
+    // 上一版重写时丢了 file 字段，导致 tools/copy_artifacts.py 按文件名去 JSON 里找、
+    // 结果 wanted 集合为空、一张都收不回来。截图落点是工作区外的 artifacts 目录，
+    // 必须把期望文件名留在结果里，收图才有依据。
+    res[key] = { opened, ...a, file: `c_${key}.png` };
     save();
     const p = `${OUT}/c_${key}.png`;
     try {

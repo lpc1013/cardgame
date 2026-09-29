@@ -2280,6 +2280,10 @@ button { font-family: inherit; }
   padding: 2px 7px; letter-spacing: 1px; white-space: nowrap;
 }
 
+/* .tcard 永远是深底岛（.tcard 自身 color:#f0e6d2），但 .theme-tag 吃 --ink-dim，
+   压到金色品级的卡底 (119,97,38) 只剩 4.14（luxury 两档各 3 个节点）。
+   卡面内的次级标签直接跟卡体主字同色 → 4.81，且不再随皮肤漂移。 */
+.tcard .theme-tag { color: #f0e6d2; border-color: rgba(240, 230, 210, .42); }
 .card-art {
   width: 100%; height: 108px; object-fit: cover; display: block;
   border-radius: 5px; border: 1px solid var(--line); margin-bottom: 8px;

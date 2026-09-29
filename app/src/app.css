@@ -3278,7 +3278,7 @@ button { font-family: inherit; }
    它们与参考图的深木顶栏一致，是有意保留的。但浅底模式下 --gold/--ink-dim
    已为宣纸压暗，放进去就变成深字压深底（实测 h2/.chip-silver/.shop-tab 1.72~1.98）。
    故在这些容器上就地恢复"深底配浅字"的令牌，内部所有子元素自动跟着走。 */
-.shop-header, .tcard, .prep-card, .qi-bar, .gsc-progress, .paijiu-tile, .thumb-ends {
+.shop-header, .tcard, .prep-card, .qi-bar, .gsc-progress, .paijiu-tile, .thumb-ends, .end-tile {
   --ink: #ece0c8;
   --ink-dim: #b5a583;
   --gold: #c9a86a;
@@ -3348,9 +3348,9 @@ button { font-family: inherit; }
 }
 /* 青瓷是唯一的浅底主题：深色档下它的黛蓝正文必须配浅色读稿面（否则 .story-line 1.49） */
 [data-theme="celadon"] {
-  --ink: #2c3e50; --ink-dim: #5f7071; --gold: #b03526;
+  --ink: #2c3e50; --ink-dim: #4a5a5b; --gold: #b03526;
   --read-bg: rgba(255, 255, 255, .94); --read-bg-2: rgba(247, 249, 248, .96); --read-edge: rgba(44, 62, 80, .2);
-  --paper: #ffffff; --paper-2: #f0f4f3; --paper-ink: #2c3e50; --paper-ink-dim: #5f7071;
+  --paper: #ffffff; --paper-2: #f0f4f3; --paper-ink: #2c3e50; --paper-ink-dim: #4a5a5b;
   --paper-line: #dfe6e9; --paper-edge: #b8c6cb; --paper-wash: rgba(240, 244, 243, .72);
 }
 /* 这两套把 --ink 定成冷白/象牙白：浅档默认的米黄读稿面会让正文变成浅字压浅底（1.01 / 1.21） */
@@ -3384,6 +3384,18 @@ button { font-family: inherit; }
   --vermilion-text: #e08a6f;
 }
 [data-theme="celadon"] { --vermilion-text: #8f2a1d; }
+/* 花色也必须归主题管。--suit-* 原先只跟 data-mode 走（浅档深色系、深档亮色系），
+   但深皮把 --paper 做成深色后，坐在卡纸上的花色小字就变成浅档深色压深底：
+   实测 zhusha/light 的 .gambit-tag 1.71、.wager-bar .st-label 2.12。
+   判据是「卡纸深不深」而不是「开关在哪个档」——所以五套深皮吃亮花色，
+   青瓷这套浅皮吃深花色（它若不吃，深档的亮紫 #9d77c3 压白底同样会废）。 */
+[data-theme="zhusha"], [data-theme="daiqing"], [data-theme="liujin"],
+[data-theme="indigo"], [data-theme="luxury"] {
+  --suit-ce: #5b8fb8; --suit-qi: #c9a13a; --suit-shi: #c96b57; --suit-yin: #9d77c3;
+}
+[data-theme="celadon"] {
+  --suit-ce: #265371; --suit-qi: #6b4e0f; --suit-shi: #8d3320; --suit-yin: #533378;
+}
 /* 青瓷是「浅色全局换肤」，木框必须跟着换成浅瓷青，
    否则白纸顶一条黑框，整页最重的就是那道缝（montage 实测）。 */
 [data-theme="celadon"] {

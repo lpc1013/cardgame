@@ -403,8 +403,9 @@ input, textarea, [contenteditable="true"] {
 }
 
 /* 深底模式（原「墨褐古卷」默认值）——浅/深开关置 dark 时整体回落旧观感。
-   注意：这套值同时是四套解锁主题（zhusha/daiqing/liujin）的底色基座，
-   那三套只覆写 accent/底/线，故 dark 下它们维持原样。 */
+   注：原先这里写着"同时是 zhusha/daiqing/liujin 三套主题的底色基座"，
+   那三套已于 2026-09-29 随六套主题一并下线，现只有文件末尾的 bianjun/jiangnan
+   两套主题会覆写这一族令牌。 */
 [data-mode="dark"] {
   --bg: #171512;
   --panel: #211e1a;
@@ -426,21 +427,6 @@ input, textarea, [contenteditable="true"] {
    ⚠ 主题若要覆写 --ink/--ink-dim/--read-*，必须写到文件末尾的「主题墨色与读稿面」块，
    不能写在这里：后面还有好几个 :root 补丁块（浅底 --ink-dim/--gold 等）特异度同为 (0,1,0)，
    写在 405 这一带会被它们盖掉（第一版就这么白改过一轮，全文读数一个没变）。 */
-[data-theme="zhusha"] {
-  --accent: #c96b57; --accent-soft: #7a3325; --gold: #e0b070; /* accent 同势色提亮（U-2a） */
-  --bg: #1b1210; --panel: #261a15; --panel-top: #2d1e17; --line: #4c332a;
-  --scene-filter: sepia(.22) hue-rotate(-14deg) saturate(1.2);
-}
-[data-theme="daiqing"] {
-  --accent: #5b8fb8; --accent-soft: #33526e; --gold: #b8d0e0;
-  --bg: #111519; --panel: #19212a; --panel-top: #1f2933; --line: #2e3e4b;
-  --scene-filter: saturate(.62) hue-rotate(14deg) brightness(.94);
-}
-[data-theme="liujin"] {
-  --accent: #c9a13a; --accent-soft: #7a6222; --gold: #ecd9a0;
-  --bg: #1a1509; --panel: #262010; --panel-top: #2d2614; --line: #4d4122;
-  --scene-filter: sepia(.34) saturate(1.12) brightness(1.03);
-}
 
 * { box-sizing: border-box; }
 
@@ -2938,225 +2924,45 @@ button { font-family: inherit; }
 }
 
 /* ============================================================
-   主题配色系统（T-1 · 商市解锁主题，续 zhusha/daiqing/liujin 之后）
-   默认「墨褐古卷」= data-theme 为空，走 :root 基准色板
+   主题配色系统（T-1 · 商市解锁主题）
+   默认「朝堂宣纸」= data-theme 缺省，走 :root 基准色板。
+   解锁主题现只有两套，且刻意一深一浅，见文件末尾「两套新主题」块：
+     bianjun 边军（深底）· jiangnan 江南（浅底）
+   原六套（zhusha/daiqing/liujin/celadon/indigo/luxury）已整体下线。
    ============================================================ */
 
 /* ============================================================
    T-1b: 青瓷雅韵（宋代极简美学 × 侘寂禅意）🔄 完全重构
    核心精神：雨过天青云破处，这般颜色做将来
    ============================================================ */
-[data-theme="celadon"] {
-  /* 基础色板 - 极浅色调 */
-  --bg: #f7f9f8;          /* 月白 */
-  --panel: #ffffff;       /* 纯白 */
-  --panel-top: #f0f4f3;
-  --ink: #2c3e50;         /* 黛蓝 */
-  --ink-dim: #7f8c8d;     /* 远山灰 */
-  --accent: #7ab8c9;      /* 雨过天青 */
-  --accent-soft: #5a9ab0;
-  --gold: #c0392b;        /* 朱红印泥（点缀）*/
-  --line: #dfe6e9;        /* 淡灰边框 */
-  --success: #27ae60;     /* 竹翠 */
-  --warning: #f39c12;     /* 杏黄 */
-  --error: #e74c3c;       /* 胭脂 */
-  
-  /* 氛围效果 */
-  --scene-filter: saturate(0.85) hue-rotate(-5deg) brightness(1.05);
-  --glow: rgba(122,184,201,0.08);
-}
 
-/* 青瓷特有 - 排版优化 */
-[data-theme="celadon"] h1,
-[data-theme="celadon"] h2,
-[data-theme="celadon"] h3,
-[data-theme="celadon"] h4 {
-  letter-spacing: 8px;
-  font-weight: 300;
-}
 
-/* 青瓷特有 - 按钮磨砂玻璃 */
-[data-theme="celadon"] .btn--primary {
-  background: linear-gradient(135deg, 
-    rgba(122,184,201,0.1) 0%, 
-    rgba(122,184,201,0.05) 100%);
-  border-color: #7ab8c9;
-  color: #7ab8c9;
-  box-shadow: 0 2px 8px rgba(122,184,201,0.15);
-  backdrop-filter: blur(10px);
-  border-radius: 20px;
-}
 
-/* 青瓷特有 - 卡片悬浮 */
-[data-theme="celadon"] .scenario-card {
-  border-radius: 24px;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(122,184,201,0.2);
-  box-shadow: 0 8px 30px rgba(0,0,0,0.05);
-  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
 
-[data-theme="celadon"] .scenario-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 12px 40px rgba(122,184,201,0.2);
-}
 
 /* ============================================================
    T-1c: 黛蓝幽梦（赛博朋克 × 东方科幻）🔄 完全重构
    核心精神：霓虹闪烁处，数据流中见东方
    ============================================================ */
-[data-theme="indigo"] {
-  /* 基础色板 - 深色系 */
-  --bg: #0a0a12;          /* 深夜黑蓝 */
-  --panel: #121220;       /* 深蓝灰 */
-  --panel-top: #1a1a2e;
-  --ink: #e0e6ed;         /* 冷白光 */
-  --ink-dim: #6b7a8f;     /* 数据蓝灰 */
-  --accent: #00f5ff;      /* 霓虹青 */
-  --accent-soft: #0077ff;
-  --gold: #ff00ff;        /* 洋红激光 */
-  --line: #1a1a2e;        /* 暗紫边框 */
-  --success: #00ffaa;     /* 荧光绿 */
-  --warning: #ffcc00;     /* 警示黄 */
-  --error: #ff0055;       /* 警告红 */
-  
-  /* 氛围效果 */
-  --scene-filter: saturate(1.5) contrast(1.2) hue-rotate(-10deg);
-  --glow: 0 0 20px rgba(0,245,255,0.3);
-}
 
-/* 赛博特有 - 发光文字 */
-[data-theme="indigo"] * {
-  text-shadow: 0 0 4px currentColor;
-}
-/* 卡面豁免：霓虹泛光落在 11~13px 卡面小字上会糊成一团，卡面文字回归各自固定样式 */
-[data-theme="indigo"] :is(.tcard, .play-card, .bag-card, .prep-card, .prep-slot, .album-cell) * {
-  text-shadow: none;
-}
-[data-theme="indigo"] :is(.tcard, .play-card, .bag-card, .card-zoom-body) :is(.tcard-name, .band-name, .pc-power, .fix-corner-power) {
-  text-shadow: 0 1px 2px rgba(0,0,0,.8);
-}
 
-/* 赛博特有 - 霓虹按钮 */
-[data-theme="indigo"] .btn--primary {
-  background: linear-gradient(90deg, 
-    var(--accent) 0%, 
-    var(--accent-soft) 100%);
-  box-shadow: 
-    0 0 10px var(--accent),
-    0 0 20px var(--accent-soft);
-  animation: neon-pulse 2s infinite;
-  clip-path: polygon(
-    0 0, 
-    100% 0, 
-    100% calc(100% - 10px), 
-    calc(100% - 10px) 100%, 
-    0 100%
-  );
-}
 
 @keyframes neon-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.8; }
 }
 
-/* 赛博特有 - 数据面板卡片 */
-[data-theme="indigo"] .scenario-card {
-  background: linear-gradient(
-    135deg,
-    rgba(18,18,32,0.9),
-    rgba(10,10,18,0.95)
-  );
-  border-left: 3px solid var(--accent);
-  box-shadow: var(--glow);
-}
 
-[data-theme="indigo"] .scenario-card:hover {
-  box-shadow: 
-    0 0 20px var(--accent),
-    0 0 40px var(--accent-soft);
-}
 
 /* ============================================================
    T-1d: 鎏金富贵（巴洛克奢华 × 清代宫廷）🔄 完全重构
    核心精神：金玉满堂处，方显皇家气派
    ============================================================ */
-[data-theme="luxury"] {
-  /* 基础色板 - 深色奢华 */
-  --bg: #0d0805;          /* 午夜黑 */
-  --panel: #1a120a;       /* 深棕 */
-  --panel-top: #241a12;
-  --ink: #fff8e7;         /* 象牙白 */
-  --ink-dim: #b8a080;     /* 古铜 */
-  --accent: #ffd700;      /* 亮金 */
-  --accent-soft: #b8860b;
-  --gold: #ffef96;        /* 香槟金 */
-  --line: #4a3828;        /* 深褐 */
-  --success: #2ecc71;     /* 翡翠绿 */
-  --warning: #f39c12;     /* 琥珀 */
-  --error: #c0392b;       /* 宝石红 */
-  
-  /* 氛围效果 */
-  --scene-filter: sepia(0.3) saturate(1.5) contrast(1.1);
-  --glow: 0 0 30px rgba(255,215,0,0.4);
-}
 
-/* 奢华特有 - 纹理背景 */
-[data-theme="luxury"] * {
-  background-image: 
-    linear-gradient(45deg, 
-      rgba(255,215,0,0.03) 25%, 
-      transparent 25%, 
-      transparent 50%, 
-      rgba(255,215,0,0.03) 50%, 
-      rgba(255,215,0,0.03) 75%, 
-      transparent 75%, 
-      transparent);
-  background-size: 20px 20px;
-}
 
-/* 奢华特有 - 渐变文字标题 */
-[data-theme="luxury"] h1,
-[data-theme="luxury"] h2,
-[data-theme="luxury"] h3 {
-  background: linear-gradient(180deg, 
-    #ffd700 0%, 
-    #ffef96 50%, 
-    #b8860b 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
-}
 
-/* 奢华特有 - 双层金边按钮 */
-[data-theme="luxury"] .btn--primary {
-  background: linear-gradient(180deg, 
-    #ffef96 0%, 
-    #ffd700 50%, 
-    #b8860b 100%);
-  border: 2px solid #ffd700;
-  box-shadow: 
-    0 0 15px rgba(255,215,0,0.5),
-    inset 0 0 10px rgba(255,215,0,0.3);
-  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-}
 
-/* 奢华特有 - 华丽边框卡片 */
-[data-theme="luxury"] .scenario-card {
-  border: 2px solid #b8860b;
-  position: relative;
-  overflow: hidden;
-}
 
-[data-theme="luxury"] .scenario-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border: 1px solid rgba(255,215,0,0.3);
-  margin: 4px;
-  pointer-events: none;
-}
 
 /* ============================================================
    无障碍与辅助功能（A-1 · 包容性设计）
@@ -3347,6 +3153,7 @@ button { font-family: inherit; }
 #root {
   background-color: var(--paper);   /* 实色底：渐变之外必须有，否则渐变失败即露漆底 */
   background-image:
+    var(--theme-ground, none),      /* 主题地表纹理叠在最上一层；默认皮肤无此令牌 → none */
     radial-gradient(120% 80% at 50% -10%, rgba(255, 252, 244, .5), transparent 60%),
     linear-gradient(168deg, var(--paper) 0%, var(--paper-2) 100%);
   color: var(--ink);
@@ -3441,77 +3248,97 @@ button { font-family: inherit; }
    否则 data-theme 与 data-mode 两个正交轴会互相打脸。
    ============================================================ */
 /* 三套深底帝国主题：原块只覆写底色，浅档的深墨字压深底（.stat-chip/.tb-title/.clue-btn 1.88~1.99） */
-[data-theme="zhusha"] {
-  --ink: #ece0c8; --ink-dim: #b5a583; --gold: #e0b070;
-  --read-bg: rgba(27, 18, 16, .95); --read-bg-2: rgba(21, 14, 12, .97); --read-edge: rgba(224, 176, 112, .26);
-  --paper: #241a15; --paper-2: #1b1210; --paper-ink: #ece0c8; --paper-ink-dim: #b5a583;
-  --paper-line: #4c332a; --paper-edge: #6e4b34; --paper-wash: rgba(9, 5, 3, .3);
-}
-[data-theme="daiqing"] {
-  --ink: #dde6ee; --ink-dim: #9fb0bf; --gold: #b8d0e0;
-  --read-bg: rgba(17, 21, 25, .95); --read-bg-2: rgba(12, 16, 20, .97); --read-edge: rgba(184, 208, 224, .26);
-  --paper: #19212a; --paper-2: #111519; --paper-ink: #dde6ee; --paper-ink-dim: #9fb0bf;
-  --paper-line: #2e3e4b; --paper-edge: #44586b; --paper-wash: rgba(4, 7, 10, .3);
-}
-[data-theme="liujin"] {
-  --ink: #ece0c8; --ink-dim: #bfae83; --gold: #ecd9a0;
-  --read-bg: rgba(26, 21, 9, .95); --read-bg-2: rgba(20, 16, 7, .97); --read-edge: rgba(236, 217, 160, .26);
-  --paper: #262010; --paper-2: #1a1509; --paper-ink: #ece0c8; --paper-ink-dim: #bfae83;
-  --paper-line: #4d4122; --paper-edge: #7a6222; --paper-wash: rgba(8, 6, 2, .3);
-}
 /* 青瓷是唯一的浅底主题：深色档下它的黛蓝正文必须配浅色读稿面（否则 .story-line 1.49） */
-[data-theme="celadon"] {
-  --ink: #2c3e50; --ink-dim: #4a5a5b; --gold: #b03526;
-  --read-bg: rgba(255, 255, 255, .94); --read-bg-2: rgba(247, 249, 248, .96); --read-edge: rgba(44, 62, 80, .2);
-  --paper: #ffffff; --paper-2: #f0f4f3; --paper-ink: #2c3e50; --paper-ink-dim: #4a5a5b;
-  --paper-line: #dfe6e9; --paper-edge: #b8c6cb; --paper-wash: rgba(240, 244, 243, .72);
-}
 /* 这两套把 --ink 定成冷白/象牙白：浅档默认的米黄读稿面会让正文变成浅字压浅底（1.01 / 1.21） */
-[data-theme="indigo"] {
-  --ink: #e0e6ed; --ink-dim: #8fa2b5; --gold: #ff5df0;
-  --read-bg: rgba(10, 10, 18, .95); --read-bg-2: rgba(7, 7, 14, .97); --read-edge: rgba(0, 245, 255, .22);
-  --paper: #121220; --paper-2: #0a0a12; --paper-ink: #e0e6ed; --paper-ink-dim: #8fa2b5;
-  --paper-line: #23233a; --paper-edge: #3a3a5c; --paper-wash: rgba(3, 3, 8, .32);
-}
-[data-theme="luxury"] {
-  --ink: #fff8e7; --ink-dim: #cbb596; --gold: #ffef96;
-  --read-bg: rgba(13, 8, 5, .95); --read-bg-2: rgba(10, 6, 4, .97); --read-edge: rgba(255, 215, 0, .24);
-  --paper: #1a120a; --paper-2: #0d0805; --paper-ink: #fff8e7; --paper-ink-dim: #cbb596;
-  --paper-line: #4a3828; --paper-edge: #8a6d1f; --paper-wash: rgba(4, 2, 1, .32);
-}
 /* 亮底主题的实底主按钮：.btn-main 写死纸白字，压在天青/霓虹青/亮金上只有 2.65~3.48。
    这几套的 accent 本身就亮，按钮字改走各自底色——深字压亮底才是对的方向。
    ⚠ 只动 .btn-main：.btn-cta 的底是 --vermilion 深朱（rgb(168,50,42)），
    一并覆成深字反而掉到 2.09（实测），它本来就不在这个问题里。 */
-[data-theme="celadon"] .btn-main { color: #0e2831; }
-[data-theme="indigo"] .btn-main { color: #06121a; }
-[data-theme="luxury"] .btn-main { color: #241a05; }
 /* 青瓷的 accent 是天青 #7ab8c9，压白底只有 2.2——幕题是 15px 小字，必须换。
    用它自己的朱红印泥（--gold #b03526），与默认皮肤「幕题走朱砂」同一路子。 */
-[data-theme="celadon"] .scene-title { color: var(--gold); }
 /* 朱批在默认皮肤里身兼两职：既是 .badge-v2 的**文字**色，又是 .btn-cta 的**底**色。
    深皮要提亮它才能让浅字读出来，但一并提亮就把 CTA 的深朱底做成浅红、
    奶白字掉到 2.2（实测）。所以把两个职责拆开：--vermilion-text 只管字。 */
-[data-theme="zhusha"], [data-theme="daiqing"], [data-theme="liujin"],
-[data-theme="indigo"], [data-theme="luxury"] {
-  --vermilion-text: #e08a6f;
-}
-[data-theme="celadon"] { --vermilion-text: #8f2a1d; }
 /* 花色也必须归主题管。--suit-* 原先只跟 data-mode 走（浅档深色系、深档亮色系），
    但深皮把 --paper 做成深色后，坐在卡纸上的花色小字就变成浅档深色压深底：
    实测 zhusha/light 的 .gambit-tag 1.71、.wager-bar .st-label 2.12。
    判据是「卡纸深不深」而不是「开关在哪个档」——所以五套深皮吃亮花色，
    青瓷这套浅皮吃深花色（它若不吃，深档的亮紫 #9d77c3 压白底同样会废）。 */
-[data-theme="zhusha"], [data-theme="daiqing"], [data-theme="liujin"],
-[data-theme="indigo"], [data-theme="luxury"] {
-  --suit-ce: #5b8fb8; --suit-qi: #c9a13a; --suit-shi: #c96b57; --suit-yin: #9d77c3;
-}
-[data-theme="celadon"] {
-  --suit-ce: #265371; --suit-qi: #6b4e0f; --suit-shi: #8d3320; --suit-yin: #533378;
-}
 /* 青瓷是「浅色全局换肤」，木框必须跟着换成浅瓷青，
    否则白纸顶一条黑框，整页最重的就是那道缝（montage 实测）。 */
-[data-theme="celadon"] {
-  --lacquer: #e8efee; --lacquer-2: #d7e3e2;
-  --lacquer-ink: #2c3e50; --lacquer-line: #bcd0d1;
+
+/* ============================================================
+   两套新主题（2026-09-29 用户定：只留三套，每套要有自己的视觉语言）
+   默认「朝堂宣纸」= 浅底庙堂；这里补一深一浅两种气质：
+     · 边军 bianjun —— 铁甲风沙：沙碛褐地 + 旌旗金红 + 铆钉方折角饰 + 斜飞沙纹
+     · 江南 jiangnan —— 粉墙黛瓦：墙白黛绿 + 水波冰裂细纹 + 瓦当圆角饰 + 藕荷点缀
+   规矩（血泪换来的）：主题翻了 --panel 就必须同时翻 --ink、--ink-dim、--gold、
+   --paper 一族、--read 一族、--paper-wash、--suit 一族、--lacquer 一族、
+   --vermilion-text、--plate，漏一组就在那块表面上读不出来。
+   且整块必须留在文件末尾——中途那几个 :root 浅底补丁特异度相同，写在前面会被盖掉。
+   ⚠ 注释里别写「双横线令牌名 + 星号 + 斜杠」这种连排：星号紧跟斜杠会提前闭合 CSS 注释，
+     后面的中文就成了裸 token，lightningcss 报 Invalid empty selector / Delim('*')，构建直接挂。
+   ============================================================ */
+
+/* ---------- 边军：铁甲风沙（深底） ---------- */
+[data-theme="bianjun"] {
+  --bg: #1a1713; --panel: #241f18; --panel-top: #2b2419; --line: #4a4031;
+  --ink: #e8ddc6; --ink-dim: #a89b80;
+  --gold: #c8a24a; --accent: #a8402e; --accent-soft: #6e2a1e;
+  --paper: #2a241b; --paper-2: #1e1a14; --paper-ink: #e8ddc6; --paper-ink-dim: #a89b80;
+  --paper-line: #4a4031; --paper-edge: #6b5c3e; --paper-wash: rgba(6, 4, 2, .34);
+  --read-bg: rgba(26, 23, 19, .95); --read-bg-2: rgba(21, 18, 15, .97); --read-edge: rgba(200, 162, 74, .28);
+  --suit-ce: #6fa3c8; --suit-qi: #d4ab4e; --suit-shi: #d1704f; --suit-yin: #ab87cf;
+  --lacquer: #241f18; --lacquer-2: #141109; --lacquer-ink: #e8ddc6; --lacquer-line: #4a4031;
+  --vermilion-text: #e08a6f; --plate: #141109; --plate-ink: #f0e2c4;
+  /* 斜飞沙纹：极低透明度的两道，粗粝感来自"不干净"，别调亮 */
+  --theme-ground:
+    repeating-linear-gradient(24deg, rgba(200, 162, 74, .05) 0 1px, transparent 1px 9px),
+    repeating-linear-gradient(-13deg, rgba(232, 221, 198, .035) 0 1px, transparent 1px 14px);
 }
+/* 铆钉 + 方折角饰：边军的角是硬的，用直角回勾加四枚铆点 */
+[data-theme="bianjun"] .tcard::before { border-radius: 2px; }
+[data-theme="bianjun"] .tcard::after { border-radius: 2px; background-size: 14px 2px, 2px 14px, 14px 2px, 2px 14px, 14px 2px, 2px 14px, 14px 2px, 2px 14px; }
+[data-theme="bianjun"] #root::after {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: -1;
+  background:
+    radial-gradient(3px 3px at 14px 14px, rgba(200, 162, 74, .34), transparent 60%),
+    radial-gradient(3px 3px at calc(100% - 14px) 14px, rgba(200, 162, 74, .34), transparent 60%),
+    radial-gradient(3px 3px at 14px calc(100% - 14px), rgba(200, 162, 74, .34), transparent 60%),
+    radial-gradient(3px 3px at calc(100% - 14px) calc(100% - 14px), rgba(200, 162, 74, .34), transparent 60%);
+}
+/* 题签左沿一道旌红，像旗脚 */
+[data-theme="bianjun"] .tcard-top { border-left: 3px solid var(--accent); }
+
+/* ---------- 江南：粉墙黛瓦（浅底） ---------- */
+[data-theme="jiangnan"] {
+  --bg: #f4f6f4; --panel: #ffffff; --panel-top: #eef2f0; --line: #c9d4cf;
+  --ink: #26332e; --ink-dim: #5c6f66;
+  --gold: #8a6f3c; --accent: #4a7268; --accent-soft: #2c5347;
+  --paper: #fbfcfa; --paper-2: #eef2ef; --paper-ink: #26332e; --paper-ink-dim: #5c6f66;
+  --paper-line: #cfdcd6; --paper-edge: #9db3a9; --paper-wash: rgba(255, 255, 255, .72);
+  --read-bg: rgba(251, 252, 250, .94); --read-bg-2: rgba(238, 242, 239, .96); --read-edge: rgba(38, 51, 46, .2);
+  --suit-ce: #2c5f78; --suit-qi: #7a5f28; --suit-shi: #8a3f33; --suit-yin: #5a4a78;
+  --lacquer: #3b4a45; --lacquer-2: #2a3733; --lacquer-ink: #eef2ef; --lacquer-line: #55685f;
+  --vermilion-text: #8f3a2a; --plate: #2f3d38; --plate-ink: #f0f4f1;
+  /* 水波 + 冰裂：横向细波为主，斜向冰裂极淡 */
+  --theme-ground:
+    repeating-linear-gradient(0deg, rgba(74, 114, 104, .05) 0 1px, transparent 1px 11px),
+    repeating-linear-gradient(58deg, rgba(38, 51, 46, .03) 0 1px, transparent 1px 22px);
+}
+/* 江南的角是圆的（瓦当），角饰收细、加圆弧 */
+[data-theme="jiangnan"] .tcard::before { border-radius: 10px; }
+[data-theme="jiangnan"] .tcard::after { border-radius: 10px; background-size: 10px 1px, 1px 10px, 10px 1px, 1px 10px, 10px 1px, 1px 10px, 10px 1px, 1px 10px; }
+[data-theme="jiangnan"] #root::after {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: -1;
+  background:
+    radial-gradient(10px 10px at 16px 16px, transparent 62%, rgba(74, 114, 104, .16) 63%, transparent 70%),
+    radial-gradient(10px 10px at calc(100% - 16px) 16px, transparent 62%, rgba(74, 114, 104, .16) 63%, transparent 70%),
+    radial-gradient(10px 10px at 16px calc(100% - 16px), transparent 62%, rgba(74, 114, 104, .16) 63%, transparent 70%),
+    radial-gradient(10px 10px at calc(100% - 16px) calc(100% - 16px), transparent 62%, rgba(74, 114, 104, .16) 63%, transparent 70%);
+}
+[data-theme="jiangnan"] .tcard-top { border-left: 3px solid var(--accent-soft); }
+
+/* 地表纹理走"叠加层"而不是替换 #root 的 background-image：
+   直接覆写会把默认皮肤的宣纸渐变整条换成 none（第一版就犯了这个错）。
+   基础两层留在 #root 原规则里，主题只往前插自己的纹理层。 */

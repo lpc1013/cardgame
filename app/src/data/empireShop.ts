@@ -27,13 +27,13 @@ export interface ThemeDef {
 }
 
 /** 主题外观（永久解锁，随时切换） */
+// 2026-09-29 用户定：只留三套主题，每套要有自己的完整视觉语言。
+// 原六套（朱砂/黛青/鎏金/青瓷雅韵/黛蓝幽梦/鎏金富贵）整体下线，
+// 连同 app.css 里 36 个规则块一并删除。默认「朝堂宣纸」占第一套，
+// 这里补一深一浅：边军（铁甲风沙）/ 江南（粉墙黛瓦）。
 export const SHOP_THEMES: ThemeDef[] = [
-  { id: "zhusha", name: "朱砂主题", desc: "朱红为魂，庙堂气象", price: 40 },
-  { id: "daiqing", name: "黛青主题", desc: "青灰冷调，江湖夜雨", price: 40 },
-  { id: "liujin", name: "鎏金主题", desc: "金碧辉煌，盛世长安", price: 60 },
-  { id: "celadon", name: "青瓷雅韵", desc: "雨过天青，宋瓷素净（浅色全局换肤）", price: 60 },
-  { id: "indigo", name: "黛蓝幽梦", desc: "霓虹夜航，赛博东方", price: 60 },
-  { id: "luxury", name: "鎏金富贵", desc: "巴洛克金殿，皇家气象", price: 80 },
+  { id: "bianjun", name: "边军", desc: "铁甲风沙，旌旗铆钉——沙碛褐地与方折角饰", price: 60 },
+  { id: "jiangnan", name: "江南", desc: "粉墙黛瓦，水波冰裂——墙白湖绿与瓦当圆角", price: 60 },
 ];
 
 export const boostOf = (id: string): BoostDef | undefined => SHOP_BOOSTS.find((b) => b.id === id);

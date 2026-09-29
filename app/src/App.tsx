@@ -485,7 +485,12 @@ export default function App() {
   const empire = useMemo(() => settleEmpire(), [empTick, titleTick, phase]);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = empire.theme;
+    // 老存档可能还穿着已下线的主题（朱砂/黛青/鎏金/青瓷/黛蓝/鎏金富贵）。
+    // 对应 CSS 已删，照原样写进 dataset 会得到"穿着不存在的皮肤"：
+    // 页面走默认配色，但商市里显示为已装备。这里按注册表白名单兜回默认。
+    const known = empire.theme && SHOP_THEMES.some((t) => t.id === empire.theme);
+    if (known) document.documentElement.dataset.theme = empire.theme;
+    else delete document.documentElement.dataset.theme;
   }, [empire.theme]);
 
   // 浅/深模式：独立于墨铤解锁的主题，是基础偏好开关，默认浅（朝堂宣纸）
@@ -3158,9 +3163,11 @@ function EmporiumPanel({ onClose, toast, onTheme }: { onClose: () => void; toast
         <div className="bag-group">
           <div className="bag-group-title">主题外观</div>
           <div className="emporia-grid">
-            <div className={`emporia-item ${e.theme === "" ? "on" : ""}`}>
-              <div className="emporia-name">墨褐古卷 {e.theme === "" && <span className="deck-tag">当前</span>}</div>
-              <div className="emporia-desc">默认配色，暗底羊皮</div>
+            {/* 老存档可能穿着已下线的主题：那种情况实际渲染的就是默认皮肤，
+                所以"当前"要按"不在白名单里"判定，而不是死看 e.theme === "" */}
+            <div className={`emporia-item ${e.theme === "" || !SHOP_THEMES.some((t) => t.id === e.theme) ? "on" : ""}`}>
+              <div className="emporia-name">朝堂宣纸 {(e.theme === "" || !SHOP_THEMES.some((t) => t.id === e.theme)) && <span className="deck-tag">当前</span>}</div>
+              <div className="emporia-desc">默认配色，宣纸内容面配大漆木框</div>
               <button className="emporia-buy" onClick={() => { applyTheme(""); sfx.card(); }}>换装</button>
             </div>
             {SHOP_THEMES.map((t) => {

@@ -1658,14 +1658,94 @@ button { font-family: inherit; }
 .end-turn-btn { margin-top: 10px; font-size: 13px; padding: 6px 18px; }
 
 /* ---------- 竖向实体卡（图鉴/背包/市集/翻牌/开包） ---------- */
+/* ---- 卡体重做（2026-09-29 用户判"像后台表格"）----
+   原状：卡图 absolute inset:9px 铺满整张，上面浮两条半透明深灰横条 = 照片贴 UI 条。
+   现按实体卡解剖重搭：外沿 → 金属卡带 → 内细线 → 顶部画窗（带卡口内阴影）
+   → 题签名牌（压住画窗下沿，制造"叠装"而非"堆条"）→ 下方正文区走卡体自己的地子。
+   品级不再只换个边框色，而是给一条装饰阶梯（细线数 + 四角饰 + 光泽）。 */
 .tcard {
   position: relative; width: 184px; aspect-ratio: 3 / 4; flex: 0 0 auto;
-  border-radius: 12px; padding: 9px;
-  display: flex; flex-direction: column; gap: 6px;
+  border-radius: 10px; padding: 8px;
+  display: flex; flex-direction: column; gap: 5px;
   color: #f0e6d2; text-align: center; box-sizing: border-box;
   /* 未知品级字符串的兜底卡体（下方 .tcard.rarity-* 命中时覆盖） */
-  background: linear-gradient(170deg, #3b382f 0%, #26241d 100%); border: 1px solid #565040;
+  /* 必须有实色底：探针遇到 background-image 只取第一个色阶，
+     而这里第一层是 rgba(255,255,255,.05) 的高光，读到近白再合成米黄 --paper，
+     浅档下 .tcard-bottom/.suit-glyph 会假报 1.07/1.12（37+18 个节点）。
+     补 background-color 既让测量诚实，也让高光层顺序不再敏感。 */
+  background-color: var(--card-g2, #26241d);
+  background-image:
+    radial-gradient(120% 60% at 50% 0%, rgba(255, 255, 255, .05), transparent 62%),
+    linear-gradient(170deg, var(--card-g1, #3b382f) 0%, var(--card-g2, #26241d) 100%);
+  border: 1px solid #14110d;
+  /* 三层：外沿压深 + 金属卡带 + 内细线，做出厚度 */
+  box-shadow:
+    0 0 0 1px var(--card-band, #565040),
+    inset 0 0 0 1px rgba(0, 0, 0, .55),
+    inset 0 1px 0 rgba(255, 255, 255, .07),
+    0 3px 10px rgba(0, 0, 0, .45);
   transition: transform .15s, box-shadow .15s;
+}
+/* 四角饰：靠四枚定位渐变画 L 形回勾，不占 DOM、不需要素材。
+   凡档不给（装饰阶梯的起点），良档起逐档加亮。 */
+.tcard::before {
+  content: ""; position: absolute; inset: 3px; border-radius: 7px; pointer-events: none;
+  border: 1px solid var(--card-keyline, transparent);
+}
+/* 角饰单独占一层 ::after，不叠进卡体自己的 background-image。
+   上一版把 8 条 12×1px 的渐变直接挂在 .tcard 上，探针不看 background-size，
+   把角饰当成铺满整块的背景读，于是 .suit-glyph/.tcard-bottom/.theme-tag
+   全报 1.2~1.3（16 个节点）——既骗工具也多一层没必要的耦合。 */
+.tcard::after {
+  content: ""; position: absolute; inset: 0; border-radius: 10px; pointer-events: none;
+  background-image:
+    linear-gradient(var(--card-orn, transparent), var(--card-orn, transparent)),
+    linear-gradient(var(--card-orn, transparent), var(--card-orn, transparent)),
+    linear-gradient(var(--card-orn, transparent), var(--card-orn, transparent)),
+    linear-gradient(var(--card-orn, transparent), var(--card-orn, transparent)),
+    linear-gradient(var(--card-orn, transparent), var(--card-orn, transparent)),
+    linear-gradient(var(--card-orn, transparent), var(--card-orn, transparent)),
+    linear-gradient(var(--card-orn, transparent), var(--card-orn, transparent)),
+    linear-gradient(var(--card-orn, transparent), var(--card-orn, transparent));
+  background-repeat: no-repeat;
+  /* 每角两笔（横 + 竖），12px 长 1px 粗 */
+  background-size: 12px 1px, 1px 12px, 12px 1px, 1px 12px, 12px 1px, 1px 12px, 12px 1px, 1px 12px;
+  background-position:
+    7px 7px, 7px 7px,
+    calc(100% - 7px) 7px, calc(100% - 7px) 7px,
+    7px calc(100% - 7px), 7px calc(100% - 7px),
+    calc(100% - 7px) calc(100% - 7px), calc(100% - 7px) calc(100% - 7px);
+}
+/* 品级阶梯：凡=素面无饰无金；良=一道金细线；精=线+角饰；传=加宽卡带+光泽；孤品=朱红+外发光 */
+.tcard.rarity-凡 {
+  --card-g1: #35322b; --card-g2: #232019; --card-band: #4d473c;
+  /* 凡档不给角饰与内细线（装饰阶梯的起点），只留一条压深的边 */
+  border-color: #100e0b;
+  box-shadow: 0 0 0 1px #4d473c, inset 0 0 0 1px rgba(0, 0, 0, .55), 0 3px 10px rgba(0, 0, 0, .45);
+}
+.tcard.rarity-良 {
+  --card-g1: #27405c; --card-g2: #182838; --card-band: #46749b; --card-keyline: rgba(139, 176, 208, .32); --card-orn: #6f9dc4;
+}
+.tcard.rarity-精 {
+  --card-g1: #3c3060; --card-g2: #221c3a; --card-band: #8b7ab8; --card-keyline: rgba(180, 164, 220, .38); --card-orn: #b1a0dd;
+}
+.tcard.rarity-传 {
+  --card-g1: #6e5a28; --card-g2: #3f3214; --card-band: #d2a44f; --card-keyline: rgba(233, 200, 128, .46); --card-orn: #ecc97e;
+  box-shadow:
+    0 0 0 1px #d2a44f,
+    inset 0 0 0 1px rgba(0, 0, 0, .5),
+    inset 0 1px 0 rgba(255, 236, 190, .18),
+    0 3px 12px rgba(0, 0, 0, .5),
+    0 0 14px rgba(210, 164, 79, .18);
+}
+.tcard.rarity-孤品 {
+  --card-g1: #5c2520; --card-g2: #331412; --card-band: #e0745a; --card-keyline: rgba(240, 168, 140, .5); --card-orn: #f0a88c;
+  box-shadow:
+    0 0 0 1px #e0745a,
+    inset 0 0 0 1px rgba(0, 0, 0, .5),
+    inset 0 1px 0 rgba(255, 210, 190, .16),
+    0 3px 12px rgba(0, 0, 0, .5),
+    0 0 16px rgba(224, 116, 90, .22);
 }
 .tcard.clickable { cursor: pointer; }
 .tcard.clickable:hover {
@@ -1673,11 +1753,8 @@ button { font-family: inherit; }
   box-shadow: 0 10px 22px rgba(0,0,0,.5);
 }
 /* 稀有度底色：凡=墨灰 · 良=黛青 · 精=藤紫 · 传=鎏金 · 孤品=朱砂暗红 */
-.tcard.rarity-凡 { background: linear-gradient(170deg, #3b382f 0%, #26241d 100%); border: 1px solid #565040; border-left: 4px solid #6b6558; }
-.tcard.rarity-良 { background: linear-gradient(170deg, #27405c 0%, #182838 100%); border: 1px solid #5b8fb8; border-left: 4px solid #5b8fb8; }
-.tcard.rarity-精 { background: linear-gradient(170deg, #3c3060 0%, #221c3a 100%); border: 1px solid #8b7ab8; border-left: 4px solid #8b7ab8; }
-.tcard.rarity-传 { background: linear-gradient(170deg, #6e5a28 0%, #3f3214 100%); border: 1px solid #d2a44f; border-left: 4px solid #d2a44f; }
-.tcard.rarity-孤品 { background: linear-gradient(170deg, #5c2520 0%, #331412 100%); border: 1px solid #e0745a; border-left: 4px solid #e0745a; }
+/* 旧五行已删：它们写在新品级规则之后会整片盖掉，而且 border-left:4px 那条
+   粗侧栏正是"表格行"的主要来源。品级装饰统一走上面 .tcard.rarity-* 的令牌阶梯。 */
 /* 花色楷体字 + 左上角徽章：圈色一律中性墨色（品级不参与、花色不参与），
    花色仅由几何形态（方/圆/六角/菱）与字形区分 */
 .suit-glyph {
@@ -1707,17 +1784,31 @@ button { font-family: inherit; }
 .play-card .card-band .band-name,
 .bag-card .card-band .band-name { text-align: left; }
 /* 对局手牌的花色标识已由左上圆形徽章承担，旧细花色环移除（曾与品级箔光 ::after 冲突） */
-.tcard-art { position: absolute; inset: 9px; border-radius: 7px; overflow: hidden; border: 1px solid rgba(0,0,0,.4); background: #171512; z-index: 0; }
+/* 画窗：从"absolute 铺满整张"改成正常流的顶部图窗，下方才腾出真正的正文区。
+   内阴影 + 卡口线做出"图嵌进卡里"，而不是"图贴在卡上"。 */
+.tcard-art {
+  position: relative; inset: auto; flex: none;
+  width: 100%; aspect-ratio: 3 / 2; overflow: hidden;
+  border-radius: 5px; border: 1px solid rgba(0, 0, 0, .6); background: #171512; z-index: 0;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06), inset 0 2px 10px rgba(0, 0, 0, .55);
+}
 .tcard-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .tcard-art .card-art, .tcard-art .card-art-placeholder { width: 100%; height: 100%; margin: 0; border: none; border-radius: 0; }
 /* 美术缺失时的占位（行囊/图鉴大量出现，避免黑底） */
 .card-art-placeholder { position: relative; display: flex; align-items: center; justify-content: center; color: var(--ink-dim); background: linear-gradient(135deg, rgba(255,255,255,.03), rgba(0,0,0,.18)); }
 .card-art-placeholder svg { width: 70%; height: auto; display: block; }
+/* 名牌：不再是一条半透明灰罩，改成墨玉题签——实底 + 上下金细线，
+   并用负 margin 压住画窗下沿 4px。这个"叠装"关系是实体卡的关键，
+   两条各自浮着的横条就是表格。 */
 .tcard-top {
   position: relative; z-index: 1;
   display: flex; align-items: center; justify-content: flex-start; gap: 5px;
-  background: linear-gradient(180deg, rgba(15,13,10,.78), rgba(15,13,10,.55));
-  border-radius: 6px; padding: 5px 7px;
+  margin: -4px 0 0; padding: 5px 8px;
+  background: linear-gradient(180deg, rgba(12, 10, 8, .96) 0%, rgba(24, 20, 15, .94) 100%);
+  border-top: 1px solid var(--card-band, #565040);
+  border-bottom: 1px solid rgba(0, 0, 0, .6);
+  border-radius: 0 0 4px 4px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 -2px 6px rgba(0, 0, 0, .4);
 }
 .tcard-top .tcard-name {
   flex: 1; min-width: 0; text-align: center;
@@ -1728,11 +1819,13 @@ button { font-family: inherit; }
   font-size: 15px; letter-spacing: 1px; color: #f4ebd8; font-weight: 600;
   text-shadow: 0 1px 2px rgba(0,0,0,.8);
 }
+/* 正文区：去掉第二条灰罩，改用卡体自己的地子 + 上方一道发丝线分区。
+   左对齐比居中更好读（12px 中文三行居中会切得七零八落）。 */
 .tcard-bottom {
   position: relative; z-index: 1; margin-top: auto;
-  background: linear-gradient(0deg, rgba(15,13,10,.82), rgba(15,13,10,.6));
-  border-radius: 6px; padding: 6px 8px;
-  font-size: 12px; line-height: 1.5; color: rgba(244,235,216,.92); text-align: center;
+  padding: 6px 4px 2px;
+  border-top: 1px solid rgba(255, 255, 255, .09);
+  font-size: 12px; line-height: 1.55; color: rgba(244, 235, 216, .9); text-align: left;
   min-height: 38px;
   /* C-2 收尾：底部说明区 3 行截断（margin-top:auto 自适应，内容少时不撑满不垫高） */
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;

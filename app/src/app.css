@@ -3083,6 +3083,15 @@ button { font-family: inherit; }
 :root {
   --lacquer: #241c14;        /* 大漆/木框 */
   --lacquer-2: #171310;
+  /* 木框上的字与缝线。原先三处写死 #f1e6d2/#d9cbb2/#4a3a28——
+     等于假定顶栏永远是深木色，于是「浅色全局换肤」的青瓷变成白纸配黑框，
+     整页最刺眼的一条缝就是它。开成令牌后浅皮可以换浅框。 */
+  --lacquer-ink: #f1e6d2;
+  --lacquer-line: #4a3a28;
+  /* 题签墨板：与木框解耦，任何皮肤下都保持深墨（黑底浅字是参考图的device）。
+     主题可以自行覆写，但不跟着 --lacquer 一起翻浅。 */
+  --plate: #1c1712;
+  --plate-ink: #f1e6d2;
   --paper: #efe3cd;          /* 宣纸亮端 */
   --paper-2: #e3d4b8;        /* 宣纸暗端 */
   --paper-ink: #241d16;      /* 纸上墨字 */
@@ -3151,17 +3160,17 @@ button { font-family: inherit; }
 /* 顶栏：大漆通栏 + 朱印徽识，对应参考图最上方那条木色状态栏 */
 .title-nav {
   background: linear-gradient(180deg, var(--lacquer) 0%, var(--lacquer-2) 100%);
-  border-bottom: 1px solid #4a3a28;
+  border-bottom: 1px solid var(--lacquer-line);
   box-shadow: inset 0 -1px 0 rgba(201, 168, 106, .18);
 }
 .nav-seal { margin-right: 2px; }
-.nav-logo { color: #f1e6d2; letter-spacing: 12px; }
+.nav-logo { color: var(--lacquer-ink); letter-spacing: 12px; }
 .ink-chip {
-  color: var(--paper); border-color: #5a4630;
+  color: var(--lacquer-ink); border-color: var(--lacquer-line);
   background: rgba(239, 227, 205, .07); border-radius: 3px;
 }
 .nav-btns button {
-  background: transparent; border: 1px solid #4a3a28; color: #d9cbb2;
+  background: transparent; border: 1px solid var(--lacquer-line); color: var(--lacquer-ink);
   border-radius: 3px;
 }
 .nav-btns button:hover {
@@ -3176,9 +3185,12 @@ button { font-family: inherit; }
   background: linear-gradient(168deg, var(--paper) 0%, var(--paper-2) 100%);
   padding: 10px;
 }
+/* 墨笔破口题签：黑底浅字是参考图定死的device（黑 plate + 不规则边），
+   不能跟着 --lacquer 走——青瓷把木框换成浅瓷青之后，题签一起变浅，
+   浅字压浅板只剩 1.06（实测）。所以单独给一对令牌，默认就是深墨。 */
 .cover-info h1 {
   align-self: flex-start;
-  background: var(--lacquer); color: #f1e6d2;
+  background: var(--plate, var(--lacquer)); color: var(--plate-ink, #f1e6d2);
   padding: 8px 20px 9px;
   clip-path: polygon(1% 12%, 4% 0, 96% 5%, 100% 84%, 97% 100%, 3% 95%);
 }
@@ -3187,7 +3199,11 @@ button { font-family: inherit; }
    （上一轮误给 .sub 设了纸墨深色，桌面截图实测在夜景封面上几乎读不出；
     对比度探针看不见这类问题，它读到的是背后的宣纸。） */
 .cover-info .sub { color: #e8dcc3; text-shadow: 0 1px 6px rgba(0, 0, 0, .75); }
-.cover-ends { text-shadow: 0 1px 4px rgba(0, 0, 0, .6); }
+/* .cover-ends 不是压在插画上，而是落在封面卡纸的左下角（像素核对过：
+   "结局 4/86" 在米黄卡纸上）。所以它该跟卡纸走，而不是跟 --gold 或固定浅色：
+   原先吃 --gold，深档的亮金压米黄卡纸只有 1.78；我上一版误按 .sub 处理成固定浅色，
+   两档全掉到 1.07/1.36，反而更糟。--paper-ink-dim 跟着皮肤的卡纸色走，三套都对。 */
+.cover-ends { color: var(--paper-ink-dim); text-shadow: 0 1px 4px rgba(0, 0, 0, .18); }
 .badge {
   border-radius: 2px; border-color: var(--paper-line); color: var(--paper-ink-dim);
   background: var(--paper-wash);
@@ -3262,7 +3278,7 @@ button { font-family: inherit; }
    它们与参考图的深木顶栏一致，是有意保留的。但浅底模式下 --gold/--ink-dim
    已为宣纸压暗，放进去就变成深字压深底（实测 h2/.chip-silver/.shop-tab 1.72~1.98）。
    故在这些容器上就地恢复"深底配浅字"的令牌，内部所有子元素自动跟着走。 */
-.shop-header, .tcard, .prep-card, .qi-bar, .gsc-progress, .paijiu-tile {
+.shop-header, .tcard, .prep-card, .qi-bar, .gsc-progress, .paijiu-tile, .thumb-ends {
   --ink: #ece0c8;
   --ink-dim: #b5a583;
   --gold: #c9a86a;
@@ -3368,3 +3384,9 @@ button { font-family: inherit; }
   --vermilion-text: #e08a6f;
 }
 [data-theme="celadon"] { --vermilion-text: #8f2a1d; }
+/* 青瓷是「浅色全局换肤」，木框必须跟着换成浅瓷青，
+   否则白纸顶一条黑框，整页最重的就是那道缝（montage 实测）。 */
+[data-theme="celadon"] {
+  --lacquer: #e8efee; --lacquer-2: #d7e3e2;
+  --lacquer-ink: #2c3e50; --lacquer-line: #bcd0d1;
+}

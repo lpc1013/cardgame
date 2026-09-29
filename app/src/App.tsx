@@ -1125,6 +1125,10 @@ export default function App() {
                   <button onClick={() => { sfx.choice(); setFabOpen(false); setShowStudy(true); }}>书斋</button>
                   <button onClick={() => { sfx.choice(); setShowGuide(true); setFabOpen(false); }}>规则书</button>
                   <button onClick={() => { sfx.choice(); setPanel("settings"); setFabOpen(false); }}>设置</button>
+                  {/* 横屏矮视口把 .title-nav 整条隐藏了，标题页的浅/深开关只有这条路能到 */}
+                  <button onClick={() => { sfx.choice(); setMode((m) => (m === "light" ? "dark" : "light")); }}>
+                    {mode === "light" ? "转墨" : "还宣"}
+                  </button>
                   <button className="fab-tree-btn" onClick={() => { sfx.choice(); setFabOpen(false); restorePrev(); }}>退回上一幕</button>
                 </div>
                 <div className="fab-progress">{progressBar}</div>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback, useRef, type ReactNode, type CSSProperties } from "react";
-import type { Scenario, CardDef, Suit, DuelConfig } from "./engine/types";
+import type { Scenario, Scene, CardDef, Suit, DuelConfig } from "./engine/types";
 import { initState, findScene, visibleChoices, applyEffects, registerScenarios, checkCond, resolveSceneLines, type RunState } from "./engine/runtime";
 import { initDuel, revealEmotion, playEmotion, playPressure, endTurn, readEmotion, chargeUp, breakMove, cardCost, duelSpend, respondOpponent, passResponse, forfeitDuel, dmgRoom, ITEM_YANLI_COST, EMOTION_FREE_PLAYS, EMOTION_YANLI_MAX, DEFAULT_AP, DEFAULT_GOAL, type DuelState, type DuelBoosts } from "./engine/duel";
 import {
@@ -10,6 +10,7 @@ import {
   getBonuses, unlockBonus,
 } from "./engine/save";
 import { SCENE_SETTING } from "./data/sceneSettings";
+import { LOC_LABEL, MAP_POS, locBase, hasMap } from "./data/locations";
 import { SHOP_BOOSTS, SHOP_THEMES } from "./data/empireShop";
 import { ACHIEVEMENTS, checkDuelAchievements, checkMinigameAchievements, checkEndingAchievements, type AchCategory, type AchievementDef } from "./data/achievements";
 import { getAchievements, unlockAchievement } from "./engine/save";
@@ -458,6 +459,7 @@ export default function App() {
   const [wager, setWager] = useState(0);
   const [showClues, setShowClues] = useState(false);
   const [showBag, setShowBag] = useState(false);
+  const [showMap, setShowMap] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
   const [treeOf, setTreeOf] = useState<Scenario | null>(null);
   const [cardsOf, setCardsOf] = useState<Scenario | null>(null);
@@ -591,6 +593,7 @@ export default function App() {
       noteCards(sc, next.bag);
       setRevealFrom(-1);
       setShowLog(false);
+      setShowMap(false);
       setSt(next);
       if (!opts?.holdView) enterSceneOf(next, id);
     },
@@ -1378,7 +1381,7 @@ export default function App() {
     const clueReveal = Math.max(0, ...(st?.bag ?? []).map((id) => sc.cards.find((c) => c.id === id)?.clueReveal ?? 0));
     return (
       <div className="story-root">
-        <TopBar sc={sc} st={st} mode={mode} onMode={() => setMode((m) => (m === "light" ? "dark" : "light"))} dlg={dlg} onDlg={() => setDlg((d) => !d)} onClues={() => setShowClues(true)} onBag={() => setShowBag(true)} />
+        <TopBar sc={sc} st={st} mode={mode} onMode={() => setMode((m) => (m === "light" ? "dark" : "light"))} dlg={dlg} onDlg={() => setDlg((d) => !d)} map={false} onMap={() => {}} onClues={() => setShowClues(true)} onBag={() => setShowBag(true)} />
         <div className="story-panel" ref={panelRef}>
           <h2>结案陈词 · 拣选线索（{picked.length}/{v.mustPick}）</h2>
           <p className="muted">呈上御案的线索，将决定此案能否经得起百官诘难。</p>
@@ -1506,6 +1509,7 @@ export default function App() {
     <div className={`story-root${narrArt ? " has-narrator" : ""}${dlg ? " dlg" : ""}`} ref={rootRef} tabIndex={-1} onKeyDown={onKeyDown}>
       <TopBar sc={sc} st={st} mode={mode} onMode={() => setMode((m) => (m === "light" ? "dark" : "light"))}
         dlg={dlg} onDlg={() => setDlg((d) => !d)}
+        map={hasMap(sc.id)} onMap={() => setShowMap(true)}
         onClues={() => setShowClues(true)} onBag={() => setShowBag(true)} />
       {sceneBg && sceneFx ? (
         <div className="scene-stage" aria-hidden="true">
@@ -1581,6 +1585,9 @@ export default function App() {
           <div className="dlg-log-hint">点击任意处收起</div>
         </div>
       )}
+      {showMap && hasMap(sc.id) && (
+        <LocationMap sc={sc} st={st} scene={scene} canPick={atEnd} onPick={choose} onAdvance={advance} onClose={() => setShowMap(false)} />
+      )}
       {toast && <div className="toast">{toast}</div>}
       {showClues && st.clues.length > 0 && (
         <div className="clue-overlay" onClick={() => setShowClues(false)}>
@@ -1606,7 +1613,70 @@ export default function App() {
   );
 }
 
-function TopBar({ sc, st, mode, onMode, dlg, onDlg, onClues, onBag }: { sc: Scenario; st: RunState; mode: "light" | "dark"; onMode: () => void; dlg: boolean; onDlg: () => void; onClues: () => void; onBag: () => void }) {
+/** 探案舆图：把这一幕去得了的地方画在一张图上。
+ *  只做"眼下这一步"的导航——图上可点的节点等价于幕末那排选项、或线性续幕的下一站，
+ *  不新开跳转口子，免得绕过剧情图（软锁与旗标读写都还归 choices / next 那条链）。 */
+function LocationMap({ sc, st, scene, canPick, onPick, onAdvance, onClose }: {
+  sc: Scenario; st: RunState; scene: Scene; canPick: boolean;
+  onPick: (i: number) => void; onAdvance: () => void; onClose: () => void;
+}) {
+  const pos = MAP_POS[sc.id] ?? {};
+  const place = (id: string) => locBase(SCENE_SETTING[sc.id]?.[id] ?? "");
+  const here = place(scene.id);
+  const seen = new Set(st.visited.map(place).filter((k) => k && pos[k]));
+  const chs = visibleChoices(scene, st);
+  // 一个地点可能对应好几个选项，取第一个当下标；没对应选项的地点在图上只是"看得见"
+  const reach: Record<string, number> = {};
+  chs.forEach((c, i) => {
+    const k = place(c.next);
+    if (k && pos[k] && reach[k] === undefined) reach[k] = i;
+  });
+  // 大理寺案里多数幕是线性续幕（只有 scene.next、没有 choices）：
+  // 只认 choices 的话图上永远没有"可去"，舆图就退化成一张看图
+  const nextPlace = chs.length === 0 && scene.next ? place(scene.next) : "";
+  const isReach = (k: string) => canPick && (reach[k] !== undefined || k === nextPlace);
+  return (
+    <div className="loc-map" onClick={onClose}>
+      <div className="loc-ground" onClick={(e) => e.stopPropagation()}>
+        <div className="loc-head">
+          <span className="loc-title">舆图 · {sc.title}</span>
+          <span className="loc-sub">{here ? `所在 · ${LOC_LABEL[here] ?? here}` : "所在 · 未标注之地"}</span>
+          <button className="loc-close" onClick={onClose}>收图</button>
+        </div>
+        <div className="loc-field">
+          {(["北", "东", "南", "西"] as const).map((d) => (
+            <span key={d} className={`loc-dir loc-dir-${d}`}>{d}</span>
+          ))}
+          {Object.entries(pos).map(([k, [x, y]]) => {
+            const state = k === here ? "here" : isReach(k) ? "reach" : seen.has(k) ? "seen" : "dark";
+            const go = reach[k];
+            return (
+              <button key={k} className={`loc-node loc-${state}`} style={{ left: `${x}%`, top: `${y}%` }}
+                disabled={!isReach(k)}
+                onClick={() => {
+                  if (!isReach(k)) return;
+                  if (go !== undefined) onPick(go); else onAdvance();
+                  onClose();
+                }}>
+                <span className="loc-dot" />
+                <span className="loc-name">{state === "dark" ? "未至" : LOC_LABEL[k] ?? k}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="loc-legend">
+          <span><i className="loc-key loc-key-here" />当前</span>
+          <span><i className="loc-key loc-key-reach" />可去</span>
+          <span><i className="loc-key loc-key-seen" />已探</span>
+          <span><i className="loc-key loc-key-dark" />未至</span>
+          {!canPick && <span className="loc-note">读完这一幕才走得动</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TopBar({ sc, st, mode, onMode, dlg, onDlg, map, onMap, onClues, onBag }: { sc: Scenario; st: RunState; mode: "light" | "dark"; onMode: () => void; dlg: boolean; onDlg: () => void; map: boolean; onMap: () => void; onClues: () => void; onBag: () => void }) {
   const [snd, setSnd] = useState(sfxEnabled());
   // R-1：资源变化浮动提示——数值一变在字牌上浮出「+n / −n」+ 微光脉冲（朝望-2 之类不再悄无声息）。
   // 同帧多项变动（如 朝望-2 且 银+10）各浮各的；applyEffects 就地改 stats（浅拷贝共享引用），依赖用整个 st。
@@ -1668,6 +1738,9 @@ function TopBar({ sc, st, mode, onMode, dlg, onDlg, onClues, onBag }: { sc: Scen
       <button className="clue-btn" onClick={() => { sfx.choice(); onDlg(); }} title={dlg ? "回到长卷通读" : "改成一屏一段的对白档"}>
         {dlg ? "长卷" : "对白"}
       </button>
+      {map && (
+        <button className="clue-btn" onClick={() => { sfx.choice(); onMap(); }} title="探案舆图：这一幕去得了的地方">舆图</button>
+      )}
       <button className="clue-btn snd-btn" onClick={() => setSnd(toggleSfx())} title={snd ? "关闭音效" : "开启音效"}>
         {snd ? "♪" : "✕♪"}
       </button>

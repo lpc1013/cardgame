@@ -71,6 +71,11 @@ const cases = [
 for (const [name, clues, expect] of cases) {
   await enter(clues);
   const before = await read();
+  if (name === "zero") {
+    // 用户是看着这一屏报的死锁，所以留一张图作证：提示行、按钮文案、退路链接都在画面里
+    try { await page.screenshot({ path: `${OUT}/v_zero.png` }); }
+    catch (e) { try { await page.screenshot({ path: `${OUT}/v_zero.png`, clip: { x: 0, y: 0, width: 1440, height: 900 } }); } catch (e2) {} }
+  }
   const n = await pickAll();
   await page.waitForTimeout(500);
   const afterPick = await read();

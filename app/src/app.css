@@ -3537,7 +3537,12 @@ button { font-family: inherit; }
 [data-theme="bianjun"][data-mode="dark"] {
   --bg: #14120f; --panel: #1f1b16; --panel-top: #262119; --line: #453b2d;
   --ink: #e8ddc6; --ink-dim: #a89b80;
-  --gold: #dcb95e; --accent: #b8492f; --accent-soft: #6e2a1e;
+  /* --accent 取到 #d9654a 而不是 #b8492f：这个令牌在边军深档里被四处当字色用
+     （场景题签 / .deck-tag / .ach-reward / .quiz-rule summary），#b8492f 压在
+     (20,18,15) 的墨底上只有 3.59，四处都得逐个覆写。提到 #d9654a 是 5.26，
+     根因一次解决；它和深漆岛那组 --accent:#d96b5b 也正好对齐。
+     全库没有任何 background: var(--accent)，加深只会动到两处边框装饰，不伤反白字。 */
+  --gold: #dcb95e; --accent: #d9654a; --accent-soft: #6e2a1e;
   --paper: #241f18; --paper-2: #191612; --paper-ink: #e8ddc6; --paper-ink-dim: #a89b80;
   --paper-line: #453b2d; --paper-edge: #6b5c3e; --paper-wash: rgba(4, 3, 2, .34);
   --read-bg: rgba(20, 18, 15, .95); --read-bg-2: rgba(16, 14, 12, .97); --read-edge: rgba(220, 185, 94, .28);
@@ -3553,14 +3558,8 @@ button { font-family: inherit; }
     repeating-linear-gradient(-13deg, rgba(232, 221, 198, .06) 0 1px, transparent 1px 14px),
     repeating-linear-gradient(90deg, rgba(200, 162, 74, .045) 0 1px, transparent 1px 5px);
 }
-/* 场景题签走 --accent，但阅读栏是近黑的墨底：#b8492f 压不到 4.5（3.59）。
-   换同族的浅朱字，左沿那道旗脚仍留旌红，主题识别不丢。 */
-[data-theme="bianjun"][data-mode="dark"] .scene-title { color: var(--vermilion-text); }
-/* 同一处坑的另一例：商市里的 .deck-tag（「存 N 两」「已扩 N 次」）也吃 --accent，
-   压在面板上实测 3.25。由 title_qa 那轮新覆盖才暴露出来 */
-[data-theme="bianjun"][data-mode="dark"] .deck-tag { color: var(--vermilion-text); }
-/* 成就行的奖励字同理：#b8492f 压在 (33,29,22) 的深底上只有 3.22 */
-[data-theme="bianjun"][data-mode="dark"] .ach-reward { color: var(--vermilion-text); }
+/* 边军深档里吃 --accent 当字色的四处（题签 / .deck-tag / .ach-reward /
+   .quiz-rule summary）不再逐个覆写——令牌本体已经提到 #d9654a，见上面那组令牌。 */
 
 /* ================= 江南 ================= */
 /* 烟雨粉墙（浅）：墙白黛绿，湖绿点缀 */

@@ -16,7 +16,8 @@ const SAVE = JSON.stringify({
   },
 });
 
-const SKINS = ['default', 'zhusha', 'daiqing', 'liujin', 'celadon', 'indigo', 'luxury'];
+// 皮表跟注册表同步：旧六套已下线，留着会全部回落成默认皮肤、拍出七张一模一样的图。
+const SKINS = ['default', 'bianjun', 'jiangnan'];
 const res = fs.existsSync(FILE) ? JSON.parse(fs.readFileSync(FILE, 'utf8')) : {};
 const save = () => fs.writeFileSync(FILE, JSON.stringify(res, null, 1));
 

@@ -3284,7 +3284,7 @@ button { font-family: inherit; }
 [data-theme="bianjun"] {
   --bg: #1a1713; --panel: #241f18; --panel-top: #2b2419; --line: #4a4031;
   --ink: #e8ddc6; --ink-dim: #a89b80;
-  --gold: #c8a24a; --accent: #a8402e; --accent-soft: #6e2a1e;
+  --gold: #dcb95e; --accent: #a8402e; --accent-soft: #6e2a1e;
   --paper: #2a241b; --paper-2: #1e1a14; --paper-ink: #e8ddc6; --paper-ink-dim: #a89b80;
   --paper-line: #4a4031; --paper-edge: #6b5c3e; --paper-wash: rgba(6, 4, 2, .34);
   --read-bg: rgba(26, 23, 19, .95); --read-bg-2: rgba(21, 18, 15, .97); --read-edge: rgba(200, 162, 74, .28);
@@ -3313,9 +3313,9 @@ button { font-family: inherit; }
 /* ---------- 江南：粉墙黛瓦（浅底） ---------- */
 [data-theme="jiangnan"] {
   --bg: #f4f6f4; --panel: #ffffff; --panel-top: #eef2f0; --line: #c9d4cf;
-  --ink: #26332e; --ink-dim: #5c6f66;
-  --gold: #8a6f3c; --accent: #4a7268; --accent-soft: #2c5347;
-  --paper: #fbfcfa; --paper-2: #eef2ef; --paper-ink: #26332e; --paper-ink-dim: #5c6f66;
+  --ink: #26332e; --ink-dim: #566a61;
+  --gold: #6f5729; --accent: #4a7268; --accent-soft: #2c5347;
+  --paper: #fbfcfa; --paper-2: #eef2ef; --paper-ink: #26332e; --paper-ink-dim: #566a61;
   --paper-line: #cfdcd6; --paper-edge: #9db3a9; --paper-wash: rgba(255, 255, 255, .72);
   --read-bg: rgba(251, 252, 250, .94); --read-bg-2: rgba(238, 242, 239, .96); --read-edge: rgba(38, 51, 46, .2);
   --suit-ce: #2c5f78; --suit-qi: #7a5f28; --suit-shi: #8a3f33; --suit-yin: #5a4a78;

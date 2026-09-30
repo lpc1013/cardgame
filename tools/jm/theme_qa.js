@@ -10,7 +10,10 @@ await page.waitForTimeout(3000);
 await page.addScriptTag({ url: 'http://localhost:5199/scripts/contrast-audit.js' });
 await page.waitForTimeout(700);
 
-const THEMES = ['default', 'zhusha', 'daiqing', 'liujin', 'celadon', 'indigo', 'luxury'];
+// 皮表必须跟注册表一致。旧六套已下线：它们不再匹配任何 CSS，
+// 全部会静默回落成默认皮肤并报"0 失败"——绿灯是假的。
+// 所以下面每组都落 --panel 实际取值，靠它断言"这套皮真的换上了"。
+const THEMES = ['default', 'bianjun', 'jiangnan'];
 const res = fs.existsSync(FILE) ? JSON.parse(fs.readFileSync(FILE, 'utf8')) : {};
 const save = () => fs.writeFileSync(FILE, JSON.stringify(res, null, 1));
 

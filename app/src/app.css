@@ -3280,37 +3280,52 @@ button { font-family: inherit; }
      后面的中文就成了裸 token，lightningcss 报 Invalid empty selector / Delim('*')，构建直接挂。
    ============================================================ */
 
-/* ---------- 边军：铁甲风沙（深底） ---------- */
+/* 每套主题各出浅深两版（2026-09-29 用户定：保留浅/深开关的完整意义）。
+   结构：[data-theme=X] 定浅版，[data-theme=X][data-mode="dark"] 定深版——
+   后者特异度 (0,2,0)，同时压过 :root 与 [data-mode="dark"] 两组基础补丁。
+   --theme-orn 是角饰/铆钉/瓦当的着色令牌，明暗两版各给一个，
+   否则深色的铆钉落在浅底上会糊成一团黑点。 */
+
+/* ================= 边军 ================= */
+/* 白日沙碛（浅）：日晒褪色的沙土与麻布，铁灰字，旌旗暗红 */
+/* --gold 压在 #66491a：面板底 (232,220,196) 上 #7d5f1e 只有 4.38，题签/线索钮/缩略角标都是小字 */
 [data-theme="bianjun"] {
-  --bg: #1a1713; --panel: #241f18; --panel-top: #2b2419; --line: #4a4031;
-  --ink: #e8ddc6; --ink-dim: #a89b80;
-  --gold: #dcb95e; --accent: #a8402e; --accent-soft: #6e2a1e;
-  --paper: #2a241b; --paper-2: #1e1a14; --paper-ink: #e8ddc6; --paper-ink-dim: #a89b80;
-  --paper-line: #4a4031; --paper-edge: #6b5c3e; --paper-wash: rgba(6, 4, 2, .34);
-  --read-bg: rgba(26, 23, 19, .95); --read-bg-2: rgba(21, 18, 15, .97); --read-edge: rgba(200, 162, 74, .28);
-  --suit-ce: #6fa3c8; --suit-qi: #d4ab4e; --suit-shi: #d1704f; --suit-yin: #ab87cf;
-  --lacquer: #241f18; --lacquer-2: #141109; --lacquer-ink: #e8ddc6; --lacquer-line: #4a4031;
-  --vermilion-text: #e08a6f; --plate: #141109; --plate-ink: #f0e2c4;
-  /* 斜飞沙纹：极低透明度的两道，粗粝感来自"不干净"，别调亮 */
+  --bg: #d9cdb4; --panel: #e8dcc4; --panel-top: #d2c5aa; --line: #a99878;
+  --ink: #2e2a22; --ink-dim: #6a5f4a;
+  --gold: #66491a; --accent: #9a3a28; --accent-soft: #6e2a1e;
+  --paper: #ece0c8; --paper-2: #ddcfb2; --paper-ink: #2e2a22; --paper-ink-dim: #6a5f4a;
+  --paper-line: #a99878; --paper-edge: #8a7550; --paper-wash: rgba(255, 252, 244, .5);
+  --read-bg: rgba(236, 224, 200, .93); --read-bg-2: rgba(226, 212, 185, .95); --read-edge: rgba(138, 117, 80, .5);
+  --suit-ce: #2f5a6e; --suit-qi: #6e5322; --suit-shi: #8a3a2a; --suit-yin: #55406e;
+  --lacquer: #4a3f2e; --lacquer-2: #33291d; --lacquer-ink: #f0e6d0; --lacquer-line: #6b5c3e;
+  --vermilion-text: #8f2f20; --plate: #2a241c; --plate-ink: #f0e6d0;
+  --theme-orn: rgba(74, 58, 30, .5);
   --theme-ground:
-    repeating-linear-gradient(24deg, rgba(200, 162, 74, .05) 0 1px, transparent 1px 9px),
+    repeating-linear-gradient(24deg, rgba(90, 70, 40, .06) 0 1px, transparent 1px 9px),
+    repeating-linear-gradient(-13deg, rgba(120, 100, 66, .045) 0 1px, transparent 1px 14px);
+}
+/* 月夜巡营（深）：铁甲与冷沙，旌红提亮才压得住 */
+[data-theme="bianjun"][data-mode="dark"] {
+  --bg: #14120f; --panel: #1f1b16; --panel-top: #262119; --line: #453b2d;
+  --ink: #e8ddc6; --ink-dim: #a89b80;
+  --gold: #dcb95e; --accent: #b8492f; --accent-soft: #6e2a1e;
+  --paper: #241f18; --paper-2: #191612; --paper-ink: #e8ddc6; --paper-ink-dim: #a89b80;
+  --paper-line: #453b2d; --paper-edge: #6b5c3e; --paper-wash: rgba(4, 3, 2, .34);
+  --read-bg: rgba(20, 18, 15, .95); --read-bg-2: rgba(16, 14, 12, .97); --read-edge: rgba(220, 185, 94, .28);
+  --suit-ce: #6fa3c8; --suit-qi: #d4ab4e; --suit-shi: #d1704f; --suit-yin: #ab87cf;
+  --lacquer: #1f1b16; --lacquer-2: #100e0b; --lacquer-ink: #e8ddc6; --lacquer-line: #453b2d;
+  --vermilion-text: #e08a6f; --plate: #100e0b; --plate-ink: #f0e2c4;
+  --theme-orn: rgba(220, 185, 94, .34);
+  --theme-ground:
+    repeating-linear-gradient(24deg, rgba(220, 185, 94, .05) 0 1px, transparent 1px 9px),
     repeating-linear-gradient(-13deg, rgba(232, 221, 198, .035) 0 1px, transparent 1px 14px);
 }
-/* 铆钉 + 方折角饰：边军的角是硬的，用直角回勾加四枚铆点 */
-[data-theme="bianjun"] .tcard::before { border-radius: 2px; }
-[data-theme="bianjun"] .tcard::after { border-radius: 2px; background-size: 14px 2px, 2px 14px, 14px 2px, 2px 14px, 14px 2px, 2px 14px, 14px 2px, 2px 14px; }
-[data-theme="bianjun"] #root::after {
-  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: -1;
-  background:
-    radial-gradient(3px 3px at 14px 14px, rgba(200, 162, 74, .34), transparent 60%),
-    radial-gradient(3px 3px at calc(100% - 14px) 14px, rgba(200, 162, 74, .34), transparent 60%),
-    radial-gradient(3px 3px at 14px calc(100% - 14px), rgba(200, 162, 74, .34), transparent 60%),
-    radial-gradient(3px 3px at calc(100% - 14px) calc(100% - 14px), rgba(200, 162, 74, .34), transparent 60%);
-}
-/* 题签左沿一道旌红，像旗脚 */
-[data-theme="bianjun"] .tcard-top { border-left: 3px solid var(--accent); }
+/* 场景题签走 --accent，但阅读栏是近黑的墨底：#b8492f 压不到 4.5（3.59）。
+   换同族的浅朱字，左沿那道旗脚仍留旌红，主题识别不丢。 */
+[data-theme="bianjun"][data-mode="dark"] .scene-title { color: var(--vermilion-text); }
 
-/* ---------- 江南：粉墙黛瓦（浅底） ---------- */
+/* ================= 江南 ================= */
+/* 烟雨粉墙（浅）：墙白黛绿，湖绿点缀 */
 [data-theme="jiangnan"] {
   --bg: #f4f6f4; --panel: #ffffff; --panel-top: #eef2f0; --line: #c9d4cf;
   --ink: #26332e; --ink-dim: #566a61;
@@ -3321,21 +3336,52 @@ button { font-family: inherit; }
   --suit-ce: #2c5f78; --suit-qi: #7a5f28; --suit-shi: #8a3f33; --suit-yin: #5a4a78;
   --lacquer: #3b4a45; --lacquer-2: #2a3733; --lacquer-ink: #eef2ef; --lacquer-line: #55685f;
   --vermilion-text: #8f3a2a; --plate: #2f3d38; --plate-ink: #f0f4f1;
-  /* 水波 + 冰裂：横向细波为主，斜向冰裂极淡 */
+  --theme-orn: rgba(74, 114, 104, .16);
   --theme-ground:
     repeating-linear-gradient(0deg, rgba(74, 114, 104, .05) 0 1px, transparent 1px 11px),
     repeating-linear-gradient(58deg, rgba(38, 51, 46, .03) 0 1px, transparent 1px 22px);
 }
-/* 江南的角是圆的（瓦当），角饰收细、加圆弧 */
+/* 夜船灯火（深）：黛青夜色配舟中一盏暖金 */
+[data-theme="jiangnan"][data-mode="dark"] {
+  --bg: #101614; --panel: #17201d; --panel-top: #1d2724; --line: #34443f;
+  --ink: #dfe7e2; --ink-dim: #93a49d;
+  --gold: #c9a86a; --accent: #6fa08f; --accent-soft: #3d6357;
+  --paper: #17201d; --paper-2: #101614; --paper-ink: #dfe7e2; --paper-ink-dim: #93a49d;
+  --paper-line: #34443f; --paper-edge: #4d625b; --paper-wash: rgba(5, 9, 8, .32);
+  --read-bg: rgba(16, 22, 20, .95); --read-bg-2: rgba(11, 16, 14, .97); --read-edge: rgba(201, 168, 106, .24);
+  --suit-ce: #5b8fb8; --suit-qi: #c9a13a; --suit-shi: #c96b57; --suit-yin: #9d77c3;
+  --lacquer: #1d2724; --lacquer-2: #101614; --lacquer-ink: #dfe7e2; --lacquer-line: #34443f;
+  --vermilion-text: #e08a6f; --plate: #0d1211; --plate-ink: #e8efe9;
+  --theme-orn: rgba(201, 168, 106, .2);
+  --theme-ground:
+    repeating-linear-gradient(0deg, rgba(201, 168, 106, .045) 0 1px, transparent 1px 11px),
+    repeating-linear-gradient(58deg, rgba(223, 231, 226, .025) 0 1px, transparent 1px 22px);
+}
+
+/* ---------- 两套各自的装饰语言（与明暗无关，走 --theme-orn 变色） ---------- */
+/* 边军：角是硬的——直角回勾加粗，四枚铆钉 */
+[data-theme="bianjun"] .tcard::before { border-radius: 2px; }
+[data-theme="bianjun"] .tcard::after { border-radius: 2px; background-size: 14px 2px, 2px 14px, 14px 2px, 2px 14px, 14px 2px, 2px 14px, 14px 2px, 2px 14px; }
+[data-theme="bianjun"] #root::after {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: -1;
+  background:
+    radial-gradient(3px 3px at 14px 14px, var(--theme-orn), transparent 60%),
+    radial-gradient(3px 3px at calc(100% - 14px) 14px, var(--theme-orn), transparent 60%),
+    radial-gradient(3px 3px at 14px calc(100% - 14px), var(--theme-orn), transparent 60%),
+    radial-gradient(3px 3px at calc(100% - 14px) calc(100% - 14px), var(--theme-orn), transparent 60%);
+}
+/* 题签左沿一道旌红，像旗脚 */
+[data-theme="bianjun"] .tcard-top { border-left: 3px solid var(--accent); }
+/* 江南：角是圆的——角饰收细，四角一枚瓦当圆环 */
 [data-theme="jiangnan"] .tcard::before { border-radius: 10px; }
 [data-theme="jiangnan"] .tcard::after { border-radius: 10px; background-size: 10px 1px, 1px 10px, 10px 1px, 1px 10px, 10px 1px, 1px 10px, 10px 1px, 1px 10px; }
 [data-theme="jiangnan"] #root::after {
   content: ""; position: fixed; inset: 0; pointer-events: none; z-index: -1;
   background:
-    radial-gradient(10px 10px at 16px 16px, transparent 62%, rgba(74, 114, 104, .16) 63%, transparent 70%),
-    radial-gradient(10px 10px at calc(100% - 16px) 16px, transparent 62%, rgba(74, 114, 104, .16) 63%, transparent 70%),
-    radial-gradient(10px 10px at 16px calc(100% - 16px), transparent 62%, rgba(74, 114, 104, .16) 63%, transparent 70%),
-    radial-gradient(10px 10px at calc(100% - 16px) calc(100% - 16px), transparent 62%, rgba(74, 114, 104, .16) 63%, transparent 70%);
+    radial-gradient(10px 10px at 16px 16px, transparent 62%, var(--theme-orn) 63%, transparent 70%),
+    radial-gradient(10px 10px at calc(100% - 16px) 16px, transparent 62%, var(--theme-orn) 63%, transparent 70%),
+    radial-gradient(10px 10px at 16px calc(100% - 16px), transparent 62%, var(--theme-orn) 63%, transparent 70%),
+    radial-gradient(10px 10px at calc(100% - 16px) calc(100% - 16px), transparent 62%, var(--theme-orn) 63%, transparent 70%);
 }
 [data-theme="jiangnan"] .tcard-top { border-left: 3px solid var(--accent-soft); }
 

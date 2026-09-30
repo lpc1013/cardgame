@@ -2,7 +2,7 @@ import io, os
 from PIL import Image
 
 OUT = "_qa"
-SKINS = ["default", "zhusha", "daiqing", "liujin", "celadon", "indigo", "luxury"]
+SKINS = ["default", "bianjun", "jiangnan"]
 CW, CH = 520, 325          # 单元格：1440x900 等比缩到 520x325
 GAP, LABEL = 8, 26
 
@@ -45,5 +45,5 @@ def montage(screen, tag):
     print(p, sheet.size)
 
 
-montage("title", "title")
-montage("story", "story")
+montage("title", "title_v3")
+montage("story", "story_v3")

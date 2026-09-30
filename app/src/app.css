@@ -2757,7 +2757,11 @@ button { font-family: inherit; }
 .album-cell { position: relative; }
 .album-carry {
   position: absolute; top: 36px; right: 4px; z-index: 2;
-  font-size: 11px; color: #c9a86a; background: rgba(0,0,0,.55);
+  font-size: 11px; color: #c9a86a;
+  /* 原来只铺 rgba(0,0,0,.55)：这套徽章是设计给"压在卡面插画上"的，
+     卡牌重设计之后它落在浅底卡上，半透底顶穿成 (110,105,97)，金字只剩 2.4。
+     改成近乎实色，它就不再看背后是什么 */
+  background: rgba(12, 10, 7, .88);
   border: 1px solid #c9a86a; border-radius: 999px; padding: 1px 6px;
 }
 
@@ -2847,6 +2851,20 @@ button { font-family: inherit; }
 .album-chip.s-器.on { background: rgba(0,0,0,.22); }
 .album-chip.s-势.on { background: rgba(0,0,0,.22); }
 .album-chip.s-隐.on { background: rgba(0,0,0,.22); }
+/* 浅底档：花色字直接吃 --suit-*，而这组令牌是给"深卡面配浅字"定的中明度色，
+   放到卡册那层 rgba(0,0,0,.12) 洗过的浅药丸上只剩 2.7~4.1（实测 bianjun/light 3.91、
+   jiangnan/light 4.06）。不能直接改 --suit-*——卡面徽章、行囊、对战都在同一令牌上
+   反着要"够亮"。这里只在浅档把花色往近黑压三成，色相身份还在，明度让位给可读。 */
+:root:not([data-mode="dark"]) .album-chip.s-策 { color: color-mix(in srgb, var(--suit-ce) 68%, #14120f); }
+:root:not([data-mode="dark"]) .album-chip.s-器 { color: color-mix(in srgb, var(--suit-qi) 68%, #14120f); }
+:root:not([data-mode="dark"]) .album-chip.s-势 { color: color-mix(in srgb, var(--suit-shi) 68%, #14120f); }
+:root:not([data-mode="dark"]) .album-chip.s-隐 { color: color-mix(in srgb, var(--suit-yin) 68%, #14120f); }
+/* 深档同一处坑反向再走一遍：江南深那套黛紫字 (157,119,195) 在 (26,34,32) 的药丸底上
+   只剩 4.42，差一点点。往近白提一成八，色相身份不动 */
+:root[data-mode="dark"] .album-chip.s-策 { color: color-mix(in srgb, var(--suit-ce) 82%, #f0f4f1); }
+:root[data-mode="dark"] .album-chip.s-器 { color: color-mix(in srgb, var(--suit-qi) 82%, #f0f4f1); }
+:root[data-mode="dark"] .album-chip.s-势 { color: color-mix(in srgb, var(--suit-shi) 82%, #f0f4f1); }
+:root[data-mode="dark"] .album-chip.s-隐 { color: color-mix(in srgb, var(--suit-yin) 82%, #f0f4f1); }
 
 /* 出征准备 · 分区折叠 */
 .prep-sec-head {
@@ -3496,7 +3514,9 @@ button { font-family: inherit; }
   /* --ink-dim 要压住 .gallery-sc-btn 那层 rgba(0,0,0,.15) 洗过的面板：
      #6a5f4a 在其上只有 2.65，连 #574a38（默认皮的审计值）也只有 3.6 */
   --ink: #2e2a22; --ink-dim: #4f4331;
-  --gold: #66491a; --accent: #9a3a28; --accent-soft: #6e2a1e;
+  /* --gold 一路压到 #5b4013：#7d5f1e 在面板底 (232,220,196) 上只有 4.38，
+     而商市卡名 (.emporia-name) 那层还多一道 rgba(0,0,0,.15) 的洗底 */
+  --gold: #5b4013; --accent: #9a3a28; --accent-soft: #6e2a1e;
   --paper: #ece0c8; --paper-2: #ddcfb2; --paper-ink: #2e2a22; --paper-ink-dim: #4f4331;
   --paper-line: #a99878; --paper-edge: #8a7550; --paper-wash: rgba(255, 252, 244, .5);
   --read-bg: rgba(236, 224, 200, .93); --read-bg-2: rgba(226, 212, 185, .95); --read-edge: rgba(138, 117, 80, .5);
@@ -3539,13 +3559,15 @@ button { font-family: inherit; }
 /* 同一处坑的另一例：商市里的 .deck-tag（「存 N 两」「已扩 N 次」）也吃 --accent，
    压在面板上实测 3.25。由 title_qa 那轮新覆盖才暴露出来 */
 [data-theme="bianjun"][data-mode="dark"] .deck-tag { color: var(--vermilion-text); }
+/* 成就行的奖励字同理：#b8492f 压在 (33,29,22) 的深底上只有 3.22 */
+[data-theme="bianjun"][data-mode="dark"] .ach-reward { color: var(--vermilion-text); }
 
 /* ================= 江南 ================= */
 /* 烟雨粉墙（浅）：墙白黛绿，湖绿点缀 */
 [data-theme="jiangnan"] {
   --bg: #f4f6f4; --panel: #ffffff; --panel-top: #eef2f0; --line: #c9d4cf;
   --ink: #26332e; --ink-dim: #44554f;
-  --gold: #6f5729; --accent: #4a7268; --accent-soft: #2c5347;
+  --gold: #644d1f; --accent: #4a7268; --accent-soft: #2c5347;
   --paper: #fbfcfa; --paper-2: #eef2ef; --paper-ink: #26332e; --paper-ink-dim: #44554f;
   --paper-line: #cfdcd6; --paper-edge: #9db3a9; --paper-wash: rgba(255, 255, 255, .72);
   --read-bg: rgba(251, 252, 250, .94); --read-bg-2: rgba(238, 242, 239, .96); --read-edge: rgba(38, 51, 46, .2);

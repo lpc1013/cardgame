@@ -6,6 +6,20 @@ let page = (typeof pages === 'function' ? pages()[0] : null) || context.pages()[
 
 await page.setViewportSize({ width: 1440, height: 900 });
 await page.goto('http://localhost:5199/', { waitUntil: 'load', timeout: 60000 });
+
+// 剧情档要一个"能续"的存档。原先直接点 .resume-box .btn-main，赌浏览器里躺着用户自己的进度——
+// 一旦被别的驱动覆写掉就干等 15s 超时。这里自己灌一份（changjiang 是多视角剧本，
+// 开场幕叫 prologue 不是 start，viewpoint 必须是真 id，否则名牌那条分支测不到）。
+const SAVE = JSON.stringify({
+  version: 4, scenarioId: 'changjiang', savedAt: Date.now(),
+  state: {
+    scenarioId: 'changjiang', sceneId: 'prologue', viewpoint: 'vp_emperor', flags: [], stats: {},
+    clues: [], bag: [], deck: [], silver: 60, lineIndex: 0, visited: ['prologue'],
+    boosts: [], retinue: [], usedCards: [],
+  },
+});
+await page.evaluate((v) => localStorage.setItem('dicun_save_v4', v), SAVE);
+await page.reload({ waitUntil: 'load' });
 await page.waitForTimeout(3000);
 await page.addScriptTag({ url: 'http://localhost:5199/scripts/contrast-audit.js' });
 await page.waitForTimeout(700);

@@ -22,6 +22,11 @@ const shot = async (key, info) => {
   save();
 };
 
+const audit = () => page.evaluate(() => {
+  const x = window.__audit();
+  return { f: x.fails, c: x.checked, l: x.list.filter((y) => y[0] !== '.sub').slice(0, 8).map((y) => y[0] + ':' + y[1] + '@' + y[4]) };
+});
+
 for (const [key, mode, theme] of [['light', 'light', ''], ['bianjun', 'dark', 'bianjun']]) {
   await page.goto('about:blank');
   await page.waitForTimeout(300);
@@ -43,6 +48,37 @@ for (const [key, mode, theme] of [['light', 'light', ''], ['bianjun', 'dark', 'b
     if (b) b.click();
   });
   await page.waitForTimeout(1400);
+  // 探针要先注入：主题卡与称号行两张图都要读数，注入点放在滚来滚去之前
+  await page.addScriptTag({ url: BASE + 'scripts/contrast-audit.js' }).catch(() => {});
+  await page.waitForTimeout(500);
+  // 先拍主题卡（顶上那块织锦样片是这轮新加的），再滚到底拍称号行
+  await page.evaluate(() => {
+    const c = document.querySelector('.theme-card');
+    if (c) c.scrollIntoView({ block: 'center' });
+  });
+  await page.waitForTimeout(700);
+  const themes = await page.evaluate(() => {
+    const cards = [...document.querySelectorAll('.theme-card')];
+    const sw = cards.map((c) => c.querySelector('.theme-swatch')).filter(Boolean);
+    return {
+      themeCards: cards.length,
+      withSwatch: sw.length,
+      // 样片走 background-image：探针量不到，只能自己确认它取到了一张非空图
+      painted: sw.filter((n) => (getComputedStyle(n).backgroundImage || '').startsWith('url(')).length,
+    };
+  });
+  const imgs = await page.evaluate(async () => {
+    const us = [...document.querySelectorAll('.theme-card .theme-swatch')]
+      .map((n) => (getComputedStyle(n).backgroundImage || '').replace(/^url\(["']?/, '').replace(/["']?\)$/, ''))
+      .filter((u) => u && u !== 'none');
+    const out = [];
+    for (const u of us) {
+      try { const r = await fetch(u); out.push(r.ok && (r.headers.get('content-length') || 'ok')); }
+      catch (e) { out.push('err'); }
+    }
+    return out;
+  });
+  await shot('themes_' + key, { mode, theme, ...themes, swatchBytes: imgs, ...(await audit()) });
   // 称号行在商市最底部，不滚进视口就只拍到上半张面板。
   // 面板自己带 overflow-y，光 scrollIntoView 一次会被后续渲染顶回去——先把所有可滚祖先推到底
   await page.evaluate(() => {
@@ -54,8 +90,6 @@ for (const [key, mode, theme] of [['light', 'light', ''], ['bianjun', 'dark', 'b
     n.scrollIntoView({ block: 'center' });
   });
   await page.waitForTimeout(900);
-  await page.addScriptTag({ url: BASE + 'scripts/contrast-audit.js' }).catch(() => {});
-  await page.waitForTimeout(500);
   const info = await page.evaluate(() => {
     const items = [...document.querySelectorAll('.title-item')];
     const r = items.length ? items[0].getBoundingClientRect() : null;
@@ -69,11 +103,7 @@ for (const [key, mode, theme] of [['light', 'light', ''], ['bianjun', 'dark', 'b
       names: items.map((n) => n.innerText.trim().replace(/\s+/g, ' ')),
     };
   });
-  const a = await page.evaluate(() => {
-    const x = window.__audit();
-    return { f: x.fails, c: x.checked, l: x.list.filter((y) => y[0] !== '.sub').slice(0, 8).map((y) => y[0] + ':' + y[1] + '@' + y[4]) };
-  });
-  await shot(key, { mode, theme, ...info, ...a });
+  await shot(key, { mode, theme, ...info, ...(await audit()) });
 }
 
 res.pageCount = (typeof pages === 'function' ? pages().length : -1);

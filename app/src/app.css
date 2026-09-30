@@ -829,6 +829,13 @@ button { font-family: inherit; }
   width: 44px; height: 44px; object-fit: cover; display: block; flex: 0 0 auto;
   border: 1px solid var(--line); border-radius: 6px;
 }
+/* 主题卡顶上那块布样：负 margin 让它糊到卡边，像钉在样册上的一角织锦。
+   128px 平铺——样片本身是 256 的无缝纹，铺小一点才看得出经纬 */
+.theme-swatch {
+  display: block; height: 46px; margin: -12px -14px 4px;
+  background-repeat: repeat; background-size: 128px 128px;
+  border-bottom: 1px solid var(--line); border-radius: 3px 3px 0 0;
+}
 .emporia-item:hover { transform: translateY(-2px); border-color: var(--accent-soft); box-shadow: 0 6px 16px rgba(0,0,0,.35); }
 .emporia-item.on { border-color: var(--gold); box-shadow: 0 0 0 1px rgba(201,168,106,.35), 0 6px 18px rgba(0,0,0,.4); }
 .emporia-name { color: var(--gold); font-size: 15px; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }

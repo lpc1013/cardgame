@@ -66,6 +66,8 @@ const _PORTRAIT_ART = import.meta.glob("./assets/portraits/*.{png,jpg,jpeg}", { 
 const _SCENE_ART = import.meta.glob("./assets/scenes/*.{png,jpg,jpeg}", { eager: true, import: "default" }) as Record<string, string>;
 /** 探案舆图底：assets/maps/<剧本id>.jpg（即梦产的明清城邑手绘图），缺图则回落 CSS 纸底 */
 const _MAP_ART = import.meta.glob("./assets/maps/*.{png,jpg,jpeg}", { eager: true, import: "default" }) as Record<string, string>;
+/** 主题织锦样片：assets/themes/<主题id>.jpg，商市主题卡顶上的那块布样（纯装饰，不承文字） */
+const _THEME_SWATCH = import.meta.glob("./assets/themes/*.{png,jpg,jpeg}", { eager: true, import: "default" }) as Record<string, string>;
 const _COVER_ART = import.meta.glob("./assets/covers/*.{png,jpg,jpeg}", { eager: true, import: "default" }) as Record<string, string>;
 const _END_ART = import.meta.glob("./assets/endings/*.{png,jpg,jpeg}", { eager: true, import: "default" }) as Record<string, string>;
 /** 成就图标：assets/achievements/ach_<id>.{jpg,png}（无图时 UI 用 SVG 纹章兜底） */
@@ -137,6 +139,9 @@ const _CARD_ART_IDX = buildArtIndex(_CARD_ART);
 const _PORTRAIT_ART_IDX = buildArtIndex(_PORTRAIT_ART);
 const _SCENE_ART_IDX = buildArtIndex(_SCENE_ART);
 const _MAP_ART_IDX = buildArtIndex(_MAP_ART);
+const _SWATCH_IDX = buildArtIndex(_THEME_SWATCH);
+/** 默认皮（id 为空串）的样片叫 xuanzhi——宣纸帘纹 */
+const themeSwatch = (id: string) => _SWATCH_IDX.get(id === "" ? "xuanzhi" : id);
 const _COVER_ART_IDX = buildArtIndex(_COVER_ART);
 const _END_ART_IDX = buildArtIndex(_END_ART);
 function _artUrl(idx: Map<string, string>, id: string): string | undefined {
@@ -1679,6 +1684,13 @@ function LocationMap({ sc, st, scene, canPick, onPick, onAdvance, onClose }: {
       </div>
     </div>
   );
+}
+
+/** 商市主题卡顶上那块布样：纯装饰条，不承文字，所以不走对比度那套令牌 */
+function ThemeSwatch({ id }: { id: string }) {
+  const art = themeSwatch(id);
+  if (!art) return null;
+  return <span className="theme-swatch" style={{ backgroundImage: `url("${art}")` }} aria-hidden="true" />;
 }
 
 function TopBar({ sc, st, mode, onMode, dlg, onDlg, map, onMap, onClues, onBag }: { sc: Scenario; st: RunState; mode: "light" | "dark"; onMode: () => void; dlg: boolean; onDlg: () => void; map: boolean; onMap: () => void; onClues: () => void; onBag: () => void }) {
@@ -3299,7 +3311,8 @@ function EmporiumPanel({ onClose, toast, onTheme }: { onClose: () => void; toast
           <div className="emporia-grid">
             {/* 老存档可能穿着已下线的主题：那种情况实际渲染的就是默认皮肤，
                 所以"当前"要按"不在白名单里"判定，而不是死看 e.theme === "" */}
-            <div className={`emporia-item ${e.theme === "" || !SHOP_THEMES.some((t) => t.id === e.theme) ? "on" : ""}`}>
+            <div className={`emporia-item theme-card ${e.theme === "" || !SHOP_THEMES.some((t) => t.id === e.theme) ? "on" : ""}`}>
+              <ThemeSwatch id="" />
               <div className="emporia-name">朝堂宣纸 {(e.theme === "" || !SHOP_THEMES.some((t) => t.id === e.theme)) && <span className="deck-tag">当前</span>}</div>
               <div className="emporia-desc">默认配色，宣纸内容面配大漆木框</div>
               <button className="emporia-buy" onClick={() => { applyTheme(""); sfx.card(); }}>换装</button>
@@ -3307,7 +3320,8 @@ function EmporiumPanel({ onClose, toast, onTheme }: { onClose: () => void; toast
             {SHOP_THEMES.map((t) => {
               const owned = e.themes.includes(t.id);
               return (
-                <div key={t.id} className={`emporia-item ${e.theme === t.id ? "on" : ""}`}>
+                <div key={t.id} className={`emporia-item theme-card ${e.theme === t.id ? "on" : ""}`}>
+                  <ThemeSwatch id={t.id} />
                   <div className="emporia-name">{t.name} {e.theme === t.id && <span className="deck-tag">当前</span>}</div>
                   <div className="emporia-desc">{t.desc}</div>
                   {owned ? (

@@ -266,7 +266,13 @@ function paijiuAdvance(st: PaijiuState): void {
     st.log += st.status === "win"
       ? ` 五局毕，净 ${st.net} 两。` + st.cfg.winText
       : ` 五局毕，净 ${st.net} 两。` + st.cfg.loseText;
+    return;
   }
+  // 下一局重新开押。不清这一下：押注视图整块是 {result === null && (...)} 渲染的，
+  // 第一局结算后 result 永远非 null，第 2~5 局既没有下注按钮、status 又还是 playing
+  // 所以"起身离席"也不出现——丝绸案主线在 sc_paijiu 硬死锁（deadend_qa 实测：
+  // 屏上可点元素为空，局数永远停在「第 2 / 5 局」）。
+  st.result = null;
 }
 /** 押注并结算本局：返回银两净变化 */
 export function paijiuBet(st: PaijiuState, amount: number): number {

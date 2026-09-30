@@ -70,6 +70,8 @@ const _ACH_ART = import.meta.glob("./assets/achievements/*.{png,jpg,jpeg}", { ea
 const achArt = (id: string) => _ACH_ART[`./assets/achievements/ach_${id}.jpg`] ?? _ACH_ART[`./assets/achievements/ach_${id}.png`];
 /** 浅/深模式持久化键（与 dicun_save_v4 解耦——它是显示偏好，不属于周目进度） */
 const MODE_KEY = "dicun_mode_v1";
+/** 对白档（视觉小说式）持久化键：开=一屏只留当前一段，关=长卷累积 */
+const DLG_KEY = "dicun_dlg_v1";
 /** 动态背景特效层：assets/scenes/motion/<剧本id>_<场景id>.webp
  *  anim-forge（Godot）烘出的透明无缝循环粒子层，叠在原画之上；缺文件即回落淡水印底 */
 const _SCENE_MOTION = import.meta.glob("./assets/scenes/motion/*.webp", { eager: true, import: "default" }) as Record<string, string>;
@@ -472,6 +474,12 @@ export default function App() {
   const [coverIdx, setCoverIdx] = useState(0);
   /** 对话演出：本批新揭示之前的 lineIndex（-1 = 刚进这一幕，整幕文字按序擦入） */
   const [revealFrom, setRevealFrom] = useState(-1);
+  // 对白档：正文收进底部台词栏，一屏只留当前一段（视觉小说式）。默认开，可切回长卷
+  const [dlg, setDlg] = useState<boolean>(() => { try { return localStorage.getItem(DLG_KEY) !== "0"; } catch { return true; } });
+  const [showLog, setShowLog] = useState(false);
+  useEffect(() => {
+    try { localStorage.setItem(DLG_KEY, dlg ? "1" : "0"); } catch { /* 隐私模式静默失败 */ }
+  }, [dlg]);
   // 手机横屏悬浮胶囊（商市/书斋/规则书/设置+结局进度）展开态
   const [fabOpen, setFabOpen] = useState(false);
   const [coverZoom, setCoverZoom] = useState(false);
@@ -582,6 +590,7 @@ export default function App() {
       next.lineIndex = opts?.autoRead ? Math.max(0, resolveSceneLines(target, next).length - 1) : 0;
       noteCards(sc, next.bag);
       setRevealFrom(-1);
+      setShowLog(false);
       setSt(next);
       if (!opts?.holdView) enterSceneOf(next, id);
     },
@@ -774,7 +783,12 @@ export default function App() {
     const lines = resolveSceneLines(scene, st);
     if (st.lineIndex < lines.length - 1) {
       let j = st.lineIndex + 1;
-      while (j < lines.length - 1 && lines[j] !== "") j++;
+      if (dlg) {
+        // 对白档一次一句：空行只是排版分隔，跳过它，不留"按一下没反应"的空拍
+        while (j < lines.length - 1 && lines[j] === "") j++;
+      } else {
+        while (j < lines.length - 1 && lines[j] !== "") j++;
+      }
       sfx.page();
       setRevealFrom(st.lineIndex);
       setSt({ ...st, lineIndex: j });
@@ -1364,7 +1378,7 @@ export default function App() {
     const clueReveal = Math.max(0, ...(st?.bag ?? []).map((id) => sc.cards.find((c) => c.id === id)?.clueReveal ?? 0));
     return (
       <div className="story-root">
-        <TopBar sc={sc} st={st} mode={mode} onMode={() => setMode((m) => (m === "light" ? "dark" : "light"))} onClues={() => setShowClues(true)} onBag={() => setShowBag(true)} />
+        <TopBar sc={sc} st={st} mode={mode} onMode={() => setMode((m) => (m === "light" ? "dark" : "light"))} dlg={dlg} onDlg={() => setDlg((d) => !d)} onClues={() => setShowClues(true)} onBag={() => setShowBag(true)} />
         <div className="story-panel" ref={panelRef}>
           <h2>结案陈词 · 拣选线索（{picked.length}/{v.mustPick}）</h2>
           <p className="muted">呈上御案的线索，将决定此案能否经得起百官诘难。</p>
@@ -1477,10 +1491,22 @@ export default function App() {
   // 名牌只写游戏自己给过的称谓：多视角取 viewpoints 的 name，五桩案件取「大理寺卿」；
   // 其余单视角剧本通篇只有「朕/柴大人」，文本没给姓名就不编一个上去
   const narrName = sc.viewpoints?.find((v) => v.id === st.viewpoint)?.name ?? CASE_SCENARIOS[sc.id];
+  const lines = resolveSceneLines(scene, st);
+  // 幕尾的空行不算"还有内容没读"：末尾若挂着 ""，推进记号会一直亮着、点一下却没字
+  let lastReal = lines.length - 1;
+  while (lastReal > 0 && lines[lastReal] === "") lastReal--;
+  const atEnd = st.lineIndex >= lastReal;
+  // 对白档一屏只留当前这一句（advance 已改成一次一句）；
+  // 落在空行上时退回上一句，栏框不会空成一格。长卷档从幕首整段铺开。
+  let dlgFrom = dlg ? st.lineIndex : 0;
+  if (dlg) { while (dlgFrom > 0 && lines[dlgFrom] === "") dlgFrom--; }
+  const shown = lines.slice(dlgFrom, st.lineIndex + 1);
 
   return (
-    <div className={`story-root${narrArt ? " has-narrator" : ""}`} ref={rootRef} tabIndex={-1} onKeyDown={onKeyDown}>
-      <TopBar sc={sc} st={st} mode={mode} onMode={() => setMode((m) => (m === "light" ? "dark" : "light"))} onClues={() => setShowClues(true)} onBag={() => setShowBag(true)} />
+    <div className={`story-root${narrArt ? " has-narrator" : ""}${dlg ? " dlg" : ""}`} ref={rootRef} tabIndex={-1} onKeyDown={onKeyDown}>
+      <TopBar sc={sc} st={st} mode={mode} onMode={() => setMode((m) => (m === "light" ? "dark" : "light"))}
+        dlg={dlg} onDlg={() => setDlg((d) => !d)}
+        onClues={() => setShowClues(true)} onBag={() => setShowBag(true)} />
       {sceneBg && sceneFx ? (
         <div className="scene-stage" aria-hidden="true">
           <img className="scene-bg-img" src={sceneBg} alt="" />
@@ -1495,13 +1521,24 @@ export default function App() {
           <img className="narrator-art" src={narrArt} alt="" />
           {/* key=lineIndex：每揭一段就重挂载一次，说话的一闪因此能反复播 */}
           <span className="narrator-pulse" key={st.lineIndex} />
-          {narrName && <span className="narrator-name">{narrName}</span>}
+          {narrName && !dlg && <span className="narrator-name">{narrName}</span>}
         </aside>
       )}
       <div className="story-panel" onClick={advance} ref={panelRef} key={scene.id}>
-        {scene.title && <div className="scene-title">{scene.title}</div>}
+        {dlg && (
+          <div className="dlg-head">
+            {narrName && <span className="dlg-name">{narrName}</span>}
+            {scene.title && <span className="dlg-scene">{scene.title}</span>}
+            <button className="dlg-log-btn" onClick={(e) => { e.stopPropagation(); sfx.choice(); setShowLog((v) => !v); }}>
+              {showLog ? "收起" : "回顾"}
+            </button>
+          </div>
+        )}
+        {!dlg && scene.title && <div className="scene-title">{scene.title}</div>}
         {scene.desc && <p className="scene-desc">{scene.desc}</p>}
-        {resolveSceneLines(scene, st).slice(0, st.lineIndex + 1).map((l, i) => {
+        {shown.map((l, k) => {
+          const i = dlgFrom + k;
+          if (dlg && l === "") return null;
           const fresh = i > revealFrom;
           // 一幕可能一次揭出十几段（空行只作排版分隔），步长按批大小自适应，
           // 整批总时长封顶 ~1.1s，避免固定 110ms 让后段挤成一面文字墙
@@ -1514,7 +1551,7 @@ export default function App() {
             </p>
           );
         })}
-        {st.lineIndex >= resolveSceneLines(scene, st).length - 1 && choices.length > 0 && (
+        {atEnd && choices.length > 0 && (
           <div className="choices" onClick={(e) => e.stopPropagation()}>
             {choices.map((c, i) => (
               <button key={c.next + i} className="choice" onClick={() => choose(i)}>
@@ -1524,10 +1561,26 @@ export default function App() {
             ))}
           </div>
         )}
-        {st.lineIndex >= resolveSceneLines(scene, st).length - 1 && choices.length === 0 && scene.next && (
+        {atEnd && choices.length === 0 && scene.next && (
           <div className="continue-tip">▼ 继续（点击画面 / 空格）</div>
         )}
+        {!atEnd && <div className="next-tip">▼</div>}
       </div>
+      {dlg && showLog && (
+        <div className="dlg-log" onClick={() => setShowLog(false)}>
+          <div className="dlg-log-list">
+            {lines.slice(0, st.lineIndex + 1).map((l, i) => (
+              l === ""
+                ? <div key={i} className="dlg-log-gap" />
+                : (
+                  <p key={i} ref={i === st.lineIndex ? (el) => { if (el) el.scrollIntoView({ block: "center" }); } : undefined}
+                     className={`dlg-log-line${i === st.lineIndex ? " now" : ""}`}>{saidSpans(l)}</p>
+                )
+            ))}
+          </div>
+          <div className="dlg-log-hint">点击任意处收起</div>
+        </div>
+      )}
       {toast && <div className="toast">{toast}</div>}
       {showClues && st.clues.length > 0 && (
         <div className="clue-overlay" onClick={() => setShowClues(false)}>
@@ -1553,7 +1606,7 @@ export default function App() {
   );
 }
 
-function TopBar({ sc, st, mode, onMode, onClues, onBag }: { sc: Scenario; st: RunState; mode: "light" | "dark"; onMode: () => void; onClues: () => void; onBag: () => void }) {
+function TopBar({ sc, st, mode, onMode, dlg, onDlg, onClues, onBag }: { sc: Scenario; st: RunState; mode: "light" | "dark"; onMode: () => void; dlg: boolean; onDlg: () => void; onClues: () => void; onBag: () => void }) {
   const [snd, setSnd] = useState(sfxEnabled());
   // R-1：资源变化浮动提示——数值一变在字牌上浮出「+n / −n」+ 微光脉冲（朝望-2 之类不再悄无声息）。
   // 同帧多项变动（如 朝望-2 且 银+10）各浮各的；applyEffects 就地改 stats（浅拷贝共享引用），依赖用整个 st。
@@ -1611,6 +1664,9 @@ function TopBar({ sc, st, mode, onMode, onClues, onBag }: { sc: Scenario; st: Ru
       )}
       <button className="clue-btn" onClick={() => { sfx.choice(); onMode(); }} title={mode === "light" ? "切到深色" : "切回宣纸浅色"}>
         {mode === "light" ? "转墨" : "还宣"}
+      </button>
+      <button className="clue-btn" onClick={() => { sfx.choice(); onDlg(); }} title={dlg ? "回到长卷通读" : "改成一屏一段的对白档"}>
+        {dlg ? "长卷" : "对白"}
       </button>
       <button className="clue-btn snd-btn" onClick={() => setSnd(toggleSfx())} title={snd ? "关闭音效" : "开启音效"}>
         {snd ? "♪" : "✕♪"}

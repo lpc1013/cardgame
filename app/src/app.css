@@ -556,6 +556,10 @@ button { font-family: inherit; }
 .foot-tip { margin-top: 40px; font-size: 12px; color: var(--ink-dim); max-width: min(92vw, 640px); text-align: center; } /* F-16：限宽居中，不再钻进左下角进度条下方 */
 .resume-box { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 10px; }
 .link-btn { background: none; border: none; color: var(--ink-dim); font-size: 12px; cursor: pointer; text-decoration: underline; }
+/* 结案屏的退路：证据不足时「呈上御案」之外必须有第二条路，所以这个链接要单独占一行，
+   不能跟在按钮后面挤成同一行（实测会和 .btn-main 并排，看着像按钮的一部分） */
+.story-panel > .fix-prev-ghost { display: block; margin: 12px auto 0; }
+.verdict-short { font-size: 13px; letter-spacing: 1px; margin: 4px 0 14px; color: var(--vermilion-text); }
 .sell-locked { color: var(--gold); text-decoration: none; opacity: .75; cursor: help; letter-spacing: 1px; }
 .sc-ends { margin-top: 10px; font-size: 12px; color: var(--gold); line-height: 1.6; }
 .scenario-wrap { display: flex; flex-direction: column; gap: 8px; }

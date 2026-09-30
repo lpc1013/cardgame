@@ -828,7 +828,10 @@ export default function App() {
     const v = sc.verdict;
     const hasCore = picked.includes(v.coreClue);
     const trueCount = picked.filter((id) => sc.clues?.find((c) => c.id === id && c.kind === "true")).length;
-    goto(hasCore && trueCount >= v.minTrue ? v.winScene : v.loseScene);
+    // 拣不满 mustPick 一律走败线：证据不足却靠"恰好抽中核心+真线索"翻盘，
+    // 等于把 mustPick 这个门槛变成摆设——它现在也必须能点得动（见 verdict 屏的 need）
+    const full = picked.length === v.mustPick;
+    goto(full && hasCore && trueCount >= v.minTrue ? v.winScene : v.loseScene);
     setPicked([]);
   };
 
@@ -1387,6 +1390,11 @@ export default function App() {
     const v = sc.verdict;
     /** 照骨镜等洞察道具：持有即复盘标出核心/真线索 */
     const clueReveal = Math.max(0, ...(st?.bag ?? []).map((id) => sc.cards.find((c) => c.id === id)?.clueReveal ?? 0));
+    // 手里线索凑不满 mustPick 时，"拣满才能呈"这条门槛永远过不去——
+    // 零线索走进这里就是一间没有门的屋子（实测：按钮常哑，屏上没有任何出口）。
+    // 上限改成"能拣几条拣几条"，拣不满的一律走败线（见 doVerdict 的 full 判定）。
+    const need = Math.min(v.mustPick, st.clues.length);
+    const short = st.clues.length < v.mustPick;
     return (
       <div className="story-root">
         <TopBar sc={sc} st={st} mode={mode} onMode={() => setMode((m) => (m === "light" ? "dark" : "light"))} dlg={dlg} onDlg={() => setDlg((d) => !d)} map={false} onMap={() => {}} onClues={() => setShowClues(true)} onBag={() => setShowBag(true)} />
@@ -1394,6 +1402,7 @@ export default function App() {
           <h2>结案陈词 · 拣选线索（{picked.length}/{v.mustPick}）</h2>
           <p className="muted">呈上御案的线索，将决定此案能否经得起百官诘难。</p>
           <p className="verdict-hint">只从前文已解锁的线索中拣选（当前已解锁 {st.clues.length} 条；未走过、未触发的线索不予展示）。</p>
+          {short && <p className="verdict-short">案卷单薄，凑不足 {v.mustPick} 条——勉强定谳只会被百官问倒。可退回上一幕续查，或就此呈上（此局难有完案）。</p>}
           {clueReveal >= 1 && <p className="clue-reveal-hint">〔照骨镜〕镜光直照案眼——核心线索上已亮起<span className="fix-term-tip" title="案眼：结案陈词必备的核心线索，拣选时不可遗漏">「案眼」</span>印记。</p>}
           <div className="clue-grid">
             {st.clues.map((cid) => {
@@ -1404,7 +1413,7 @@ export default function App() {
               const isTrue = clueReveal >= 2 && c.kind === "true";
               return (
                 <div key={cid} className={`clue-card ${on ? "on" : ""} ${isCore ? "clue-core" : ""}`} onClick={() =>
-                  setPicked((p) => (p.includes(cid) ? p.filter((x) => x !== cid) : p.length < v.mustPick ? [...p, cid] : p))
+                  setPicked((p) => (p.includes(cid) ? p.filter((x) => x !== cid) : p.length < need ? [...p, cid] : p))
                 }>
                   <div className="clue-name">{c.name} {isCore && <span className="clue-core-tag" title="案眼：结案陈词必备的核心线索，拣选时不可遗漏">案眼</span>}{isTrue && <span className="clue-true-tag">真</span>}</div>
                   <div className="clue-desc">{c.desc}</div>
@@ -1412,7 +1421,11 @@ export default function App() {
               );
             })}
           </div>
-          <button className="btn-main" disabled={picked.length !== v.mustPick} onClick={doVerdict}>呈上御案</button>
+          <button className="btn-main" disabled={picked.length !== need} onClick={doVerdict}>
+            {short ? "勉强呈上御案" : "呈上御案"}
+          </button>
+          {/* 出口：证据不足时不该被锁死在这一屏。每周目一次的「退回上一幕」在这里最有用 */}
+          <button className="link-btn fix-prev-ghost" onClick={() => { sfx.choice(); restorePrev(); }}>退回上一幕，继续查案</button>
         </div>
         {showClues && st.clues.length > 0 && (
           <div className="clue-overlay" onClick={() => setShowClues(false)}>

@@ -1303,26 +1303,35 @@ button { font-family: inherit; }
 .loc-close:hover { color: var(--gold); border-color: var(--gold); }
 .loc-field {
   position: relative; aspect-ratio: 16 / 9; margin: 12px 0 8px;
-  border: 1px solid var(--paper-line);
+  border: 1px solid var(--paper-line); overflow: hidden;
   /* 图心自己铺纸与主题纹理，节点不再直接压在遮罩上——文字才有稳定的底 */
   background:
     var(--theme-ground, none),
     radial-gradient(120% 90% at 50% 42%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 70%),
     linear-gradient(168deg, var(--paper) 0%, var(--paper-2) 100%);
 }
+/* 真舆图底（即梦产）铺上来时，CSS 那圈虚线子午圈就多余——撤掉，别在画上再套一个框 */
+.loc-field:has(.loc-art)::before { display: none; }
+.loc-art {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; display: block; pointer-events: none;
+}
 .loc-node {
-  position: absolute; transform: translate(-50%, -50%);
+  position: absolute; z-index: 1;
+  transform: translate(-50%, -50%);
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   padding: 0; border: none; background: none; font: inherit; color: var(--ink); cursor: default;
 }
 /* 空场上先立一圈"图"的样子：虚线子午圈 + 四方方位。
-   真舆图底（即梦产）落进来之前，靠这两样让它读起来是张图而不是一块空白 */
+   真舆图底（即梦产）落进来之后 ::before 撤掉，方位字留一层纸光才不被屋顶顶穿 */
 .loc-field::before {
   content: ""; position: absolute; inset: 9% 13%; pointer-events: none;
   border: 1px dashed color-mix(in srgb, var(--ink-dim) 45%, transparent); border-radius: 50%;
 }
 .loc-dir {
-  position: absolute; font-size: 11px; letter-spacing: 2px; color: var(--ink-dim); pointer-events: none;
+  position: absolute; z-index: 2; pointer-events: none;
+  font-size: 11px; letter-spacing: 2px; color: var(--ink-dim);
+  text-shadow: 0 0 4px rgba(250, 244, 230, .9);
 }
 .loc-dir-北 { top: 4px; left: 50%; transform: translateX(-50%); }
 .loc-dir-南 { bottom: 4px; left: 50%; transform: translateX(-50%); }
@@ -1331,21 +1340,27 @@ button { font-family: inherit; }
 .loc-dot {
   width: 12px; height: 12px; border-radius: 50%;
   border: 1px solid var(--ink-dim); background: var(--panel);
+  box-shadow: 0 0 0 2px rgba(250, 244, 230, .72);
 }
 .loc-name {
   font-size: 12px; letter-spacing: 2px; white-space: nowrap;
-  padding: 1px 7px; color: var(--ink-dim);
-  background: var(--read-bg); border: 1px solid var(--read-edge);
+  padding: 1px 7px;
+  /* 图签固定走"浅纸深墨"，不吃主题令牌：舆图底本身是米黄手绘，
+     深色档下再套一层深底药丸，字就化在屋顶纹理里（1440 宽桌面截图实测）。
+     与 .dlg-log-hint / .cover-info h1 同一类判断——恒压在某种固定底上的字，
+     就不该跟着浅/深翻。 */
+  color: #3a3227; background: #f4ecd8; border: 1px solid #b9a87e;
+  box-shadow: 0 1px 3px rgba(40, 30, 14, .34);
 }
 .loc-here .loc-dot {
   background: var(--vermilion); border-color: var(--vermilion-deep);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--vermilion) 26%, transparent);
 }
-.loc-here .loc-name { color: var(--ink); border-color: var(--gold); }
+.loc-here .loc-name { color: #2b2418; border-color: #9a3a28; }
 .loc-reach { cursor: pointer; }
 .loc-reach .loc-dot { background: var(--gold); border-color: var(--gold); animation: loc-pulse 1.5s ease-in-out infinite; }
-.loc-reach .loc-name { color: var(--ink); }
-.loc-reach:hover .loc-name { color: var(--gold); border-color: var(--gold); }
+.loc-reach .loc-name { color: #2b2418; }
+.loc-reach:hover .loc-name { color: #6f4e12; border-color: #6f4e12; }
 .loc-seen .loc-dot { background: var(--ink-dim); }
 .loc-dark { opacity: .62; }
 .loc-dark .loc-dot { background: none; border-style: dashed; }

@@ -64,6 +64,8 @@ setTotalEnds(SCENARIOS.reduce((n, s) => n + s.scenes.filter(x => x.ending).lengt
 const _CARD_ART = import.meta.glob("./assets/cards/*/*.{png,jpg,jpeg}", { eager: true, import: "default" }) as Record<string, string>;
 const _PORTRAIT_ART = import.meta.glob("./assets/portraits/*.{png,jpg,jpeg}", { eager: true, import: "default" }) as Record<string, string>;
 const _SCENE_ART = import.meta.glob("./assets/scenes/*.{png,jpg,jpeg}", { eager: true, import: "default" }) as Record<string, string>;
+/** 探案舆图底：assets/maps/<剧本id>.jpg（即梦产的明清城邑手绘图），缺图则回落 CSS 纸底 */
+const _MAP_ART = import.meta.glob("./assets/maps/*.{png,jpg,jpeg}", { eager: true, import: "default" }) as Record<string, string>;
 const _COVER_ART = import.meta.glob("./assets/covers/*.{png,jpg,jpeg}", { eager: true, import: "default" }) as Record<string, string>;
 const _END_ART = import.meta.glob("./assets/endings/*.{png,jpg,jpeg}", { eager: true, import: "default" }) as Record<string, string>;
 /** 成就图标：assets/achievements/ach_<id>.{jpg,png}（无图时 UI 用 SVG 纹章兜底） */
@@ -134,6 +136,7 @@ function buildArtIndex(map: Record<string, string>): Map<string, string> {
 const _CARD_ART_IDX = buildArtIndex(_CARD_ART);
 const _PORTRAIT_ART_IDX = buildArtIndex(_PORTRAIT_ART);
 const _SCENE_ART_IDX = buildArtIndex(_SCENE_ART);
+const _MAP_ART_IDX = buildArtIndex(_MAP_ART);
 const _COVER_ART_IDX = buildArtIndex(_COVER_ART);
 const _END_ART_IDX = buildArtIndex(_END_ART);
 function _artUrl(idx: Map<string, string>, id: string): string | undefined {
@@ -1621,6 +1624,7 @@ function LocationMap({ sc, st, scene, canPick, onPick, onAdvance, onClose }: {
   onPick: (i: number) => void; onAdvance: () => void; onClose: () => void;
 }) {
   const pos = MAP_POS[sc.id] ?? {};
+  const mapArt = _artUrl(_MAP_ART_IDX, sc.id);
   const place = (id: string) => locBase(SCENE_SETTING[sc.id]?.[id] ?? "");
   const here = place(scene.id);
   const seen = new Set(st.visited.map(place).filter((k) => k && pos[k]));
@@ -1644,6 +1648,7 @@ function LocationMap({ sc, st, scene, canPick, onPick, onAdvance, onClose }: {
           <button className="loc-close" onClick={onClose}>收图</button>
         </div>
         <div className="loc-field">
+          {mapArt && <img className="loc-art" src={mapArt} alt={`${sc.title}舆图底`} />}
           {(["北", "东", "南", "西"] as const).map((d) => (
             <span key={d} className={`loc-dir loc-dir-${d}`}>{d}</span>
           ))}

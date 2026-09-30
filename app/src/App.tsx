@@ -3351,9 +3351,17 @@ function EmporiumPanel({ onClose, toast, onTheme }: { onClose: () => void; toast
           <div className="bag-group">
             <div className="bag-group-title">称号（成就授予，展示用）</div>
             <div className="emporia-grid">
-              {e.titles.map((t) => (
-                <div key={t} className="emporia-item"><div className="emporia-name">「{t}」</div></div>
-              ))}
+              {e.titles.map((t) => {
+                // 称号不另产图：授予它的那条成就已有官定图标（如「不忘旧部」← 民助城防），
+                // 直接复用同一张，免得同一个意思在库里长出两幅互相对不上的画
+                const art = achArt(ACHIEVEMENTS.find((a) => a.reward?.includes(`称号「${t}」`))?.id ?? "");
+                return (
+                  <div key={t} className="emporia-item title-item">
+                    {art && <img className="title-icon" src={art} alt="" />}
+                    <div className="emporia-name">「{t}」</div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

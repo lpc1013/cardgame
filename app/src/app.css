@@ -823,6 +823,12 @@ button { font-family: inherit; }
   padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
   transition: transform .15s, border-color .15s, box-shadow .15s;
 }
+/* 称号行：图标在左、名号在右；图取自授予它的那条成就（复用，不另产） */
+.title-item { flex-direction: row; align-items: center; gap: 10px; }
+.title-icon {
+  width: 44px; height: 44px; object-fit: cover; display: block; flex: 0 0 auto;
+  border: 1px solid var(--line); border-radius: 6px;
+}
 .emporia-item:hover { transform: translateY(-2px); border-color: var(--accent-soft); box-shadow: 0 6px 16px rgba(0,0,0,.35); }
 .emporia-item.on { border-color: var(--gold); box-shadow: 0 0 0 1px rgba(201,168,106,.35), 0 6px 18px rgba(0,0,0,.4); }
 .emporia-name { color: var(--gold); font-size: 15px; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
@@ -3508,6 +3514,9 @@ button { font-family: inherit; }
 /* 场景题签走 --accent，但阅读栏是近黑的墨底：#b8492f 压不到 4.5（3.59）。
    换同族的浅朱字，左沿那道旗脚仍留旌红，主题识别不丢。 */
 [data-theme="bianjun"][data-mode="dark"] .scene-title { color: var(--vermilion-text); }
+/* 同一处坑的另一例：商市里的 .deck-tag（「存 N 两」「已扩 N 次」）也吃 --accent，
+   压在面板上实测 3.25。由 title_qa 那轮新覆盖才暴露出来 */
+[data-theme="bianjun"][data-mode="dark"] .deck-tag { color: var(--vermilion-text); }
 
 /* ================= 江南 ================= */
 /* 烟雨粉墙（浅）：墙白黛绿，湖绿点缀 */

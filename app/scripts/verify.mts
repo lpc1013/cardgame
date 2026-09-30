@@ -271,6 +271,21 @@ for (const sc of ALL) {
       }
     }
     if (s.lines.length === 0) warn(`场景 ${s.id} 没有正文`);
+    // 1a2) 出口存在性：上面 1) 只查"出口指向的幕在不在"，从不查"这一幕到底有没有出口"。
+    // 读完结尾才发现屏上没有任何可点的东西——正是用户报的那类死锁（静态版）。
+    // 注意 runtime 的兜底口径：continue-tip 的条件是「choices 为空且有 next」，
+    // 所以"全靠选项走出去"的幕一旦所有选项都被 cond 挡住，连兜底都不会出现。
+    {
+      const verdictEntry = !!sc.verdict && sc.verdict.scene === s.id;
+      const hardExit = !!(s.next || s.ending || s.duel || s.cardPick || s.shop || s.minigame || verdictEntry);
+      const chs = s.choices ?? [];
+      if (!hardExit && chs.length === 0) fail(`场景 ${s.id} 没有任何出口（无 next/choices/duel/cardPick/shop/minigame/ending）——读到这儿就死锁`);
+      if (!hardExit && chs.length > 0) {
+        const alwaysVisible = chs.some((c) => !c.cond);
+        const hasFallback = chs.some((c) => !!c.cond && !!c.altNext);
+        if (!alwaysVisible && !hasFallback) warn(`场景 ${s.id} 唯一出路是 ${chs.length} 个全带 cond 的选项，且无 altNext——若这些 cond 能同时落空即零选项死锁，可达性需图分析定（tools/jm/hublock_qa.js 量最坏情况）`);
+      }
+    }
     // 1b2) variantLines 文本回响：cond 引用合法、lines 非空
     for (const v of s.variantLines ?? []) {
       if (!v.lines || v.lines.length === 0) fail(`场景 ${s.id} variantLines 存在空回响文本`);

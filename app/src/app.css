@@ -3290,19 +3290,26 @@ button { font-family: inherit; }
 /* 白日沙碛（浅）：日晒褪色的沙土与麻布，铁灰字，旌旗暗红 */
 /* --gold 压在 #66491a：面板底 (232,220,196) 上 #7d5f1e 只有 4.38，题签/线索钮/缩略角标都是小字 */
 [data-theme="bianjun"] {
-  --bg: #d9cdb4; --panel: #e8dcc4; --panel-top: #d2c5aa; --line: #a99878;
-  --ink: #2e2a22; --ink-dim: #6a5f4a;
+  --bg: #d9cdb4; --panel: #e8dcc4; --panel-top: #e4d8c0; --line: #a99878;
+  /* --ink-dim 要压住 .gallery-sc-btn 那层 rgba(0,0,0,.15) 洗过的面板：
+     #6a5f4a 在其上只有 2.65，连 #574a38（默认皮的审计值）也只有 3.6 */
+  --ink: #2e2a22; --ink-dim: #4f4331;
   --gold: #66491a; --accent: #9a3a28; --accent-soft: #6e2a1e;
-  --paper: #ece0c8; --paper-2: #ddcfb2; --paper-ink: #2e2a22; --paper-ink-dim: #6a5f4a;
+  --paper: #ece0c8; --paper-2: #ddcfb2; --paper-ink: #2e2a22; --paper-ink-dim: #4f4331;
   --paper-line: #a99878; --paper-edge: #8a7550; --paper-wash: rgba(255, 252, 244, .5);
   --read-bg: rgba(236, 224, 200, .93); --read-bg-2: rgba(226, 212, 185, .95); --read-edge: rgba(138, 117, 80, .5);
   --suit-ce: #2f5a6e; --suit-qi: #6e5322; --suit-shi: #8a3a2a; --suit-yin: #55406e;
   --lacquer: #4a3f2e; --lacquer-2: #33291d; --lacquer-ink: #f0e6d0; --lacquer-line: #6b5c3e;
   --vermilion-text: #8f2f20; --plate: #2a241c; --plate-ink: #f0e6d0;
   --theme-orn: rgba(74, 58, 30, .5);
+  --theme-band: rgba(94, 72, 40, .55);
+  --theme-nav-band: rgba(220, 185, 94, .34);
+  --btn-radius: 2px;
+  /* 地表纹理：麻布经纬两道斜纹 + 一道竖向粗粝，透明度要能"看见脏"才算边军 */
   --theme-ground:
-    repeating-linear-gradient(24deg, rgba(90, 70, 40, .06) 0 1px, transparent 1px 9px),
-    repeating-linear-gradient(-13deg, rgba(120, 100, 66, .045) 0 1px, transparent 1px 14px);
+    repeating-linear-gradient(24deg, rgba(90, 70, 40, .10) 0 1px, transparent 1px 9px),
+    repeating-linear-gradient(-13deg, rgba(120, 100, 66, .075) 0 1px, transparent 1px 14px),
+    repeating-linear-gradient(90deg, rgba(70, 55, 32, .05) 0 1px, transparent 1px 5px);
 }
 /* 月夜巡营（深）：铁甲与冷沙，旌红提亮才压得住 */
 [data-theme="bianjun"][data-mode="dark"] {
@@ -3316,9 +3323,13 @@ button { font-family: inherit; }
   --lacquer: #1f1b16; --lacquer-2: #100e0b; --lacquer-ink: #e8ddc6; --lacquer-line: #453b2d;
   --vermilion-text: #e08a6f; --plate: #100e0b; --plate-ink: #f0e2c4;
   --theme-orn: rgba(220, 185, 94, .34);
+  --theme-band: rgba(220, 185, 94, .3);
+  --theme-nav-band: rgba(220, 185, 94, .26);
+  /* 斜飞沙纹：粗粝感来自"不干净"，但两道太淡就等于没有——提到能读出的量 */
   --theme-ground:
-    repeating-linear-gradient(24deg, rgba(220, 185, 94, .05) 0 1px, transparent 1px 9px),
-    repeating-linear-gradient(-13deg, rgba(232, 221, 198, .035) 0 1px, transparent 1px 14px);
+    repeating-linear-gradient(24deg, rgba(220, 185, 94, .085) 0 1px, transparent 1px 9px),
+    repeating-linear-gradient(-13deg, rgba(232, 221, 198, .06) 0 1px, transparent 1px 14px),
+    repeating-linear-gradient(90deg, rgba(200, 162, 74, .045) 0 1px, transparent 1px 5px);
 }
 /* 场景题签走 --accent，但阅读栏是近黑的墨底：#b8492f 压不到 4.5（3.59）。
    换同族的浅朱字，左沿那道旗脚仍留旌红，主题识别不丢。 */
@@ -3328,18 +3339,23 @@ button { font-family: inherit; }
 /* 烟雨粉墙（浅）：墙白黛绿，湖绿点缀 */
 [data-theme="jiangnan"] {
   --bg: #f4f6f4; --panel: #ffffff; --panel-top: #eef2f0; --line: #c9d4cf;
-  --ink: #26332e; --ink-dim: #566a61;
+  --ink: #26332e; --ink-dim: #44554f;
   --gold: #6f5729; --accent: #4a7268; --accent-soft: #2c5347;
-  --paper: #fbfcfa; --paper-2: #eef2ef; --paper-ink: #26332e; --paper-ink-dim: #566a61;
+  --paper: #fbfcfa; --paper-2: #eef2ef; --paper-ink: #26332e; --paper-ink-dim: #44554f;
   --paper-line: #cfdcd6; --paper-edge: #9db3a9; --paper-wash: rgba(255, 255, 255, .72);
   --read-bg: rgba(251, 252, 250, .94); --read-bg-2: rgba(238, 242, 239, .96); --read-edge: rgba(38, 51, 46, .2);
   --suit-ce: #2c5f78; --suit-qi: #7a5f28; --suit-shi: #8a3f33; --suit-yin: #5a4a78;
   --lacquer: #3b4a45; --lacquer-2: #2a3733; --lacquer-ink: #eef2ef; --lacquer-line: #55685f;
   --vermilion-text: #8f3a2a; --plate: #2f3d38; --plate-ink: #f0f4f1;
   --theme-orn: rgba(74, 114, 104, .16);
+  --theme-band: rgba(59, 74, 69, .34);
+  --theme-nav-band: rgba(201, 168, 106, .3);
+  --btn-radius: 16px;
+  /* 水波为主、冰裂极淡：横向细波要读得出来，斜裂只作底子 */
   --theme-ground:
-    repeating-linear-gradient(0deg, rgba(74, 114, 104, .05) 0 1px, transparent 1px 11px),
-    repeating-linear-gradient(58deg, rgba(38, 51, 46, .03) 0 1px, transparent 1px 22px);
+    repeating-linear-gradient(0deg, rgba(74, 114, 104, .085) 0 1px, transparent 1px 11px),
+    repeating-linear-gradient(58deg, rgba(38, 51, 46, .05) 0 1px, transparent 1px 22px),
+    repeating-linear-gradient(-32deg, rgba(38, 51, 46, .035) 0 1px, transparent 1px 17px);
 }
 /* 夜船灯火（深）：黛青夜色配舟中一盏暖金 */
 [data-theme="jiangnan"][data-mode="dark"] {
@@ -3353,9 +3369,12 @@ button { font-family: inherit; }
   --lacquer: #1d2724; --lacquer-2: #101614; --lacquer-ink: #dfe7e2; --lacquer-line: #34443f;
   --vermilion-text: #e08a6f; --plate: #0d1211; --plate-ink: #e8efe9;
   --theme-orn: rgba(201, 168, 106, .2);
+  --theme-band: rgba(201, 168, 106, .26);
+  --theme-nav-band: rgba(201, 168, 106, .26);
   --theme-ground:
-    repeating-linear-gradient(0deg, rgba(201, 168, 106, .045) 0 1px, transparent 1px 11px),
-    repeating-linear-gradient(58deg, rgba(223, 231, 226, .025) 0 1px, transparent 1px 22px);
+    repeating-linear-gradient(0deg, rgba(201, 168, 106, .075) 0 1px, transparent 1px 11px),
+    repeating-linear-gradient(58deg, rgba(223, 231, 226, .04) 0 1px, transparent 1px 22px),
+    repeating-linear-gradient(-32deg, rgba(223, 231, 226, .028) 0 1px, transparent 1px 17px);
 }
 
 /* ---------- 两套各自的装饰语言（与明暗无关，走 --theme-orn 变色） ---------- */
@@ -3384,6 +3403,44 @@ button { font-family: inherit; }
     radial-gradient(10px 10px at calc(100% - 16px) calc(100% - 16px), transparent 62%, var(--theme-orn) 63%, transparent 70%);
 }
 [data-theme="jiangnan"] .tcard-top { border-left: 3px solid var(--accent-soft); }
+
+/* 眉带：顶栏下沿一条纹样，是两套皮最"一眼可辨"的地方。
+   边军＝城墙垛口（方齿），江南＝瓦当水波（连弧）。都只画在 padding 区，不重排。
+   两条栏的地子不同：剧情页 .top-bar 走 --panel（随明暗翻），
+   首页 .title-nav 恒为大漆深底——所以各要一个带色，深底上不能用深带。 */
+[data-theme="bianjun"] .top-bar, [data-theme="bianjun"] .title-nav,
+[data-theme="jiangnan"] .top-bar, [data-theme="jiangnan"] .title-nav { position: relative; }
+[data-theme="bianjun"] .top-bar::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 5px;
+  pointer-events: none;
+  background: repeating-linear-gradient(90deg, var(--theme-band) 0 7px, transparent 7px 16px);
+}
+[data-theme="jiangnan"] .top-bar::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 8px;
+  pointer-events: none;
+  background-image: radial-gradient(circle at 50% 100%, transparent 5px, var(--theme-band) 5.5px, transparent 7px);
+  background-size: 18px 8px; background-repeat: repeat-x;
+}
+[data-theme="bianjun"] .title-nav::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 5px;
+  pointer-events: none;
+  background: repeating-linear-gradient(90deg, var(--theme-nav-band) 0 7px, transparent 7px 16px);
+}
+[data-theme="jiangnan"] .title-nav::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 8px;
+  pointer-events: none;
+  background-image: radial-gradient(circle at 50% 100%, transparent 5px, var(--theme-nav-band) 5.5px, transparent 7px);
+  background-size: 18px 8px; background-repeat: repeat-x;
+}
+
+/* 阅读栏的形：边军方折加一道旗脚，江南圆角收在下方 */
+[data-theme="bianjun"] .story-root:has(.scene-stage) .story-panel {
+  border-radius: 2px; border-left: 4px solid var(--accent);
+}
+[data-theme="bianjun"] .scene-title { border-left-color: var(--accent); }
+[data-theme="jiangnan"] .story-root:has(.scene-stage) .story-panel {
+  border-radius: 18px 18px 6px 6px;
+}
 
 /* 地表纹理走"叠加层"而不是替换 #root 的 background-image：
    直接覆写会把默认皮肤的宣纸渐变整条换成 none（第一版就犯了这个错）。

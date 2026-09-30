@@ -16,7 +16,7 @@ const SC = 'fuma';
 // 而且 changjiang 根本不是 cardSystem 剧本（五部大理寺案才是），列表里压根没有它。
 const IDS = ["c_wei_yamen", "c_wei_liang", "c_li_qian", "c_li_mian", "c_qing_tong", "c_qing_nv", "c_li_lun", "c_li_falv", "i_xin", "i_yu", "i_dao", "i_zhu", "i_shu", "i_yinpiao", "r_li_sanj", "r_zhang", "r_zhou", "r_shen", "r_wang", "s_yin10", "s_yin30", "c_yin_shu", "c_quan_jiang", "c_she_duan", "c_wen_xing", "f_diantang", "f_tangji", "f_yeyan", "f_gongnei", "f_anxiang", "f_yandu", "i_jinzan", "i_guici", "r_cuiping", "s_huangcai", "f_renxin", "t_youji", "t_jieli", "t_huosheng", "i_jiedi"];
 
-const SKINS = ['default', 'zhusha', 'daiqing', 'liujin', 'celadon', 'indigo', 'luxury'];
+const SKINS = ['default', 'bianjun', 'jiangnan'];
 const res = fs.existsSync(FILE) ? JSON.parse(fs.readFileSync(FILE, 'utf8')) : {};
 const save = () => fs.writeFileSync(FILE, JSON.stringify(res, null, 1));
 

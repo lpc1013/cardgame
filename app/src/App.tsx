@@ -1415,8 +1415,14 @@ export default function App() {
     // 上限改成"能拣几条拣几条"，拣不满的一律走败线（见 doVerdict 的 full 判定）。
     const need = Math.min(v.mustPick, st.clues.length);
     const short = st.clues.length < v.mustPick;
+    // 这一幕在 SCENE_SETTING 里本来就有自己的地点（fuma.verdict → study_night），
+    // 之前结案屏是唯一一张"没有画面"的屏——全游戏最素的一屏偏偏是收束屏。
+    const vScene = sc.scenes.find((s) => s.id === v.scene);
+    const vBg = vScene ? sceneArt(sc.id, vScene.id) : undefined;
+    const coreHeld = !!v.coreClue && st.clues.includes(v.coreClue);
     return (
-      <div className="story-root">
+      <div className="story-root verdict-root">
+        {vBg && <div className="scene-bg" style={{ backgroundImage: `url(${vBg})` }} aria-hidden="true" />}
         <TopBar sc={sc} st={st} mode={mode} onMode={() => setMode((m) => (m === "light" ? "dark" : "light"))} dlg={dlg} onDlg={() => setDlg((d) => !d)} map={false} onMap={() => {}} surveyLabel={null} onSurvey={() => {}} onClues={() => setShowClues(true)} onBag={() => setShowBag(true)} />
         <div className="story-panel" ref={panelRef}>
           <h2>结案陈词 · 拣选线索（{picked.length}/{v.mustPick}）</h2>
@@ -1425,7 +1431,7 @@ export default function App() {
           {short && <p className="verdict-short">案卷单薄，凑不足 {v.mustPick} 条——勉强定谳只会被百官问倒。可退回上一幕续查，或就此呈上（此局难有完案）。</p>}
           {clueReveal >= 1 && <p className="clue-reveal-hint">〔照骨镜〕镜光直照案眼——核心线索上已亮起<span className="fix-term-tip" title="案眼：结案陈词必备的核心线索，拣选时不可遗漏">「案眼」</span>印记。</p>}
           <div className="clue-grid">
-            {st.clues.map((cid) => {
+            {st.clues.map((cid, i) => {
               const c = sc.clues?.find((x) => x.id === cid);
               if (!c) return null;
               const on = picked.includes(cid);
@@ -1435,15 +1441,23 @@ export default function App() {
                 <div key={cid} className={`clue-card ${on ? "on" : ""} ${isCore ? "clue-core" : ""}`} onClick={() =>
                   setPicked((p) => (p.includes(cid) ? p.filter((x) => x !== cid) : p.length < need ? [...p, cid] : p))
                 }>
+                  <span className="clue-slip" aria-hidden="true">{["一", "二", "三", "四", "五", "六", "七", "八", "九", "十"][i] ?? i + 1}</span>
                   <div className="clue-name">{c.name} {isCore && <span className="clue-core-tag" title="案眼：结案陈词必备的核心线索，拣选时不可遗漏">案眼</span>}{isTrue && <span className="clue-true-tag">真</span>}</div>
                   <div className="clue-desc">{c.desc}</div>
+                  {/* 拣选态不能只靠一圈描边：米色底上 --accent 的边框变化在浅皮几乎看不出来 */}
+                  <span className="clue-mark" aria-hidden="true">{on ? "已拣" : "未拣"}</span>
                 </div>
               );
             })}
           </div>
           <button className="btn-main" disabled={picked.length !== need} onClick={doVerdict}>
-            {short ? "勉强呈上御案" : "呈上御案"}
+            {picked.length < need ? `再拣 ${need - picked.length} 条呈上御案（已拣 ${picked.length}/${need}）`
+              : short ? "勉强呈上御案" : "呈上御案"}
           </button>
+          {/* 案眼没拣到 = 一定不是完案。这条提示原来只在持有照骨镜时才说，普通线玩家点下去才知道 */}
+          {picked.length === need && !coreHeld && v.coreClue && (
+            <p className="verdict-short">卷宗里还有一条本案的案眼未曾拣入——如此呈上，纵有实据也难定谳。</p>
+          )}
           {/* 出口：证据不足时不该被锁死在这一屏。每周目一次的「退回上一幕」在这里最有用 */}
           <button className="link-btn fix-prev-ghost" onClick={() => { sfx.choice(); restorePrev(); }}>退回上一幕，继续查案</button>
         </div>

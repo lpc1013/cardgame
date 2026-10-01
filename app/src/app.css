@@ -1527,15 +1527,55 @@ button { font-family: inherit; }
 .btn-main:disabled { opacity: .4; cursor: not-allowed; }
 
 /* ---------- 线索 ---------- */
-.clue-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin: 20px 0; cursor: default; }
+/* auto-fill + minmax(200px, 1fr) 在这里是循环定宽：轨道最小值 200px 比容器还宽时，
+   网格会把自己的 scrollWidth 撑出去，而 .story-panel 的 margin:auto 是在**撑宽之后**的
+   可用宽度里居中——于是整块面板被推到右边、第三张卡跑出视口右缘。
+   min(200px, 100%) 是给 auto-fill 轨道兜底的标准写法。 */
+.clue-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); gap: 12px; margin: 20px 0; cursor: default; }
 .clue-card {
+  position: relative;
   background: var(--panel); border: 1px solid var(--line);
-  padding: 14px; cursor: pointer; transition: border-color .15s;
+  padding: 14px 14px 12px 40px; cursor: pointer; transition: border-color .15s, box-shadow .15s;
+}
+/* 案卷纸片感：左沿一道装订线 + 一枚卷次编号，像卷宗里抽出的一条纸片，
+   而不是一个米色方块。编号走 --ink-dim，不抢线索名的金色 */
+.clue-card::before {
+  content: ""; position: absolute; left: 30px; top: 8px; bottom: 8px; width: 1px;
+  background: repeating-linear-gradient(180deg, var(--line) 0 3px, transparent 3px 6px);
+}
+.clue-slip {
+  position: absolute; left: 8px; top: 12px;
+  font-size: 12px; line-height: 1; color: var(--ink-dim); letter-spacing: 0;
+}
+.clue-mark {
+  position: absolute; right: 8px; top: 10px;
+  font-size: 10px; letter-spacing: 1px; color: var(--ink-dim);
+  border: 1px solid var(--line); border-radius: 2px; padding: 1px 5px;
 }
 .clue-card:hover { border-color: var(--gold); }
-.clue-card.on { border-color: var(--accent); background: #2c211a; }
-.clue-name { color: var(--gold); margin-bottom: 6px; }
+/* 拣中要一眼可辨：描边 + 朱印「已拣」 + 一道内阴影。
+   原来只改 border-color，浅皮上 --accent 与 --line 差得不多，几乎看不出来 */
+.clue-card.on {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--panel));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.clue-card.on .clue-mark {
+  color: var(--vermilion-text); border-color: var(--vermilion-text);
+  background: color-mix(in srgb, var(--vermilion) 12%, transparent);
+}
+.clue-name { color: var(--gold); margin-bottom: 6px; padding-right: 40px; }
 .clue-desc { font-size: 12px; color: var(--ink-dim); line-height: 1.7; }
+/* 结案屏的底：这一幕在 SCENE_SETTING 里本来就有地点，之前是全游戏唯一一张没画面的屏 */
+.verdict-root .scene-bg { opacity: .5; }
+.verdict-root .story-panel { background: var(--read-bg); }
+@media (max-height: 520px) {
+  .verdict-root .story-panel { background: var(--read-bg-2); }
+  .clue-grid { gap: 8px; margin: 12px 0; }
+  .clue-card { padding: 10px 10px 9px 36px; }
+  .clue-card::before { left: 27px; }
+  .clue-desc { font-size: 11px; line-height: 1.55; }
+}
 .clue-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,.7);
   display: flex; align-items: center; justify-content: center; z-index: 40;

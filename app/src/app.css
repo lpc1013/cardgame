@@ -1741,6 +1741,21 @@ button { font-family: inherit; }
   .dt-stacks { flex-direction: row; }
   .dt-clash { flex-wrap: wrap; gap: 8px; }
 }
+/* 勘查浮层的短高适配。只放 .sv-* ——牌桌那批同类规则一律写进文末
+   "既有的横屏短高块"（@media (orientation: landscape) and (max-height: 520px)），
+   因为那块里已有 .duel-stage / .hand / .dt-* 的权威值，同特异度下源序在后就是它赢。
+   本块与它条件相同但位置在前，把牌桌规则写在这里会被静默盖掉——本轮已经为此白改过两轮。 */
+@media (max-height: 520px) {
+  /* 图心按 16:9 会把热点挤成一排，横屏下压扁一点换回可读的观察句高度 */
+  .sv-field { aspect-ratio: 16 / 7; margin: 6px 0; }
+  .sv-ground { padding: 8px 12px 6px; }
+  .sv-read { min-height: 44px; padding: 5px 10px; }
+  .sv-note { font-size: 12px; line-height: 1.6; }
+  .sv-hint { font-size: 12px; }
+  .sv-head { padding-bottom: 4px; }
+  .sv-title { font-size: 14px; letter-spacing: 2px; }
+  .sv-legend { gap: 10px; padding-top: 4px; font-size: 11px; }
+}
 
 .duel-stage { flex: 1; min-height: 170px; padding: 18px 6px; overflow-y: auto; }
 .opp-line { color: var(--ink); font-size: 16px; line-height: 1.9; }
@@ -2699,7 +2714,55 @@ button { font-family: inherit; }
   .duel-status { flex-wrap: nowrap; overflow-x: auto; gap: 12px; white-space: nowrap; padding-bottom: 2px; }
   .duel-status span { font-size: 12px; }
   .duel-status .st-label { font-size: 11px; }
-  .duel-stage { flex: 1 1 auto; min-height: 64px; max-height: none; overflow-y: auto; }
+  .duel-stage { flex: 1 1 auto; min-height: 40px; max-height: none; padding: 6px 4px; overflow-y: auto; }
+  .opp-line { font-size: 14px; line-height: 1.7; }
+  /* ---- 牌桌分区在 844x390 里要换"形"，不是继续缩字号 ----
+     三行堆叠（他席 / 案中央 / 我席）实测案面 187px，加标题 98 + 旁白 64 + 手牌 108 + 规则 26 + 间隙
+     = 546，比视口多 156px；而 .duel-root 是 F-9 刻意锁死视口高、overflow:hidden 的，
+     多出来的部分不是"要滚一下"，是**根本到不了**。所以横屏下把案面摊成一行：他席 | 回合 | 交锋 | 我席。
+     "他对面、我这边"的竖向关系改由左右承担，席位形象、状态条、判定一个都不丢。 */
+  .dt-table { display: flex; align-items: center; gap: 8px; padding: 5px 8px; margin-bottom: 6px; }
+  .dt-opp, .dt-me { flex: 0 0 auto; padding: 0; gap: 6px; align-items: center; }
+  .dt-seat, .dt-seat-img { width: 44px; }
+  .dt-seat-img { height: 58px; }
+  .dt-seat-seal { width: 44px; height: 58px; font-size: 22px; }
+  .dt-seat-seal.me { width: 30px; height: 30px; font-size: 14px; }
+  .dt-seat-name { margin-top: 2px; font-size: 11px; }
+  .dt-seat-mid { gap: 2px; }
+  /* 对手小传此刻挤不进"看得见手牌"这笔预算；全文还在幕题与战报里 */
+  .dt-seat-desc { display: none; }
+  .dt-bars { gap: 3px 8px; font-size: 11px; }
+  .dt-intent { font-size: 10px; line-height: 1.35; gap: 2px 8px; }
+  .dt-placard { width: 38px; min-height: 52px; gap: 2px; padding: 3px 2px; }
+  .dt-placard-label { display: none; }
+  .dt-placard-back { width: 26px; height: 36px; }
+  .dt-turn {
+    flex: 0 0 auto; border-top: none; padding: 0;
+    writing-mode: vertical-rl; letter-spacing: 2px; font-size: 10px; line-height: 1;
+  }
+  .dt-clash { flex: 1 1 auto; min-width: 0; border: none; background: none; padding: 0; gap: 6px; justify-content: center; }
+  .dt-clash-side { padding: 3px 6px; }
+  .dt-clash-side em { max-width: 84px; }
+  .dt-clash-verdict { padding: 2px 9px; font-size: 12px; }
+  .dt-stacks { flex-direction: column; gap: 4px; }
+  .dt-stack { min-width: 0; padding: 2px 6px; gap: 4px; }
+  .dt-stack b { font-size: 12px; }
+  .dt-stack i { font-size: 10px; }
+  .qi-bar { width: 78px; height: 9px; }
+  .duel-header { margin-bottom: 2px; }
+  .duel-root { padding-top: 4px; padding-bottom: 4px; }
+  .duel-title { font-size: 18px; letter-spacing: 3px; }
+  .wager-bar { padding: 4px 8px; gap: 6px; }
+  .dt-rules { margin-top: 6px; }
+  .dt-rules summary { padding: 1px 10px; font-size: 11px; }
+  /* 规则这一条在横屏里是最后 44px 的账：它本来就只是个 help 开关，不该占正文流。
+     收到右上角（标题居中，那块是空的），展开时自己滚，不去挤手牌。 */
+  .dt-rules { position: absolute; top: 4px; right: 6px; margin: 0; z-index: 4; max-width: 46vw; }
+  .dt-rules[open] { max-height: 62vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--line); padding: 4px 8px; }
+  .dt-rules[open] .duel-rule { font-size: 11px; line-height: 1.55; margin-top: 4px; text-align: left; }
+  /* 兜底：F-9 把 duel-root 锁成 overflow:hidden，长旁白 + 多条意图芯片仍可能超预算，
+     那种情况下"要滚一下"远好于"永远到不了" */
+  .duel-root { overflow-y: auto; }
   .duel-rule { display: none; }
   .end-turn-btn { min-height: 34px; padding: 6px 14px; font-size: 13px; }
   .wager-bar { gap: 6px; }
@@ -2716,13 +2779,22 @@ button { font-family: inherit; }
     overflow: visible;
   }
   .hand .play-card {
-    flex: 0 0 auto; width: 96px;
-    margin-left: -30px;
+    flex: 0 0 auto; width: 74px;
+    margin-left: -20px;
     transform-origin: 50% 120%;
     transform: translateY(calc(var(--d) * var(--d) * 5px)) rotate(calc(var(--d) * 5deg));
     z-index: calc(31 - var(--z));
     transition: transform .18s ease, box-shadow .18s ease;
   }
+  /* 96px 竖卡高 128px，加上牌桌案面就顶到 514px——手牌整排掉到折叠线以下。
+     卡牌游戏看不到手牌等于没得玩，所以这条预算里手牌先让步（详情条仍给全文）。
+     注意 128 这个数在 .hand 容器上（align-items: flex-end 把卡贴底摆），
+     只收 .play-card 的宽高容器不会跟着缩——上一轮就是这么白改了一次。
+     99 = 74×4/3，仍是全项目统一的 3:4；多给的 9px 给扇形下坠的 translateY。 */
+  .hand { gap: 6px; height: 108px; }
+  .hand .play-card { width: 74px; height: 99px; }
+  .hand .play-card .pc-text { font-size: 9px; line-height: 1.35; -webkit-line-clamp: 2; }
+  .hand .play-card .pc-power { font-size: 10px; line-height: 1.3; }
   .hand .play-card:first-child { margin-left: 0; }
   .hand .play-card:hover:not(:disabled) {
     transform: translateY(calc(var(--d) * var(--d) * 5px - 4px)) rotate(calc(var(--d) * 5deg));

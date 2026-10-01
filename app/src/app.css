@@ -818,6 +818,55 @@ button { font-family: inherit; }
   color: var(--gold); letter-spacing: 4px; font-weight: 600;
   margin: 0 0 6px; padding-bottom: 12px; border-bottom: 1px dashed var(--line);
 }
+/* ---------- 帝国面板共用的那一层壳：题签 + 印 + 界栏 ----------
+   行囊／图鉴／卡册／成就／设置／商市／出征七块面板都吃 .bag-panel，
+   此前它只有一条 2px 上边与虚线题脚——换皮只换底色，形制一套到底。
+   这里把已在剧情页／市集／翻牌／规则书立定的三套笔画接过来，一处改七屏受益。
+   注意：面板自身是滚动容器，绝对定位的伪元素会跟着内容滚走，
+   所以脊线一类"钉在框上"的东西不放进来，只放随标题走的。 */
+.bag-panel h3 { position: relative; display: flex; align-items: center; gap: 12px; }
+.bag-panel h3::after { content: ""; flex: none; margin-left: auto; }
+
+/* 朝堂：双勾外框，题签下走一条细朱线，右上钤方印 */
+html:not([data-theme]) .bag-panel { outline: 1px solid var(--line); outline-offset: 3px; }
+html:not([data-theme]) .bag-panel h3 { border-bottom-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+html:not([data-theme]) .bag-panel h3::before {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -4px; height: 1px;
+  background: color-mix(in srgb, var(--accent) 45%, transparent); pointer-events: none;
+}
+html:not([data-theme]) .bag-panel h3::after {
+  width: 15px; height: 15px;
+  background: var(--vermilion);
+  box-shadow: inset 0 0 0 1px rgba(250, 244, 230, .92), inset 0 0 0 2px var(--vermilion);
+}
+/* 边军：左沿一道旗杠，题签下压一列城墙垛口，斜钤关防长印 */
+[data-theme="bianjun"] .bag-panel { border-left: 4px solid var(--accent); border-radius: 0; }
+[data-theme="bianjun"] .bag-panel h3 { border-bottom: none; padding-bottom: 10px; }
+[data-theme="bianjun"] .bag-panel h3::before {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 5px;
+  pointer-events: none;
+  background: repeating-linear-gradient(90deg, var(--theme-band) 0 7px, transparent 7px 16px);
+}
+[data-theme="bianjun"] .bag-panel h3::after {
+  width: 9px; height: 26px; transform: rotate(-6deg);
+  background: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(250, 244, 230, .92);
+}
+/* 江南：册口收成月洞（上圆下方），题脚下走水波连弧，白文圆印 */
+[data-theme="jiangnan"] .bag-panel { border-radius: 18px 18px 6px 6px; }
+[data-theme="jiangnan"] .bag-panel h3 { border-bottom: none; padding-bottom: 11px; }
+[data-theme="jiangnan"] .bag-panel h3::before {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 8px;
+  pointer-events: none;
+  background-image: radial-gradient(circle at 50% 100%, transparent 5px, var(--theme-band) 5.5px, transparent 7px);
+  background-size: 18px 8px; background-repeat: repeat-x;
+}
+[data-theme="jiangnan"] .bag-panel h3::after {
+  width: 17px; height: 17px; border-radius: 50%;
+  background: var(--vermilion);
+  box-shadow: inset 0 0 0 2px rgba(250, 244, 230, .92), inset 0 0 0 3px var(--vermilion);
+}
+
 .emporium h3 .ink-chip { margin-left: 12px; vertical-align: middle; }
 .emporia-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px;

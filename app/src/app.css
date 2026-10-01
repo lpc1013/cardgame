@@ -1913,9 +1913,93 @@ button { font-family: inherit; }
 /* ---------- toast ---------- */
 .toast {
   position: fixed; left: 50%; bottom: 36px; transform: translateX(-50%);
-  background: #2c211a; border: 1px solid var(--accent); color: var(--gold);
+  /* 同样是深底孤岛：--gold/--accent 在浅色主题里是给纸面用的暗色，压在这块 #2c211a 上
+     只有 1.4:1。这里钉死成浅底那一对，不随主题翻。 */
+  background: #2c211a; border: 1px solid #8a5040; color: #e3c98f;
   padding: 10px 22px; font-size: 14px; z-index: 80; letter-spacing: 1px;
   box-shadow: 0 4px 18px rgba(0,0,0,.5);
+}
+
+/* ---------- 即时反馈层 ----------
+   获得 → 中上方堆叠淡出；成就达成 → 右下角 Steam 式卡片。
+   条子刻意做得很矮（24px）并带半透明深底：做成实心名牌/纸卡那种会被驳回，
+   而且它压在任何画面上都不能挡剧情。上限按条高倒推——24px 放得下四条，
+   超了最旧的先走（App 里 slice(-3)）。
+   --fx-gold 必须钉死：这两层永远是深底，而 var(--gold) 在浅色主题里是压在米黄纸上的
+   暗赭（#63481a），放到这底上只有 1.43:1，等于把描边和标签字抹掉。 */
+.fx-feed, .fx-ach { --fx-gold: #c9a86a; }
+.fx-feed {
+  position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+  z-index: 90; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  pointer-events: none; max-width: min(560px, calc(100vw - 32px));
+}
+.fx-line {
+  display: flex; align-items: center; gap: 8px;
+  height: 24px; padding: 0 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: rgba(12, 10, 7, .78); border: 1px solid transparent;
+  border-bottom-color: color-mix(in srgb, var(--fx-gold) 70%, transparent);
+  color: #f4ebd8; font-size: 12px; letter-spacing: 1px; border-radius: 2px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .4);
+  animation: fx-in .4s ease-out, fx-out .6s ease-in 2.6s forwards;
+}
+.fx-tag {
+  flex: none; font-size: 10px; line-height: 1; padding: 2px 5px; border-radius: 2px;
+  border: 1px solid currentColor; letter-spacing: 1px;
+}
+/* 一类一色：证／卡／银／望，全部按 24px 深底上的实测对比度挑（最低 4.99，都过 AA） */
+.fd-clue .fx-tag { color: #ef8b72; }
+.fd-card .fx-tag { color: var(--fx-gold); }
+.fd-silver .fx-tag { color: #e6c15f; }
+.fd-stat .fx-tag { color: #8fd0a8; }
+.fx-ach {
+  position: fixed; right: 16px; bottom: 16px; z-index: 92;
+  display: flex; flex-direction: column-reverse; gap: 8px; pointer-events: none;
+  max-width: min(360px, calc(100vw - 32px));
+}
+.fx-ach-card {
+  display: flex; align-items: center; gap: 12px;
+  min-width: 240px; padding: 10px 14px 10px 10px;
+  background: linear-gradient(180deg, rgba(28, 23, 18, .95), rgba(16, 13, 10, .95));
+  border: 1px solid var(--fx-gold); border-left-width: 3px; border-radius: 4px;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .07);
+  animation: fx-ach-in .42s cubic-bezier(.2, .9, .3, 1), fx-out .7s ease-in 4.4s forwards;
+}
+.fx-ach-icon {
+  flex: none; width: 46px; height: 46px; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--fx-gold); border-radius: 3px; overflow: hidden;
+  background: radial-gradient(circle at 50% 40%, rgba(201, 168, 106, .22), transparent 70%);
+}
+.fx-ach-icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fx-ach-icon .seal-svg, .fx-ach-icon svg { width: 34px; height: 34px; }
+.fx-ach-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fx-ach-kicker { font-size: 10px; letter-spacing: 3px; color: color-mix(in srgb, var(--fx-gold) 78%, #fff); }
+.fx-ach-name { font-size: 15px; letter-spacing: 2px; color: #f4ebd8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fx-ach-reward { font-size: 11px; color: rgba(244, 235, 216, .62); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@keyframes fx-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fx-ach-in {
+  /* 位移只有 26px：从右侧窗外滑入要 translateX(120%)，帧率一低（读档切视图会重建这个节点、
+     动画从头再放）卡片就会整段时间停在视口外，看起来像弹了却没弹出来 */
+  from { opacity: 0; transform: translateX(26px); }
+  to { opacity: 1; transform: none; }
+}
+/* 淡掉而不是硬消失；但"我动一下就没动效"对晕动敏感的人更糟，所以降级为直接显隐 */
+@keyframes fx-out {
+  from { opacity: 1; }
+  to { opacity: 0; transform: translateY(-6px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fx-line, .fx-ach-card { animation: none; }
+}
+@media (max-height: 520px) {
+  .fx-feed { top: 6px; gap: 3px; }
+  .fx-line { height: 21px; font-size: 11px; }
+  .fx-ach { right: 8px; bottom: 8px; gap: 6px; }
+  .fx-ach-card { padding: 6px 10px 6px 7px; gap: 8px; }
+  .fx-ach-icon { width: 34px; height: 34px; }
+  .fx-ach-name { font-size: 13px; }
 }
 
 /* 稀有度（卡框）：价值阶梯 凡·墨灰｜良·黛青｜精·藤紫｜传·鎏金；孤品·朱砂为纪念标记（不在阶梯上，不比传高）。

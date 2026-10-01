@@ -637,14 +637,105 @@ export default function App() {
   // W-3：退回上一幕安全垫——gotoFrom 推进前记录当前 sceneId+lineIndex+全量状态快照（F-8），双写内存 ref + sessionStorage
   const prevSceneRef = useRef<PrevScene | null>(null);
 
-  // 成就解锁统一入口：记录 + toast + 称号授予（奖励含「称号」时）
+  // ---- 即时反馈层 ----
+  // 此前所有回响都挤在一条 setToast 里，而 toast 只挂在故事屏那一个 return 上——
+  // 结局结算、商市、翻牌、卷宗架里达成的成就，toast 被赋值了却根本没有渲染它的那棵树。
+  // 这里拆成两层，并且每一层都自己带超时移除，不靠"下一条把它顶掉"：
+  //  ① 中上方堆叠淡出：得到东西（线索入卷 / 卡入手）
+  //  ② 右下角 Steam 式卡片：成就达成
+  const [feed, setFeed] = useState<{ k: number; tag: string; cls: string; text: string }[]>([]);
+  const [pops, setPops] = useState<{ k: number; id: string; name: string; reward: string }[]>([]);
+  const fxSeq = useRef(0);
+  const pushFeed = (tag: string, cls: string, text: string) => {
+    const k = ++fxSeq.current;
+    // 同屏上限按条高倒推（细条放四条），最旧的先走
+    setFeed((f) => [...f.slice(-3), { k, tag, cls, text }]);
+    window.setTimeout(() => setFeed((f) => f.filter((x) => x.k !== k)), 3200);
+  };
+  const pushAch = (id: string, name: string, reward: string) => {
+    const k = ++fxSeq.current;
+    setPops((p) => [...p.slice(-2), { k, id, name, reward }]);
+    window.setTimeout(() => setPops((p) => p.filter((x) => x.k !== k)), 5200);
+  };
+  // 差额触发，不在每个发奖点逐个点名——否则以后新增的发奖处必然漏
+  const fxPrev = useRef<{ clues: string[]; bag: string[]; silver: number; stats: Record<string, number> } | null>(null);
+  const fxScen = useRef<string | null>(null);
+  useEffect(() => {
+    if (!sc) return;
+    const snap = () => {
+      fxPrev.current = { clues: [...(st?.clues ?? [])], bag: [...(st?.bag ?? [])],
+        silver: st?.silver ?? 0, stats: { ...(st?.stats ?? {}) } };
+    };
+    // 首次/换剧本：静默记下基线，不弹（读一个有 9 条线索的档进来会一次吐 9 条）。
+    // 重置必须和记账在同一个 effect 里、且在同一趟内完成——原先拆成两个 effect，
+    // 声明在后的重置会把前一个刚种好的基线清空，于是进档后的第一次获得被当成"基线"吞掉
+    // （实测：选项把帝心 50→55，条子一条不出）。
+    if (fxScen.current !== sc.id || !fxPrev.current) {
+      fxScen.current = sc.id;
+      snap();
+      return;
+    }
+    const prev = fxPrev.current;
+    for (const cid of st?.clues ?? []) {
+      if (prev.clues.includes(cid)) continue;
+      const c = sc.clues?.find((x) => x.id === cid);
+      if (c) pushFeed("证", "fd-clue", `此证入卷 · ${c.name}`);
+    }
+    for (const bid of st?.bag ?? []) {
+      if (prev.bag.includes(bid)) continue;
+      const c = sc.cards.find((x) => x.id === bid) ?? getGlobalCard(bid);
+      if (c) pushFeed("卡", `fd-card r-${c.rarity ?? "凡"}`, `新卡入手 · ${c.name}`);
+    }
+    const dSilver = (st?.silver ?? 0) - prev.silver;
+    if (dSilver !== 0) pushFeed("银", "fd-silver", dSilver > 0 ? `银两 +${dSilver}` : `银两 ${dSilver}`);
+    // 名望类数值只报涨的那一项：跌的时候剧情多半正在挨打，再补一条红字只是吵。
+    // 且只认剧本声明过的 stat——revisit_left 这类账目计数也在 stats 里，弹出来会是天书
+    for (const [k, v] of Object.entries(st?.stats ?? {})) {
+      const def = sc.stats?.find((s) => s.key === k);
+      const d = v - (prev.stats[k] ?? 0);
+      if (def && d > 0) pushFeed("望", "fd-stat", `${def.name} +${d}`);
+    }
+    snap();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [st, sc]);
+
+  // toast 原先只挂在故事屏那一棵 return 上：牌桌、卷宗架、商市、结案、结局里赋的 toast
+  // 全都没有渲染它的地方（十余处调用点静默）。挪进反馈层，七个界面一次接住。
+  const feedback = (
+    <>
+      <div className="fx-feed" aria-live="polite">
+        {feed.map((f) => (
+          <div key={f.k} className={`fx-line ${f.cls}`}><span className="fx-tag">{f.tag}</span>{f.text}</div>
+        ))}
+      </div>
+      {toast && <div className="toast">{toast}</div>}
+      <div className="fx-ach" aria-live="polite">
+        {pops.map((p) => {
+          const a = ACHIEVEMENTS.find((x) => x.id === p.id);
+          const art = achArt(p.id);
+          return (
+            <div key={p.k} className="fx-ach-card">
+              <span className="fx-ach-icon">{art ? <img src={art} alt="" /> : <AchSeal on hidden={!!a?.hidden} />}</span>
+              <span className="fx-ach-body">
+                <span className="fx-ach-kicker">成就达成</span>
+                <span className="fx-ach-name">{p.name}</span>
+                <span className="fx-ach-reward">{p.reward}</span>
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+
+  // 成就解锁统一入口：记录 + 右下角成就卡 + 称号授予（奖励含「称号」时）
   const grantAch = (id: string, owned: Set<string>) => {
     if (owned.has(id)) return;
     owned.add(id);
     unlockAchievement(id);
     const a = ACHIEVEMENTS.find((x) => x.id === id);
     if (!a) return;
-    setToast(`成就达成「${a.name}」· ${a.reward}`);
+    pushAch(id, a.name, a.reward);
     const m = a.reward.match(/称号「(.+?)」/);
     if (m) grantTitle(m[1]!);
   };
@@ -1110,6 +1201,7 @@ export default function App() {
     );
     return (
       <div className="title-screen title-v2">
+        {feedback}
         <nav className="title-nav">
           <span className="seal-badge nav-seal" aria-hidden="true">帝</span>
           <span className="nav-logo">帝成观止</span>
@@ -1372,7 +1464,10 @@ export default function App() {
 
   // ---------- 对局 ----------
   if (phase === "duel" && duel) {
-    return <DuelView sc={sc} duel={duel} setDuel={setDuel} toast={setToast} silver={st?.silver ?? 0} wager={wager} onWager={setWager} wagersLeft={3 - (st?.wagers ?? 0)} />;
+    return (<>
+      {feedback}
+      <DuelView sc={sc} duel={duel} setDuel={setDuel} toast={setToast} silver={st?.silver ?? 0} wager={wager} onWager={setWager} wagersLeft={3 - (st?.wagers ?? 0)} />
+    </>);
   }
 
   // ---------- 三选一翻牌 ----------
@@ -1380,6 +1475,7 @@ export default function App() {
     const scene = findScene(sc, pickScene);
     return (
       <div className="pick-root">
+        {feedback}
         <h2 className="pick-title">{scene.cardPick!.title}</h2>
         <p className="muted">三张牌，翻一张，余下的归入库房。</p>
         <div className="pick-row">
@@ -1406,7 +1502,10 @@ export default function App() {
     // 市集写穿：内存 st 与存档同一同步任务内落地。随从册（addRetinue/removeRetinue→writeEmpire）
     // 本来就是同步写 localStorage 的，RunState 只交给 effect 就会慢一拍——「人入册了、银两没扣」
     // 的刷新套利正是从这道缝里漏出去的（审计 P0-1、P0-2），故此处即时 flush。
-    return <ShopView sc={sc} st={st} shop={scene.shop!} onLeave={afterShop} onSync={(s) => { setSt(s); saveRun(s, duel); }} toast={setToast} />;
+    return (<>
+      {feedback}
+      <ShopView sc={sc} st={st} shop={scene.shop!} onLeave={afterShop} onSync={(s) => { setSt(s); saveRun(s, duel); }} toast={setToast} />
+    </>);
   }
 
   // ---------- 结案复盘 ----------
@@ -1426,6 +1525,7 @@ export default function App() {
     const coreHeld = !!v.coreClue && st.clues.includes(v.coreClue);
     return (
       <div className="story-root verdict-root">
+        {feedback}
         {vBg && <div className="scene-bg" style={{ backgroundImage: `url(${vBg})` }} aria-hidden="true" />}
         <TopBar sc={sc} st={st} mode={mode} onMode={() => setMode((m) => (m === "light" ? "dark" : "light"))} dlg={dlg} onDlg={() => setDlg((d) => !d)} map={false} onMap={() => {}} surveyLabel={null} onSurvey={() => {}} onClues={() => setShowClues(true)} onBag={() => setShowBag(true)} />
         <div className="story-panel" ref={panelRef}>
@@ -1510,6 +1610,7 @@ export default function App() {
     const endImg = endArt(sc.id, scene.id);
     return (
       <div className="story-root">
+        {feedback}
         <div className="story-panel ending" ref={panelRef}>
           {endImg && (
             <div className="ending-art-frame">
@@ -1575,12 +1676,15 @@ export default function App() {
     applyEffects(spot.effects, next);
     noteCards(sc, next.bag);
     setSt(next);
-    if (spot.effects?.some((e) => e.unlockClue)) { sfx.clue(); setToast("此证入卷"); }
-    else { sfx.page(); }
+    // 入卷的提示交给反馈层的差额判定（它会带上具体是哪条证物），这里不再自己弹一条，
+    // 否则同一件事会有两种说法同时出现
+    if (spot.effects?.some((e) => e.unlockClue)) sfx.clue();
+    else sfx.page();
   };
 
   return (
     <div className={`story-root${narrArt ? " has-narrator" : ""}${dlg ? " dlg" : ""}`} ref={rootRef} tabIndex={-1} onKeyDown={onKeyDown}>
+      {feedback}
       <TopBar sc={sc} st={st} mode={mode} onMode={() => setMode((m) => (m === "light" ? "dark" : "light"))}
         dlg={dlg} onDlg={() => setDlg((d) => !d)}
         map={hasMap(sc.id)} onMap={() => setShowMap(true)}
@@ -1666,7 +1770,6 @@ export default function App() {
       {showSurvey && sv && (
         <SurveyLayer st={st} scene={scene} sv={sv} art={sceneBg} onFound={takeSpot} onClose={() => setShowSurvey(false)} />
       )}
-      {toast && <div className="toast">{toast}</div>}
       {showClues && st.clues.length > 0 && (
         <div className="clue-overlay" onClick={() => setShowClues(false)}>
           <div className="clue-overlay-panel" onClick={(e) => e.stopPropagation()}>

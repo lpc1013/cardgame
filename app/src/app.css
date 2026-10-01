@@ -2070,8 +2070,30 @@ button { font-family: inherit; }
   height: 100%; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 16px; padding: 20px;
 }
-.pick-title { color: var(--gold); letter-spacing: 6px; font-size: 24px; margin: 0; }
-.pick-row { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; }
+.pick-title { color: var(--gold); letter-spacing: 6px; font-size: 24px; margin: 0; display: inline-flex; align-items: center; gap: 12px; }
+/* 题签右端那枚印：三套皮各钤自己的形，这里只留公共占位（同 .shop-header h2） */
+.pick-title::after { content: ""; flex: none; }
+.pick-hint { letter-spacing: 2px; }
+/* 案面：三张牌要"摆在桌上"，不是浮在页上。走 --lacquer 那一族（与首页顶栏、市集抬头同源），
+   五套主题两档明暗都是深色木漆，卡面本来就是深漆岛，落在上面才对得上。 */
+.pick-row {
+  display: flex; gap: 18px; flex-wrap: wrap; justify-content: center;
+  padding: 18px 22px; border: 1px solid var(--lacquer-line);
+  background: linear-gradient(180deg, var(--lacquer) 0%, var(--lacquer-2) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05), 0 10px 26px rgba(0, 0, 0, .32);
+}
+/* 发牌：三张依次落案。fill-mode 用 backwards 而不是 both——both 会把 to 帧的
+   transform:none 一直留着，牌落定后就再也吃不到 hover 的上浮 */
+@keyframes pick-deal {
+  from { opacity: 0; transform: translateY(20px) rotate(-2.5deg) scale(.95); }
+  to { opacity: 1; transform: none; }
+}
+.pick-row .tcard { animation: pick-deal .34s ease-out backwards; }
+.pick-row .tcard:nth-child(2) { animation-delay: .09s; }
+.pick-row .tcard:nth-child(3) { animation-delay: .18s; }
+.pick-row .tcard:nth-child(4) { animation-delay: .27s; }
+.pick-row .tcard:nth-child(5) { animation-delay: .36s; }
+@media (prefers-reduced-motion: reduce) { .pick-row .tcard { animation: none; } }
 .overlay-mini { background: var(--panel); border: 1px solid var(--line); padding: 14px; width: auto; }
 
 /* ---------- 市集 ---------- */
@@ -4275,6 +4297,26 @@ html:not([data-theme]) .shop-tab.on {
 [data-theme="jiangnan"] .shop-hidden { border-radius: 14px 14px 4px 4px; }
 [data-theme="jiangnan"] .shop-hidden-title::before { width: 8px; height: 8px; border-radius: 50%; }
 [data-theme="bianjun"] .shop-hidden { border-style: solid; border-left-width: 3px; }
+
+/* 三选一的题签与案面：同一套笔画，换到"翻牌"这一屏 */
+html:not([data-theme]) .pick-row { outline: 1px solid var(--lacquer-line); outline-offset: 4px; }
+html:not([data-theme]) .pick-title::after {
+  width: 15px; height: 15px;
+  background: var(--vermilion);
+  box-shadow: inset 0 0 0 1px rgba(250, 244, 230, .92), inset 0 0 0 2px var(--vermilion);
+}
+[data-theme="bianjun"] .pick-row { border-left: 4px solid var(--accent); }
+[data-theme="bianjun"] .pick-title::after {
+  width: 9px; height: 26px; transform: rotate(-6deg);
+  background: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(250, 244, 230, .92);
+}
+[data-theme="jiangnan"] .pick-row { border-radius: 18px 18px 6px 6px; }
+[data-theme="jiangnan"] .pick-title::after {
+  width: 17px; height: 17px; border-radius: 50%;
+  background: var(--vermilion);
+  box-shadow: inset 0 0 0 2px rgba(250, 244, 230, .92), inset 0 0 0 3px var(--vermilion);
+}
 
 /* ---------- 逐套独立的 HUD 构件：数值字牌 / 动作按钮 ----------
    花色徽章故意不跟着换皮。既定口径是"色彩归品级、形状归花色"

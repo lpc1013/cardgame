@@ -1477,7 +1477,7 @@ export default function App() {
       <div className="pick-root">
         {feedback}
         <h2 className="pick-title">{scene.cardPick!.title}</h2>
-        <p className="muted">三张牌，翻一张，余下的归入库房。</p>
+        <p className="muted pick-hint">三张牌，翻一张，余下的归入库房。</p>
         <div className="pick-row">
           {scene.cardPick!.options.map((id) => {
             const c = cardDef(id);

@@ -1409,7 +1409,7 @@ export default function App() {
         })()}
         {showGuide && (
           <div className="clue-overlay" onClick={() => setShowGuide(false)}>
-            <div className="clue-overlay-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="clue-overlay-panel guide-panel" onClick={(e) => e.stopPropagation()}>
               <h3>玩法速览</h3>
               <div className="guide-sec"><b>基础</b>：点击画面推进文字；选项决定走向；空格=推进，数字键=选支。进度自动保存。</div>
               <div className="guide-sec"><b>四色 · 探案模式</b>：策=策略、方法（审讯话术/破局思路）；势=人证（人物卡，携带被动，开局场外生效）；器=物证（实物与证据）；隐=隐秘的过往、道听途说的真相（暗线后手）。孤品=特殊收集，不在四色之内。</div>

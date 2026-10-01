@@ -3048,8 +3048,28 @@ button { font-family: inherit; }
 .run-report { border-top: 1px dashed var(--line); border-bottom: 1px dashed var(--line); padding: 14px 0; margin: 18px 0; }
 .run-report-title { color: var(--gold); letter-spacing: 6px; font-size: 13px; margin-bottom: 10px; }
 .guide-entry { margin-top: 22px; }
-.guide-sec { margin: 12px 0; line-height: 1.9; font-size: 14px; }
+.guide-sec { margin: 12px 0; line-height: 1.9; font-size: 14px; position: relative; padding-left: 14px; }
 .guide-sec b { color: var(--gold); }
+/* 每一条目前一枚朱点：十七段说明挤在素面板里，眼睛找不到落点。
+   用 ::before 不用列表符，是为了让它在三套皮里各自换形（方点/短杠/圆点） */
+.guide-sec::before {
+  content: ""; position: absolute; left: 0; top: 12px; width: 5px; height: 5px;
+  background: var(--vermilion);
+}
+/* 玩法速览是新玩家第一屏读的东西——把它做成一册：左口线装打眼，题签上钤印。
+   只加在 .guide-panel 上：同一块 .clue-overlay-panel 还承着「已录线索」，别连坐。 */
+.guide-panel { position: relative; padding-left: 48px; }
+.guide-panel::before {
+  content: ""; position: absolute; left: 19px; top: 16px; bottom: 16px; width: 1px;
+  background: color-mix(in srgb, var(--line) 80%, transparent); pointer-events: none;
+}
+.guide-panel::after {
+  content: ""; position: absolute; left: 14px; top: 34px; bottom: 34px; width: 11px;
+  background: radial-gradient(circle at 5px 5px, var(--lacquer) 0 2.4px, transparent 3px);
+  background-size: 11px 44px; background-repeat: repeat-y; pointer-events: none;
+}
+.guide-panel h3 { display: flex; align-items: center; gap: 12px; letter-spacing: 4px; }
+.guide-panel h3::after { content: ""; flex: none; }
 
 /* ============================================================
    美术接入（皮）：卡面图 / 花色纹章(去字化) / 门类标签(乙·双轴)
@@ -4317,6 +4337,30 @@ html:not([data-theme]) .pick-title::after {
   background: var(--vermilion);
   box-shadow: inset 0 0 0 2px rgba(250, 244, 230, .92), inset 0 0 0 3px var(--vermilion);
 }
+
+/* 规则书那一册：题签上的印与条目朱点，各套各的形 */
+html:not([data-theme]) .guide-panel h3::after {
+  width: 15px; height: 15px;
+  background: var(--vermilion);
+  box-shadow: inset 0 0 0 1px rgba(250, 244, 230, .92), inset 0 0 0 2px var(--vermilion);
+}
+[data-theme="bianjun"] .guide-panel h3::after {
+  width: 9px; height: 26px; transform: rotate(-6deg);
+  background: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(250, 244, 230, .92);
+}
+[data-theme="bianjun"] .guide-sec::before { width: 2px; height: 10px; top: 9px; background: var(--accent); }
+[data-theme="bianjun"] .guide-panel::after {
+  background-image: repeating-linear-gradient(180deg, var(--lacquer) 0 5px, transparent 5px 44px);
+  width: 11px;
+}
+[data-theme="jiangnan"] .guide-panel { border-radius: 4px 16px 16px 4px; }
+[data-theme="jiangnan"] .guide-panel h3::after {
+  width: 17px; height: 17px; border-radius: 50%;
+  background: var(--vermilion);
+  box-shadow: inset 0 0 0 2px rgba(250, 244, 230, .92), inset 0 0 0 3px var(--vermilion);
+}
+[data-theme="jiangnan"] .guide-sec::before { border-radius: 50%; }
 
 /* ---------- 逐套独立的 HUD 构件：数值字牌 / 动作按钮 ----------
    花色徽章故意不跟着换皮。既定口径是"色彩归品级、形状归花色"

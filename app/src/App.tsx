@@ -250,6 +250,17 @@ function IngotIcon() {
   );
 }
 
+/** 银两小图标（银锭形：两头翘、中间凹的船锭）。与墨铤那枚刻意不同形，
+ *  顶栏两个字牌并排时靠轮廓分家，不靠"银/墨"那一个字 */
+function SyceeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" className="ingot-icon">
+      <path d="M3.5 13 Q6 9 8.5 12 L15.5 12 Q18 9 20.5 13 Q18 18 12 18 Q6 18 3.5 13 Z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="M8.5 12 Q12 14.5 15.5 12" fill="none" stroke="currentColor" strokeWidth="1.1" />
+    </svg>
+  );
+}
+
 /** 出征准备：勾选的开局加成 + 携带的仓库物品 */
 interface PrepChoice { boosts: string[]; carry: string[]; retinue: string[]; deckBonus: string[]; peaceDeal?: boolean }
 
@@ -1833,7 +1844,7 @@ function TopBar({ sc, st, mode, onMode, dlg, onDlg, map, onMap, surveyLabel, onS
       ))}
       {sc.cardSystem && (
         <span className={`stat-chip chip-silver ${deltaOf("__silver") ? "stat-pulse" : ""}`}>
-          银 {st.silver}
+          <SyceeIcon /> 银 {st.silver}
           <DeltaTag k="__silver" />
         </span>
       )}

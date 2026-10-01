@@ -583,7 +583,7 @@ button { font-family: inherit; }
   padding: 5px 16px; border-radius: 12px; background: rgba(201,168,106,.06);
   display: inline-flex; align-items: center; gap: 8px;
 }
-.ingot-icon { flex-shrink: 0; }
+.ingot-icon { flex-shrink: 0; vertical-align: -2px; }
 .nav-btns { margin-left: auto; display: flex; gap: 10px; flex-wrap: wrap; }
 .nav-btns button {
   background: none; border: 1px solid var(--line); color: var(--ink);
@@ -3985,6 +3985,28 @@ html:not([data-theme]) .scene-title::after {
   background: var(--vermilion);
   box-shadow: inset 0 0 0 2px rgba(250, 244, 230, .92), inset 0 0 0 3px var(--vermilion);
 }
+
+/* ---------- 逐套独立的 HUD 构件：数值字牌 / 动作按钮 ----------
+   花色徽章故意不跟着换皮。既定口径是"色彩归品级、形状归花色"
+   （见 memory 卡牌视觉信息分层）：同一张「策」牌在三套皮里长三个样，
+   等于把"认牌"这件事重新压回玩家身上，玩家得先背自己用的是哪张皮。
+   所以换皮的是"承字的框"，不换"认牌的形"。 */
+
+/* 宣纸·朝堂：方额双勾。内描一道，是题本上那格关防的位置 */
+html:not([data-theme]) .stat-chip {
+  border-radius: 0;
+  outline: 1px solid var(--line); outline-offset: -3px;
+}
+html:not([data-theme]) .clue-btn {
+  border-radius: 0;
+  box-shadow: inset 0 0 0 1px var(--panel), inset 0 0 0 2px var(--accent-soft);
+}
+/* 边军：一律方折，字牌左压一道旗杠（与 .dlg-name 同一笔） */
+[data-theme="bianjun"] .stat-chip { border-radius: 0; border-left: 3px solid var(--accent); padding-left: 8px; }
+[data-theme="bianjun"] .clue-btn { border-radius: 0; border-left: 3px solid var(--accent); }
+/* 江南：一律圆转。字牌收成半月，按钮右上角挑一个弧，像月洞门的一角 */
+[data-theme="jiangnan"] .stat-chip { border-radius: 11px 11px 3px 3px; }
+[data-theme="jiangnan"] .clue-btn { border-radius: 3px 12px 3px 12px; }
 
 /* 地表纹理走"叠加层"而不是替换 #root 的 background-image：
    直接覆写会把默认皮肤的宣纸渐变整条换成 none（第一版就犯了这个错）。

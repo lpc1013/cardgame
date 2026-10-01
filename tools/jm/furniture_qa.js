@@ -34,6 +34,13 @@ const probe = () => page.evaluate(() => {
     sceneTitle: vis('.scene-title'),
     seal: after('.scene-title', 'width'),
     sealRadius: after('.scene-title', 'borderRadius'),
+    // HUD 构件：数值字牌与动作按钮的框形，三套皮必须量出三种结果
+    chipRadius: cs('.stat-chip', 'borderRadius'),
+    chipOutline: cs('.stat-chip', 'outlineWidth') + '/' + cs('.stat-chip', 'outlineStyle'),
+    chipBar: cs('.stat-chip', 'borderLeftWidth'),
+    btnRadius: cs('.clue-btn', 'borderRadius'),
+    btnBar: cs('.clue-btn', 'borderLeftWidth'),
+    sycee: vis('.chip-silver svg'),
   };
 });
 

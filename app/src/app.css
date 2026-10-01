@@ -1996,10 +1996,15 @@ button { font-family: inherit; }
 @media (max-height: 520px) {
   .fx-feed { top: 6px; gap: 3px; }
   .fx-line { height: 21px; font-size: 11px; }
-  .fx-ach { right: 8px; bottom: 8px; gap: 6px; }
+  /* 横屏只有 390 高，右下角和手牌是同一块地方：满手 10 张时牌会一路铺过来，
+     贴在右下角的成就卡就把能打的那几张盖住了——而手牌恰恰要读得出来才会打。
+     实测这条竖带：案面 ≤140，手牌 278 起，中间只剩旁白。成就卡落在 154..220、
+     toast 落在 241..272，各占一段，谁都不压牌、彼此也不叠。 */
+  .fx-ach { right: 8px; bottom: 170px; gap: 6px; }
   .fx-ach-card { padding: 6px 10px 6px 7px; gap: 8px; }
   .fx-ach-icon { width: 34px; height: 34px; }
   .fx-ach-name { font-size: 13px; }
+  .toast { bottom: 118px; padding: 6px 14px; font-size: 12px; }
 }
 
 /* 稀有度（卡框）：价值阶梯 凡·墨灰｜良·黛青｜精·藤紫｜传·鎏金；孤品·朱砂为纪念标记（不在阶梯上，不比传高）。

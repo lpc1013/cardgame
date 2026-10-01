@@ -23,6 +23,9 @@ export interface RunState {
   usedCards: string[];    // 本剧所有进过 deck 的卡（对局开始时并入）——剧本级成就判定（弱卡点名）依据
   /** M1 押注风控：本周目已押注次数（上限 3；旧档缺省视为 0） */
   wagers?: number;
+  /** 现场勘查：sceneId → 已点中的热点 id。用「已入卷的热点」本身当账，
+   *  不再另开一个剩余数——两处记同一件事迟早对不上（旧档缺省视为未勘） */
+  survey?: Record<string, string[]>;
 }
 
 export function initState(sc: Scenario, viewpointId?: string): RunState {

@@ -11,6 +11,7 @@ import {
 } from "./engine/save";
 import { SCENE_SETTING } from "./data/sceneSettings";
 import { LOC_LABEL, MAP_POS, locBase, hasMap } from "./data/locations";
+import { foundSpots, spotCost, surveyLeft, surveyOf, type Survey, type SurveySpot } from "./data/survey";
 import { SHOP_BOOSTS, SHOP_THEMES } from "./data/empireShop";
 import { ACHIEVEMENTS, checkDuelAchievements, checkMinigameAchievements, checkEndingAchievements, type AchCategory, type AchievementDef } from "./data/achievements";
 import { getAchievements, unlockAchievement } from "./engine/save";
@@ -474,6 +475,7 @@ export default function App() {
   const [showClues, setShowClues] = useState(false);
   const [showBag, setShowBag] = useState(false);
   const [showMap, setShowMap] = useState(false);
+  const [showSurvey, setShowSurvey] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
   const [treeOf, setTreeOf] = useState<Scenario | null>(null);
   const [cardsOf, setCardsOf] = useState<Scenario | null>(null);
@@ -608,6 +610,7 @@ export default function App() {
       setRevealFrom(-1);
       setShowLog(false);
       setShowMap(false);
+      setShowSurvey(false);
       setSt(next);
       if (!opts?.holdView) enterSceneOf(next, id);
     },
@@ -1403,7 +1406,7 @@ export default function App() {
     const short = st.clues.length < v.mustPick;
     return (
       <div className="story-root">
-        <TopBar sc={sc} st={st} mode={mode} onMode={() => setMode((m) => (m === "light" ? "dark" : "light"))} dlg={dlg} onDlg={() => setDlg((d) => !d)} map={false} onMap={() => {}} onClues={() => setShowClues(true)} onBag={() => setShowBag(true)} />
+        <TopBar sc={sc} st={st} mode={mode} onMode={() => setMode((m) => (m === "light" ? "dark" : "light"))} dlg={dlg} onDlg={() => setDlg((d) => !d)} map={false} onMap={() => {}} surveyLabel={null} onSurvey={() => {}} onClues={() => setShowClues(true)} onBag={() => setShowBag(true)} />
         <div className="story-panel" ref={panelRef}>
           <h2>结案陈词 · 拣选线索（{picked.length}/{v.mustPick}）</h2>
           <p className="muted">呈上御案的线索，将决定此案能否经得起百官诘难。</p>
@@ -1532,11 +1535,27 @@ export default function App() {
   if (dlg) { while (dlgFrom > 0 && lines[dlgFrom] === "") dlgFrom--; }
   const shown = lines.slice(dlgFrom, st.lineIndex + 1);
 
+  // 现场勘查：这一幕有现场可勘才挂钮，标签带剩余格数；格数花完降成「已勘」，仍可回看已录的
+  const sv = surveyOf(sc.id, scene.id);
+  const svFound = sv ? foundSpots(st.survey, scene.id) : [];
+  const svLeft = sv ? surveyLeft(sv, svFound) : 0;
+  const surveyLabel = sv ? (svLeft > 0 ? `勘查 ${svLeft}` : "已勘") : null;
+  const takeSpot = (spot: SurveySpot) => {
+    if (!sv) return;
+    const next: RunState = { ...st, survey: { ...(st.survey ?? {}), [scene.id]: [...svFound, spot.id] } };
+    applyEffects(spot.effects, next);
+    noteCards(sc, next.bag);
+    setSt(next);
+    if (spot.effects?.some((e) => e.unlockClue)) { sfx.clue(); setToast("此证入卷"); }
+    else { sfx.page(); }
+  };
+
   return (
     <div className={`story-root${narrArt ? " has-narrator" : ""}${dlg ? " dlg" : ""}`} ref={rootRef} tabIndex={-1} onKeyDown={onKeyDown}>
       <TopBar sc={sc} st={st} mode={mode} onMode={() => setMode((m) => (m === "light" ? "dark" : "light"))}
         dlg={dlg} onDlg={() => setDlg((d) => !d)}
         map={hasMap(sc.id)} onMap={() => setShowMap(true)}
+        surveyLabel={surveyLabel} onSurvey={() => setShowSurvey(true)}
         onClues={() => setShowClues(true)} onBag={() => setShowBag(true)} />
       {sceneBg && sceneFx ? (
         <div className="scene-stage" aria-hidden="true">
@@ -1614,6 +1633,9 @@ export default function App() {
       )}
       {showMap && hasMap(sc.id) && (
         <LocationMap sc={sc} st={st} scene={scene} canPick={atEnd} onPick={choose} onAdvance={advance} onClose={() => setShowMap(false)} />
+      )}
+      {showSurvey && sv && (
+        <SurveyLayer st={st} scene={scene} sv={sv} art={sceneBg} onFound={takeSpot} onClose={() => setShowSurvey(false)} />
       )}
       {toast && <div className="toast">{toast}</div>}
       {showClues && st.clues.length > 0 && (
@@ -1705,6 +1727,59 @@ function LocationMap({ sc, st, scene, canPick, onPick, onAdvance, onClose }: {
   );
 }
 
+/** 现场勘查层：把这一幕的现场图铺开，证物埋在图上，点中才读得到。
+ *  勘查格数有限（Survey.budget），所以"先看哪一处"是笔要花的钱，不是清单打勾。
+ *  入卷一律走 applyEffects——和选项同一套 Effect 词汇，不另开一条改状态的口子。 */
+function SurveyLayer({ st, scene, sv, art, onFound, onClose }: {
+  st: RunState; scene: Scene; sv: Survey; art: string | undefined;
+  onFound: (spot: SurveySpot) => void; onClose: () => void;
+}) {
+  const [reading, setReading] = useState<string | null>(null);
+  const found = foundSpots(st.survey, scene.id);
+  const left = surveyLeft(sv, found);
+  const spot = sv.spots.find((p) => p.id === reading);
+  return (
+    <div className="sv-layer" onClick={onClose}>
+      <div className="sv-ground" onClick={(e) => e.stopPropagation()}>
+        <div className="sv-head">
+          <span className="sv-title">{sv.title}</span>
+          <span className="sv-sub">勘查余 {left} 格 · 已入卷 {found.length}/{sv.spots.length} 处</span>
+          <button className="sv-close" onClick={onClose}>收队</button>
+        </div>
+        <div className="sv-field">
+          {art ? <img className="sv-art" src={art} alt="" aria-hidden="true" /> : <div className="sv-art sv-art-none" />}
+          {sv.spots.map((p) => {
+            const got = found.includes(p.id);
+            const cost = spotCost(p);
+            // 已录的要能回看（点它只重读那句话，不再扣格）；格数不够的暗下去。
+            // 不入卷的闲看不要格——若看风景也花钱，就没人看风景，"取舍"也就成了假的
+            const dead = !got && cost > 0 && left < cost;
+            return (
+              <button key={p.id} className={`sv-spot${got ? " got" : ""}${dead ? " dead" : ""}`}
+                style={{ left: `${p.x}%`, top: `${p.y}%` }} disabled={dead}
+                onClick={() => { setReading(p.id); if (!got) onFound(p); }}>
+                <span className="sv-ring" />
+                <span className="sv-tag">{got ? "已录" : cost ? `勘 ${cost}` : "看"}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="sv-read">
+          {spot
+            ? <p className="sv-note">{spot.note}</p>
+            : <p className="sv-hint">蹲下去看——图上每一处朱点，都是这案子里没人念出声的东西。</p>}
+        </div>
+        <div className="sv-legend">
+          <span><i className="sv-key sv-key-free" />未勘</span>
+          <span><i className="sv-key sv-key-got" />已录</span>
+          <span><i className="sv-key sv-key-dead" />格数不足</span>
+          <span className="sv-note-hint">勘查格数有限，先挑要紧的看</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** 商市主题卡顶上那块布样：纯装饰条，不承文字，所以不走对比度那套令牌 */
 function ThemeSwatch({ id }: { id: string }) {
   const art = themeSwatch(id);
@@ -1712,7 +1787,7 @@ function ThemeSwatch({ id }: { id: string }) {
   return <span className="theme-swatch" style={{ backgroundImage: `url("${art}")` }} aria-hidden="true" />;
 }
 
-function TopBar({ sc, st, mode, onMode, dlg, onDlg, map, onMap, onClues, onBag }: { sc: Scenario; st: RunState; mode: "light" | "dark"; onMode: () => void; dlg: boolean; onDlg: () => void; map: boolean; onMap: () => void; onClues: () => void; onBag: () => void }) {
+function TopBar({ sc, st, mode, onMode, dlg, onDlg, map, onMap, surveyLabel, onSurvey, onClues, onBag }: { sc: Scenario; st: RunState; mode: "light" | "dark"; onMode: () => void; dlg: boolean; onDlg: () => void; map: boolean; onMap: () => void; surveyLabel: string | null; onSurvey: () => void; onClues: () => void; onBag: () => void }) {
   const [snd, setSnd] = useState(sfxEnabled());
   // R-1：资源变化浮动提示——数值一变在字牌上浮出「+n / −n」+ 微光脉冲（朝望-2 之类不再悄无声息）。
   // 同帧多项变动（如 朝望-2 且 银+10）各浮各的；applyEffects 就地改 stats（浅拷贝共享引用），依赖用整个 st。
@@ -1776,6 +1851,9 @@ function TopBar({ sc, st, mode, onMode, dlg, onDlg, map, onMap, onClues, onBag }
       </button>
       {map && (
         <button className="clue-btn" onClick={() => { sfx.choice(); onMap(); }} title="探案舆图：这一幕去得了的地方">舆图</button>
+      )}
+      {surveyLabel && (
+        <button className="clue-btn sv-btn" onClick={() => { sfx.choice(); onSurvey(); }} title="现场勘查：这一幕的现场图上埋着证物">{surveyLabel}</button>
       )}
       <button className="clue-btn snd-btn" onClick={() => setSnd(toggleSfx())} title={snd ? "关闭音效" : "开启音效"}>
         {snd ? "♪" : "✕♪"}

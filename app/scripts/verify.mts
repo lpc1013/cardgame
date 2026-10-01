@@ -25,6 +25,7 @@ import { jianfeng } from "../src/data/jianfeng.ts";
 import { xingxing } from "../src/data/xingxing.ts";
 import { touming } from "../src/data/touming.ts";
 import { BONUS_SCENES } from "../src/data/bonus.ts";
+import { SURVEYS, spotCost } from "../src/data/survey.ts";
 import type { Scenario, CardDef, Suit } from "../src/engine/types.ts";
 import { initDuel, revealEmotion, playEmotion, playPressure, setDuelShuffle, endTurn, readEmotion, chargeUp, breakMove, respondOpponent, playItem, RESTRAIN, TURN_DAMAGE_CAP, ITEM_YANLI_COST, EMOTION_YANLI_MAX, DEFAULT_GOAL, type DuelState } from "../src/engine/duel.ts";
 
@@ -791,5 +792,60 @@ for (const sc of ALL) {
   console.log(`卡包期望值: ${packCount} 个全检，期望均 ≤ 售价`);
 }
 
+// ---------- 现场勘查层数据门禁 ----------
+// 勘查是「有限格数换证物」，所以最怕两件事：
+//  ① 热点给的线索根本不在本案线索表里 → 点了不入卷，玩家白花钱；
+//  ② 某条线索只有热点能给 → 格数不够或选错热点就永远凑不满结案，正是硬死锁那一类。
+// ②是这条门禁的全部意义：勘查只能是「另一条路」，不能是「唯一的路」。
+{
+  const clueIdsIn = (o: unknown, out: Set<string> = new Set()): Set<string> => {
+    if (Array.isArray(o)) { for (const v of o) clueIdsIn(v, out); return out; }
+    if (o && typeof o === "object") {
+      for (const [k, v] of Object.entries(o as Record<string, unknown>)) {
+        if (k === "unlockClue" && typeof v === "string") out.add(v); else clueIdsIn(v, out);
+      }
+    }
+    return out;
+  };
+  let spotCount = 0, svCount = 0;
+  for (const [scId, scenes] of Object.entries(SURVEYS)) {
+    const sc = ALL.find((x) => x.id === scId);
+    if (!sc) { fail(`勘查表挂了未知剧本 ${scId}`); continue; }
+    const routeClues = clueIdsIn(sc.scenes);
+    for (const [sceneId, sv] of Object.entries(scenes)) {
+      svCount++;
+      const scene = sc.scenes.find((x) => x.id === sceneId);
+      if (!scene) { fail(`${scId}.${sceneId} 有勘查表，但剧本里没有这一幕`); continue; }
+      if (sv.spots.length === 0) { fail(`${scId}.${sceneId} 勘查表零热点`); continue; }
+      if (sv.budget < 1) fail(`${scId}.${sceneId} 勘查格数 ${sv.budget} < 1，一层玩法永不可动`);
+      const total = sv.spots.reduce((s, p) => s + spotCost(p), 0);
+      if (total === 0) warn(`${scId}.${sceneId} 勘查表没有一处能入卷——这一层只是看图`);
+      else if (sv.budget >= total) warn(`${scId}.${sceneId} 勘查格数 ${sv.budget} ≥ 全部证物需 ${total}——没有取舍，勘查退化成打勾`);
+      const ids = new Set<string>();
+      for (const p of sv.spots) {
+        spotCount++;
+        if (ids.has(p.id)) fail(`${scId}.${sceneId} 热点 id 重复：${p.id}——已入卷判定会串`);
+        ids.add(p.id);
+        if (!(p.x >= 0 && p.x <= 100) || !(p.y >= 0 && p.y <= 100)) {
+          fail(`${scId}.${sceneId}.${p.id} 坐标越界 (${p.x}, ${p.y})——热点会飘出图外`);
+        }
+        if (!p.note.trim()) fail(`${scId}.${sceneId}.${p.id} 没有观察句`);
+        for (const ef of p.effects ?? []) {
+          if (!ef.unlockClue) continue;
+          if (!sc.clues?.find((c) => c.id === ef.unlockClue)) {
+            fail(`${scId}.${sceneId}.${p.id} 解锁不存在的线索 ${ef.unlockClue}`);
+          } else if (!routeClues.has(ef.unlockClue)) {
+            fail(`${scId}.${sceneId}.${p.id} 的线索 ${ef.unlockClue} 只有勘查能给——格数花完就永远凑不满结案（硬死锁）`);
+          }
+        }
+      }
+    }
+  }
+  console.log(`现场勘查: ${svCount} 幕 ${spotCount} 处热点，线索均有选项同源`);
+}
+
 console.log(`\n========== ${failures} 失败 / ${warnings} 警告（警告不拦退出码——绿≠零隐患，明细见上） ==========`);
-process.exit(failures ? 1 : 0);
+// 绿的时候不调 process.exit：Windows 下它会和 stdout/类型剥离留下的 async handle 抢关闭，
+// 报 "Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)" 并把退出码顶成 127（假红）。
+// 失败才强退，正常收尾交给事件循环自己空转退出。
+if (failures) process.exit(1);

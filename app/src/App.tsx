@@ -1632,16 +1632,19 @@ export default function App() {
             ))}
             <p className="muted">{scene.ending.desc}</p>
             <div className="run-report">
-              <div className="run-report-title">── 本局战报 ──</div>
+              <div className="run-report-title">本局战报</div>
               <div className="stat-report">
-                {Object.entries(st.stats).map(([k, v]) => (
-                  <span key={k}>{sc.stats?.find((s) => s.key === k)?.name ?? k}：{v}</span>
+                {/* 走剧本声明过的那张表，不遍历 st.stats：账目计数（revisit_left 这类）
+                    也住在 stats 里，原先会把内部键名原样印在收束屏上。
+                    字牌复用 .stat-chip——三套皮各自给它定过形，这里不再另画一套。 */}
+                {(sc.stats ?? []).map((s) => (
+                  <span key={s.key} className="stat-chip">{s.name}：{st.stats[s.key] ?? s.init}</span>
                 ))}
               </div>
               <div className="stat-report">
-                <span>探索 {st.visited.length + 1} 幕</span>
-                {st.clues.length > 0 && <span>线索 {st.clues.length} 条</span>}
-                {sc.cardSystem && <span>藏卡 {st.bag.length} 张 · 余银 {st.silver} 两</span>}
+                <span className="stat-chip">探索 {st.visited.length + 1} 幕</span>
+                {st.clues.length > 0 && <span className="stat-chip">线索 {st.clues.length} 条</span>}
+                {sc.cardSystem && <span className="stat-chip">藏卡 {st.bag.length} 张 · 余银 {st.silver} 两</span>}
               </div>
             </div>
             <button className="btn-main" onClick={() => { setPhase("title"); setSt(null); }}>

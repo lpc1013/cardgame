@@ -1581,7 +1581,7 @@ html:not([data-theme]) .bag-panel h3::after {
   .ending-art, .ending-rank, .ending-name { animation: none; }
 }
 .ending .story-line { text-align: left; }
-.stat-report { display: flex; gap: 20px; justify-content: center; color: var(--ink-dim); margin: 24px 0; }
+.stat-report { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; color: var(--ink-dim); margin: 24px 0; }
 .btn-main {
   background: var(--accent-soft); color: var(--ink);
   border: 1px solid var(--accent); padding: 10px 34px;
@@ -3095,7 +3095,17 @@ html:not([data-theme]) .bag-panel h3::after {
 
 /* ---------- 本局战报 / 玩法速览 ---------- */
 .run-report { border-top: 1px dashed var(--line); border-bottom: 1px dashed var(--line); padding: 14px 0; margin: 18px 0; }
-.run-report-title { color: var(--gold); letter-spacing: 6px; font-size: 13px; margin-bottom: 10px; }
+.run-report-title {
+  color: var(--gold); letter-spacing: 6px; font-size: 13px; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 12px;
+}
+/* 两侧各收一道发丝线，替掉原先写在文案里的「── 本局战报 ──」：
+   那串破折号会被读屏逐字念出来，letter-spacing 还会把它撑得比标题还长 */
+.run-report-title::before, .run-report-title::after {
+  content: ""; flex: 1; height: 1px;
+  background: color-mix(in srgb, var(--gold) 38%, transparent);
+}
+.run-report-title::after { flex: 0.6; }
 .guide-entry { margin-top: 22px; }
 .guide-sec { margin: 12px 0; line-height: 1.9; font-size: 14px; position: relative; padding-left: 14px; }
 .guide-sec b { color: var(--gold); }

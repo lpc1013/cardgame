@@ -1373,6 +1373,20 @@ button { font-family: inherit; }
 .loc-reach .loc-name { color: #2b2418; }
 .loc-reach:hover .loc-name { color: #6f4e12; border-color: #6f4e12; }
 .loc-seen .loc-dot { background: var(--ink-dim); }
+/* 既在此地、又有事可做：脉冲与指针照旧（可去的优先级更高，否则又回到"看着是死的"），
+   另外在图签上压一枚朱印，说明这一处就是脚下 */
+.loc-node.loc-here.loc-reach .loc-name {
+  border-color: var(--vermilion);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--vermilion) 45%, transparent), 0 1px 3px rgba(40, 30, 14, .34);
+}
+.loc-node.loc-here.loc-reach .loc-name::before {
+  content: ""; display: inline-block; width: 5px; height: 5px; margin-right: 4px;
+  background: var(--vermilion); vertical-align: 1px;
+}
+.loc-multi {
+  font-size: 10px; line-height: 1; letter-spacing: 0;
+  padding: 1px 4px; color: #3a3227; background: #f4ecd8; border: 1px solid #9a3a28;
+}
 .loc-dark { opacity: .62; }
 .loc-dark .loc-dot { background: none; border-style: dashed; }
 @keyframes loc-pulse {

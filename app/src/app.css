@@ -3913,6 +3913,79 @@ button { font-family: inherit; }
   border-radius: 18px 18px 6px 6px;
 }
 
+/* ---------- 三套皮的构件体系（印信 / 牌位 / 分隔纹） ----------
+   此前两套皮只换了配色与地表，版式构件完全共用，浅档之间一眼看过去是同一套。
+   这里给每套一条自己的"笔画语法"，落在三个每屏都出现的地方：
+   说话人牌位（.dlg-name）、牌位下那道分隔纹（.dlg-head 下沿）、幕题（.scene-title）。
+   全部 CSS 画，不产图——构件要跟 --accent/--vermilion 走，图片做不到。
+   默认皮（宣纸·朝堂）此前是"另两套的反面"，什么构件都没有；
+   它现在有自己的双勾框与朱文方印，切回它不再是"关掉主题"。 */
+
+/* —— 宣纸 · 朝堂：双勾框 + 朱文方印 —— */
+html:not([data-theme]) .dlg-name {
+  border: 1px solid var(--read-edge);
+  outline: 1px solid var(--read-edge); outline-offset: -3px;
+  border-radius: 0;
+}
+html:not([data-theme]) .dlg-head { position: relative; border-bottom-color: var(--read-edge); }
+/* 双勾朱线：一条实线下面再走一条细线，中间留一线白，是题本封面的界栏 */
+html:not([data-theme]) .dlg-head::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -4px; height: 1px;
+  background: color-mix(in srgb, var(--accent) 55%, transparent); pointer-events: none;
+}
+html:not([data-theme]) .scene-title { position: relative; }
+html:not([data-theme]) .scene-title::after {
+  content: ""; position: absolute; right: 0; top: 50%; width: 15px; height: 15px;
+  transform: translateY(-50%);
+  background: var(--vermilion);
+  box-shadow: inset 0 0 0 1px rgba(250, 244, 230, .92), inset 0 0 0 2px var(--vermilion);
+}
+
+/* —— 边军：方折、旗脚、垛口齿边、关防长印 —— */
+[data-theme="bianjun"] .dlg-name {
+  border: 1px solid var(--accent); border-left: 4px solid var(--accent);
+  border-radius: 0; background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+[data-theme="bianjun"] .dlg-head { position: relative; border-bottom: none; padding-bottom: 9px; }
+/* 城墙垛口：一列方齿压在牌位下沿，是这套皮最硬的一笔 */
+[data-theme="bianjun"] .dlg-head::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 5px;
+  pointer-events: none;
+  background: repeating-linear-gradient(90deg, var(--theme-band) 0 7px, transparent 7px 16px);
+}
+[data-theme="bianjun"] .scene-title { position: relative; }
+/* 关防是长条印，斜钤在题签右端——与朝堂的方印形状上就撞不起来 */
+[data-theme="bianjun"] .scene-title::after {
+  content: ""; position: absolute; right: 0; top: 50%; width: 9px; height: 26px;
+  transform: translateY(-50%) rotate(-6deg);
+  background: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(250, 244, 230, .92);
+}
+
+/* —— 江南：圆转、月洞、水波连弧、白文圆印 —— */
+[data-theme="jiangnan"] .dlg-name {
+  border: 1px solid var(--accent-soft);
+  border-radius: 14px 14px 3px 3px; /* 月洞门：上圆下方 */
+  background: color-mix(in srgb, var(--accent-soft) 12%, transparent);
+}
+[data-theme="jiangnan"] .dlg-head { position: relative; border-bottom: none; padding-bottom: 10px; }
+/* 水波连弧：一串半圆，与边军的方齿是同一位置的两种笔画 */
+[data-theme="jiangnan"] .dlg-head::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 8px;
+  pointer-events: none;
+  background-image: radial-gradient(circle at 50% 100%, transparent 5px, var(--theme-band) 5.5px, transparent 7px);
+  background-size: 18px 8px; background-repeat: repeat-x;
+}
+[data-theme="jiangnan"] .scene-title { position: relative; }
+[data-theme="jiangnan"] .scene-title::after {
+  content: ""; position: absolute; right: 0; top: 50%; width: 17px; height: 17px;
+  transform: translateY(-50%); border-radius: 50%;
+  /* 走印泥红而不是 --accent-soft：黛青填进 17px 的圆里读起来是一个句点，不是一枚印。
+     三套皮的分别靠"形"（方印 / 关防长印 / 圆印），不靠换色 */
+  background: var(--vermilion);
+  box-shadow: inset 0 0 0 2px rgba(250, 244, 230, .92), inset 0 0 0 3px var(--vermilion);
+}
+
 /* 地表纹理走"叠加层"而不是替换 #root 的 background-image：
    直接覆写会把默认皮肤的宣纸渐变整条换成 none（第一版就犯了这个错）。
    基础两层留在 #root 原规则里，主题只往前插自己的纹理层。 */

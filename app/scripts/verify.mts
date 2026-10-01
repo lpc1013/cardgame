@@ -284,7 +284,7 @@ for (const sc of ALL) {
       if (!hardExit && chs.length > 0) {
         const alwaysVisible = chs.some((c) => !c.cond);
         const hasFallback = chs.some((c) => !!c.cond && !!c.altNext);
-        if (!alwaysVisible && !hasFallback) warn(`场景 ${s.id} 唯一出路是 ${chs.length} 个全带 cond 的选项，且无 altNext——若这些 cond 能同时落空即零选项死锁，可达性需图分析定（tools/jm/hublock_qa.js 量最坏情况）`);
+        if (!alwaysVisible && !hasFallback) warn(`场景 ${s.id} 唯一出路是 ${chs.length} 个全带 cond 的选项，且无 altNext——若这些 cond 能同时落空即零选项死锁；可达性由 scripts/hublock.mts 判定（带极性的前向可达性证明，走的是 runtime 的 checkCond/visibleChoices 同一份实现）`);
       }
     }
     // 1b2) variantLines 文本回响：cond 引用合法、lines 非空

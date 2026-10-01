@@ -8,7 +8,8 @@
     "build": "node --experimental-strip-types scripts/verify.mts && tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "verify": "node --experimental-strip-types scripts/verify.mts"
+    "verify": "node --experimental-strip-types scripts/verify.mts",
+    "hublock": "node --experimental-strip-types scripts/hublock.mts"
   },
   "dependencies": {
     "react": "^19.2.8",

@@ -2075,15 +2075,23 @@ button { font-family: inherit; }
 .overlay-mini { background: var(--panel); border: 1px solid var(--line); padding: 14px; width: auto; }
 
 /* ---------- 市集 ---------- */
-.shop-root { height: 100%; overflow-y: auto; padding: 20px; max-width: 1100px; margin: 0 auto; }
+/* 场景底是 fixed 的 .scene-bg（见「淡水印档」），这里只要让出滚动容器 */
+.shop-wrap { overflow: hidden; }
+.shop-root { flex: 1; min-height: 0; height: auto; overflow-y: auto; padding: 20px; max-width: 1100px; margin: 0 auto; }
 .shop-header {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 8px;
   position: sticky; top: -20px; z-index: 20;
-  background: linear-gradient(180deg, var(--bg) 82%, transparent);
+  /* 这块深漆板是有意的（见文件末尾"深漆岛"一段）：岛内重声明了 --gold/--ink/--accent，
+     招牌的浅金字靠它才立得住。但板子本身原先吃 --bg，而 --bg 是"页面地子"——
+     边军浅档 #d9cdb4、江南浅档 #f4f6f4 都是纸色，于是那两套皮里变成浅金压浅纸（实测 1.7）。
+     改吃 --lacquer：这一族令牌五套主题两档明暗全是深色木漆，与首页 .title-nav 同源。 */
+  background: linear-gradient(180deg, var(--lacquer) 82%, transparent);
   padding: 14px 0 10px; margin-top: -20px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--lacquer-line);
 }
-.shop-header h2 { margin: 0; color: var(--gold); letter-spacing: 4px; }
+.shop-header h2 { margin: 0; color: var(--gold); letter-spacing: 4px; display: inline-flex; align-items: center; gap: 12px; }
+/* 招牌右端那一枚印：三套皮各换自己的"形"（方印 / 关防长印 / 圆印），这里只给公共的占位与基线 */
+.shop-header h2::after { content: ""; flex: none; }
 .shop-tabs { display: flex; gap: 8px; margin-left: auto; }
 .shop-tab {
   background: none; border: 1px solid var(--line); color: var(--ink-dim);
@@ -2096,7 +2104,7 @@ button { font-family: inherit; }
   background: rgba(201,168,106,.08);
   box-shadow: inset 0 -2px 0 var(--gold);
 }
-.shop-desc { margin: 10px 0 14px; }
+.shop-desc { margin: 10px 0 14px; padding-left: 10px; border-left: 2px solid color-mix(in srgb, var(--accent) 45%, transparent); }
 .shop-grid { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; margin-top: 10px; }
 .shop-card {
   position: relative; background: var(--panel); border: 1px solid var(--line); border-left-width: 4px;
@@ -4200,6 +4208,73 @@ html:not([data-theme]) .scene-title::after {
   background: var(--vermilion);
   box-shadow: inset 0 0 0 2px rgba(250, 244, 230, .92), inset 0 0 0 3px var(--vermilion);
 }
+
+/* ---------- 市集：把同一套笔画语法搬到招牌、界栏与货签上 ----------
+   市集是每条卡牌周目必经的一屏，此前它只有布局（一行 h2 加四个方按钮），
+   换皮时它跟着换色、跟着换形就不够了。这里三处落点全部复用剧情页已定的构件：
+   朝堂双勾朱文方印｜边军方折旗脚垛口｜江南月洞水波白文圆印。 */
+.shop-header { position: sticky; } /* sticky 本身就是绝对定位子元素的包含块，::after 不用再补 relative */
+
+/* 宣纸·朝堂：界栏下面再走一条细朱线，招牌右端钤一方朱文印 */
+html:not([data-theme]) .shop-header::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -4px; height: 1px;
+  background: color-mix(in srgb, var(--accent) 55%, transparent); pointer-events: none;
+}
+/* 印泥走岛内的 --accent 而不是 --vermilion：后者是为宣纸调的深朱，
+   落到这块深漆板上只有 1.9:1，等于钤了一枚看不见的印 */
+html:not([data-theme]) .shop-header h2::after {
+  width: 15px; height: 15px;
+  background: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(250, 244, 230, .92), inset 0 0 0 2px var(--accent);
+}
+html:not([data-theme]) .shop-tab { border-radius: 0; }
+html:not([data-theme]) .shop-tab.on {
+  outline: 1px solid var(--gold); outline-offset: -3px;
+  box-shadow: inset 0 -2px 0 var(--gold);
+}
+
+/* 边军：招牌下沿一列城墙垛口，货签左压一道旗杠，印是斜钤的关防长印 */
+[data-theme="bianjun"] .shop-header { border-bottom: none; padding-bottom: 9px; }
+[data-theme="bianjun"] .shop-header::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 5px;
+  pointer-events: none;
+  /* 走 --theme-nav-band 而不是 --theme-band：后者是给纸面顶栏调的暗带，
+     落在这块深漆板上与板子同色，垛口就白画了 */
+  background: repeating-linear-gradient(90deg, var(--theme-nav-band) 0 7px, transparent 7px 16px);
+}
+[data-theme="bianjun"] .shop-header h2::after {
+  width: 9px; height: 26px; transform: rotate(-6deg);
+  background: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(250, 244, 230, .92);
+}
+[data-theme="bianjun"] .shop-tab { border-radius: 0; border-left: 3px solid transparent; padding-left: 13px; }
+[data-theme="bianjun"] .shop-tab.on { border-left-color: var(--accent); box-shadow: none; }
+
+/* 江南：界栏收成水波连弧，货签做月洞门（上圆下方），印是一枚白文圆印 */
+[data-theme="jiangnan"] .shop-header { border-bottom: none; padding-bottom: 10px; }
+[data-theme="jiangnan"] .shop-header::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 8px;
+  pointer-events: none;
+  background-image: radial-gradient(circle at 50% 100%, transparent 5px, var(--theme-nav-band) 5.5px, transparent 7px);
+  background-size: 18px 8px; background-repeat: repeat-x;
+}
+[data-theme="jiangnan"] .shop-header h2::after {
+  width: 17px; height: 17px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: inset 0 0 0 2px rgba(250, 244, 230, .92), inset 0 0 0 3px var(--accent);
+}
+[data-theme="jiangnan"] .shop-tab { border-radius: 11px 11px 3px 3px; }
+[data-theme="jiangnan"] .shop-tab.on { box-shadow: inset 0 0 0 1px var(--accent-soft); }
+/* 江南浅档的 --lacquer 是青灰 (59,74,69)，比默认大漆亮一截：岛内为最暗那块木调解的
+   令牌在这块板上招牌只剩 4.13、印只剩 2.76。只提这一档，深档零变化。 */
+[data-theme="jiangnan"]:not([data-mode="dark"]) .shop-header { --gold: #dcbf80; --accent: #e2846c; }
+
+/* 暗柜：好货不上明面——三套皮共用一句"门闩"，但闩的形跟着皮走 */
+.shop-hidden-title { display: inline-flex; align-items: center; gap: 8px; }
+.shop-hidden-title::before { content: ""; width: 14px; height: 2px; background: currentColor; }
+[data-theme="jiangnan"] .shop-hidden { border-radius: 14px 14px 4px 4px; }
+[data-theme="jiangnan"] .shop-hidden-title::before { width: 8px; height: 8px; border-radius: 50%; }
+[data-theme="bianjun"] .shop-hidden { border-style: solid; border-left-width: 3px; }
 
 /* ---------- 逐套独立的 HUD 构件：数值字牌 / 动作按钮 ----------
    花色徽章故意不跟着换皮。既定口径是"色彩归品级、形状归花色"

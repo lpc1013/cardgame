@@ -1502,10 +1502,16 @@ export default function App() {
     // 市集写穿：内存 st 与存档同一同步任务内落地。随从册（addRetinue/removeRetinue→writeEmpire）
     // 本来就是同步写 localStorage 的，RunState 只交给 effect 就会慢一拍——「人入册了、银两没扣」
     // 的刷新套利正是从这道缝里漏出去的（审计 P0-1、P0-2），故此处即时 flush。
-    return (<>
-      {feedback}
-      <ShopView sc={sc} st={st} shop={scene.shop!} onLeave={afterShop} onSync={(s) => { setSt(s); saveRun(s, duel); }} toast={setToast} />
-    </>);
+    // 市集是每条卡牌周目都要路过的一屏，此前却是唯一一张"有列表没有地方"的屏——
+    // 连结案屏都接上了场景底（见 verdict 那段），这里按同一档淡水印补齐。
+    const shopBg = sceneArt(sc.id, scene.id);
+    return (
+      <div className="story-root shop-wrap">
+        {feedback}
+        {shopBg && <div className="scene-bg" style={{ backgroundImage: `url(${shopBg})` }} aria-hidden="true" />}
+        <ShopView sc={sc} st={st} shop={scene.shop!} onLeave={afterShop} onSync={(s) => { setSt(s); saveRun(s, duel); }} toast={setToast} />
+      </div>
+    );
   }
 
   // ---------- 结案复盘 ----------

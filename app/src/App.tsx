@@ -150,6 +150,12 @@ function _artUrl(idx: Map<string, string>, id: string): string | undefined {
 function cardArt(id: string): string | undefined {
   return _artUrl(_CARD_ART_IDX, id) ?? _artUrl(_PORTRAIT_ART_IDX, id);
 }
+/** 对手立绘：portraits/ 里两种命名并存——专绘走 opp_<对局id>，与人物卡同源的角色走
+ *  r_<对局id 去掉 d_>（d_wang 的「王满财」就是卡 r_wang 本人）。都够不到时牌桌落一枚朱印。 */
+function opponentArt(duelId: string): string | undefined {
+  return _artUrl(_PORTRAIT_ART_IDX, `opp_${duelId}`)
+    ?? _artUrl(_PORTRAIT_ART_IDX, `r_${duelId.replace(/^d_/, "")}`);
+}
 function sceneArt(scenarioId: string, id: string): string | undefined {
   // 优先「剧本前缀」命名（跨剧本场景 id 会重名，如 start）；兼容旧的 scn_* 全局唯一命名
   const direct = _artUrl(_SCENE_ART_IDX, `${scenarioId}_${id}`) ?? _artUrl(_SCENE_ART_IDX, `scn_${id}`) ?? _artUrl(_SCENE_ART_IDX, id);
@@ -2142,7 +2148,12 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
   const light = !!duel.light;
   /** W-2：言力预算（情绪制）——另一 agent 注入 DuelState.yanli/yanliMax；字段不存在（undefined）则隐藏不报错 */
   const duelExtra = duel as DuelState & { yanli?: number; yanliMax?: number };
-  const yanliShown = duelExtra.yanli !== undefined && duelExtra.yanliMax !== undefined;
+  // 牌桌要"看得见"的两样：这一幕的场景底，和对手的立绘（缺图则席上落一枚朱印，不是空槽）
+  const duelScene = sceneArt(sc.id, sc.scenes.find((s) => s.duel === duel.cfg.id)?.id ?? "");
+  const oppArt = opponentArt(duel.cfg.id);
+  // 弃牌堆顶那张的花色：数组下标在 noUncheckedIndexedAccess 下是 string | undefined，先收口
+  const discardTopId = duel.discard[duel.discard.length - 1];
+  const discardTopSuit = discardTopId ? cardOfOpt(discardTopId)?.suit : undefined;
   /** 本回合敌方招式（script 循环）；v2 博弈局展示层藏牌，引擎结算仍用真招 */
   const oppIdOf = (d: DuelState) => d.cfg.script[d.round % d.cfg.script.length] ?? d.cfg.script[0]!;
 
@@ -2414,10 +2425,10 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
 
   return (
     <div className="duel-root">
+      {duelScene && <img className="duel-backdrop" src={duelScene} alt="" aria-hidden="true" />}
       <div className="duel-header">
         <div className="duel-title">{duel.cfg.title}{gambit && <span className="gambit-tag">博弈局</span>}</div>
-        <div className="muted">{duel.cfg.opponent.name} · {duel.cfg.opponent.desc}{v2 ? " · 【v2 手牌制】" : ""}</div>
-        {passiveText && <div className="muted">携带被动：{passiveText}</div>}
+        <div className="muted">{v2 ? "【v2 手牌制】" : "【经典制】"}{passiveText ? ` · 携带被动：${passiveText}` : ""}</div>
         {wagerOpen && silver > 0 && (
           <div className="wager-bar">
             <span className="st-label">押注此局？胜得两倍，败失本金</span>
@@ -2431,36 +2442,147 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
         {wager > 0 && <div className="wager-on muted">已押 {wager} 两 · 胜入 {Math.round(wager * 1.6)} 两</div>}
       </div>
 
-      <div className="duel-status">
+      {/* ── 案面 ──：对面是他，中间是刚交完的那一手，这边是你。
+          此前这三样摊在标题下的一行小字和一栏滚动文字里——牌桌有牌、有规则，就是没有"桌"。
+          整块是一块大漆岛，自带 --ink/--gold/--line（见 app.css .dt-table），不跟皮肤翻。 */}
+      <div className="dt-table">
+        <div className="dt-opp">
+          <div className="dt-seat">
+            {oppArt
+              ? <img className="dt-seat-img" src={oppArt} alt={duel.cfg.opponent.name} />
+              : <span className="dt-seat-seal" aria-hidden="true">{(duel.cfg.opponent.name || "?").slice(0, 1)}</span>}
+            <span className="dt-seat-name">{duel.cfg.opponent.name}</span>
+          </div>
+          <div className="dt-seat-mid">
+            <div className="dt-seat-desc">{duel.cfg.opponent.desc}</div>
+            <div className="dt-bars">
+              {duel.mode === "emotion" ? (
+                <>
+                  <span><span className="st-label">共鸣</span>
+                    <span className="rapport-dots">
+                      {Array.from({ length: duel.cfg.goal ?? DEFAULT_GOAL }, (_, i) => (
+                        <i key={i} className={i < duel.rapport ? "on" : ""} />
+                      ))}
+                    </span>
+                  </span>
+                  <span><span className="st-label">防备</span>{duel.guard}</span>
+                  {typeof duelExtra.yanliMax === "number" && (
+                    <span><span className="st-label">言力</span>{duelExtra.yanli}/{duelExtra.yanliMax}</span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <span><span className="st-label">他气力</span><QiBar cur={duel.hpOpponent} max={duel.cfg.hp?.opponent ?? 10} foe /></span>
+                  {v2 && <span><span className="st-label">蓄势</span>{duel.charge > 0 ? `${duel.charge} 层` : "无"}</span>}
+                  {(duel.oppCharge ?? 0) > 0 && <span className="trap-on"><span className="st-label">他蓄势</span>{duel.oppCharge} 层</span>}
+                </>
+              )}
+              {duel.mode === "pressure" && duel.oppForesuit && (
+                <span className="trap-on"><span className="st-label">他宣言</span>你必出「{duel.oppForesuit}」</span>
+              )}
+            </div>
+          </div>
+          <div className={`dt-placard${duel.opponentShown ? " shown" : ""}`}>
+            {duel.opponentShown ? (
+              <>
+                <SuitSeal suit={duel.opponentShown} />
+                <span className="dt-placard-label">{inOppTurn ? "他主攻" : "他亮出的手段"}</span>
+                {duel.bluffed && <span className="dt-bluff">虚张？</span>}
+              </>
+            ) : (
+              <>
+                <span className="dt-placard-back" aria-hidden="true" />
+                <span className="dt-placard-label">待他亮牌</span>
+              </>
+            )}
+          </div>
+        </div>
+
         {phased && duel.mode === "pressure" && (
-          <span className="turn-banner"><span className="st-label">回合</span>第 {duel.turnNo ?? 1} 回合 · {inOppTurn ? "对手行动" : "我方行动"}</span>
+          <div className="dt-turn">{inOppTurn ? "—— 他的回合 ——" : "—— 你的回合 ——"}</div>
         )}
-        {duel.mode === "emotion" ? (
-          <>
-            <span className="rapport-dots">
-              <span className="st-label">共鸣</span>
-              {Array.from({ length: duel.cfg.goal ?? DEFAULT_GOAL }, (_, i) => (
-                <i key={i} className={i < duel.rapport ? "on" : ""} />
-              ))}
+
+        {/* 交锋带：上一步双方实际打出的两张牌面对面摆开，中间是判定。
+            引擎一直存着 lastPlay，此前只把结果写成一句话，案面上看不见交手。 */}
+        {duel.lastPlay && (duel.lastPlay.playerCard || duel.lastPlay.oppCard) ? (
+          <div className={`dt-clash${duel.lastPlay.stale ? " stale" : ""}`}>
+            <span className="dt-clash-side">
+              <span className="dt-clash-who">你</span>
+              {duel.lastPlay.playerCard ? (
+                <>
+                  <SuitSeal suit={duel.lastPlay.playerCard.suit} />
+                  <em>{duel.lastPlay.playerCard.name}</em>
+                </>
+              ) : <em className="dim">未出牌</em>}
             </span>
-            <span><span className="st-label">防备</span>{duel.guard}</span>
-            <span><span className="st-label">气力</span><QiBar cur={duel.qi} max={duel.qiMax ?? 10} /></span>
-            {yanliShown && <span><span className="st-label">言力</span>{duelExtra.yanli}/{duelExtra.yanliMax}</span>}
-          </>
+            <span className={`dt-clash-verdict ${duel.lastResult?.kind ?? ""}`}>
+              {duel.lastResult?.kind === "match" ? "共鸣" : duel.lastResult?.kind === "press" ? "破防"
+                : duel.lastResult?.kind === "miss" ? "失言" : duel.lastResult?.kind === "item" ? "用物"
+                  : duel.lastResult?.kind === "gambit" ? "博弈" : duel.lastPlay.to === "o" ? "伤他"
+                    : duel.lastPlay.to === "p" ? "你损" : "平"}
+              {duel.lastPlay.damage > 0 && <b>{duel.lastPlay.damage}</b>}
+              {duel.lastPlay.trapNote && <i className="dt-clash-trap">{duel.lastPlay.trapNote}</i>}
+            </span>
+            <span className="dt-clash-side">
+              {duel.lastPlay.oppCard ? (
+                <>
+                  {/* 与战报同一把遮蔽闸：观牌没买到、又该隐名时，牌名和点数都不能从案面上漏出去 */}
+                  <em>{(oppPlayHidden && !duel.lastPlay.oppSeen) ? "▓▓" : duel.lastPlay.oppCard.name}</em>
+                  <SuitSeal suit={(oppPlayHidden && !duel.lastPlay.oppSeen) ? "隐" : duel.lastPlay.oppCard.suit ?? "隐"} />
+                </>
+              ) : duel.lastPlay.oppSuit ? (
+                <>
+                  <em>所求 · {duel.lastPlay.oppSuit}</em>
+                  <SuitSeal suit={duel.lastPlay.oppSuit} />
+                </>
+              ) : <em className="dim">未出牌</em>}
+              <span className="dt-clash-who">他</span>
+            </span>
+          </div>
         ) : (
-          <>
-            <span><span className="st-label">我方气力</span><QiBar cur={duel.hpPlayer} max={duel.hpMax ?? (duel.cfg.hp?.player ?? 10)} /></span>
-            <span><span className="st-label">{duel.cfg.opponent.name}气力</span><QiBar cur={duel.hpOpponent} max={duel.cfg.hp?.opponent ?? 10} foe /></span>
-          </>
+          <div className="dt-clash idle">
+            <span className="dt-clash-note">{duel.finished ? "案上已无动静" : inOppTurn ? "他出手了——从手牌挑一张接招" : "案上未有一牌——请出手"}</span>
+          </div>
         )}
-        {v2 && duel.mode === "pressure" && <span><span className="st-label">行动力</span>{duel.ap}</span>}
-        {duel.mode === "pressure" && duel.charge > 0 && <span><span className="st-label">蓄势</span>{duel.charge} 层（下张+{duel.charge * 2}）</span>}
-        {duel.mode === "pressure" && (duel.oppCharge ?? 0) > 0 && <span className="trap-on"><span className="st-label">敌方蓄势</span>{duel.oppCharge} 层</span>}
-        {duel.mode === "pressure" && (duel.oppForesuit) && <span className="trap-on"><span className="st-label">敌方宣言</span>你必出「{duel.oppForesuit}」——被他押中则该手作废</span>}
-        {duel.mode === "pressure" && duel.foresuit && <span><span className="st-label">破招宣言</span>{inOppTurn ? "其主攻" : "敌出"}「{duel.foresuit}」</span>}
-        {duel.mode === "pressure" && duel.trap && <span className="trap-on"><span className="st-label">盖牌</span>「{duel.trap.name}」扣在案上（{duel.trap.effect}）</span>}
-        {duel.mode === "pressure" && duel.insiderActive && <span className="trap-on"><span className="st-label">内应</span>已买通——他下一招作废</span>}
-        {v2 && <span className="muted">牌库 {duel.library.length} · 手牌 {duel.hand.length} · 弃牌 {duel.discard.length}</span>}
+
+        <div className="dt-me">
+          <div className="dt-seat">
+            <span className="dt-seat-seal me" aria-hidden="true">我</span>
+            <span className="dt-seat-name">你</span>
+          </div>
+          <div className="dt-seat-mid">
+            <div className="dt-bars">
+              <span><span className="st-label">{duel.mode === "emotion" ? "气力" : "我气力"}</span>
+                <QiBar cur={duel.mode === "emotion" ? duel.qi : duel.hpPlayer}
+                  max={duel.mode === "emotion" ? (duel.qiMax ?? 10) : (duel.hpMax ?? (duel.cfg.hp?.player ?? 10))} />
+              </span>
+              {v2 && duel.mode === "pressure" && <span><span className="st-label">行动力</span>{duel.ap}</span>}
+              {v2 && <span><span className="st-label">手牌</span>{duel.hand.length}</span>}
+            </div>
+            {/* 我方意图：宣言、盖牌、内应——它们描述的是你下一步要干什么，该贴着手牌这一侧 */}
+            <div className="dt-intent">
+              {duel.mode === "pressure" && duel.foresuit && (
+                <span><span className="st-label">破招宣言</span>{inOppTurn ? "其主攻" : "敌出"}「{duel.foresuit}」</span>
+              )}
+              {duel.mode === "pressure" && duel.trap && (
+                <span className="trap-on"><span className="st-label">盖牌</span>「{duel.trap.name}」扣在案上（{duel.trap.effect}）</span>
+              )}
+              {duel.mode === "pressure" && duel.insiderActive && (
+                <span className="trap-on"><span className="st-label">内应</span>已买通——他下一招作废</span>
+              )}
+              {wager > 0 && <span><span className="st-label">押</span>{wager} 两 · 胜入 {Math.round(wager * 1.6)} 两</span>}
+            </div>
+          </div>
+          {v2 && (
+            <div className="dt-stacks">
+              <span className="dt-stack dt-lib" title="牌库"><b>{duel.library.length}</b><i>牌库</i></span>
+              <span className="dt-stack dt-discard" title="弃牌堆">
+                {discardTopSuit && <SuitSeal suit={discardTopSuit} />}
+                <b>{duel.discard.length}</b><i>弃牌</i>
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="duel-stage" ref={stageRef}>
@@ -2474,10 +2596,10 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
         {duel.mode === "emotion" && !duel.opponentShown && moodText && <p className="opp-line">{moodText}</p>}
         {duel.mode === "emotion" && oppActionText && !duel.finished && <p className="opp-line opp-action">{oppActionText}</p>}
         {duel.mode === "pressure" && !v2 && !phased && (
-          <p className="opp-line">对手蓄势待发……出牌比点，点高者伤敌；势牌基础点数×1.5（反噬自身一点气力）；单次点差至多伤 6。</p>
+          <p className="dt-hint">对手蓄势待发……出牌比点，点高者伤敌；势牌基础点数×1.5（反噬自身一点气力）；单次点差至多伤 6。</p>
         )}
         {duel.mode === "pressure" && light && (
-          <p className="opp-line">轻回合：每回合你可走一个主行动（出牌 / 蓄势 / 破招 / 盖放），随后对手行动。你的主攻享先手 +1；他主攻时你选牌「应手」，守方 +1、反击差值减半；单次点差至多伤 6。</p>
+          <p className="dt-hint">轻回合：每回合你可走一个主行动（出牌 / 蓄势 / 破招 / 盖放），随后对手行动。你的主攻享先手 +1；他主攻时你选牌「应手」，守方 +1、反击差值减半；单次点差至多伤 6。</p>
         )}
         {inOppTurn && duel.oppIntent?.kind === "attack" && (
           <p className="opp-line opp-attack-turn">
@@ -2690,7 +2812,9 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
           );
         })}
       </div>
-      <p className="duel-rule muted">
+      <details className="dt-rules">
+        <summary>本局规则</summary>
+        <p className="duel-rule muted">
         {duel.mode === "emotion"
           ? v2
             ? "v2 规则：出牌不耗行动力；打出的牌进弃牌堆，每轮补牌至 4 张。同色=共鸣+1；克色=破防备（破防伤神，气力-1）；被克=失言气力-2，错色=失言气力-1。"
@@ -2703,7 +2827,8 @@ function DuelView({ sc, duel, setDuel, toast, silver, wager, onWager, wagersLeft
         {gambit && (duel.mode === "emotion"
           ? " 博弈：他亮出的色三成是虚张（不可由回合数或环序反推）；【读牌】耗 1 言力验色，虚张则拆穿亮真色。"
           : " 博弈：【蓄势】叠蓄力层（上限2，下张每层+2）；【破招】宣言敌招花色，押中则该招作废。")}
-      </p>
+        </p>
+      </details>
     </div>
   );
 }

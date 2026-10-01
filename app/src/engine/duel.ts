@@ -120,7 +120,8 @@ export interface DuelState {
   breakGamble?: boolean; // M8（审计 P2-1）：轻回合免 AP 的破招宣言——押空则硬吃 1 点，不再是零成本白赌
   /** 隐色陷阱（盖放区，限 1 张）：M4 起伏击对手主攻，满足 trigger 条件时生效（缺省 always） */
   trap: { cardId: string; name: string; effect: TrapEffect; trigger?: TrapTrigger } | null;
-  lastPlay: { playerCard?: CardDef; oppCard?: CardDef; damage: number; to: "p" | "o" | "none"; stale?: boolean; edge?: number; broke?: boolean; trapNote?: string; selfBroke?: boolean; oppSeen?: boolean } | null;
+  /** oppSuit：情绪制没有对手实体牌，他这一手讨的是哪路色——交锋带要有对面那一方 */
+  lastPlay: { playerCard?: CardDef; oppCard?: CardDef; oppSuit?: Suit; damage: number; to: "p" | "o" | "none"; stale?: boolean; edge?: number; broke?: boolean; trapNote?: string; selfBroke?: boolean; oppSeen?: boolean } | null;
   finished: "win" | "lose" | null;
   /** M0：情绪制气力上限（含人物 bonusQi / 备战加成；旧档缺省按 10） */
   qiMax?: number;
@@ -474,6 +475,8 @@ export function playEmotion(st: DuelState, card: CardDef): boolean {
     st.qi -= 1;
     st.lastResult = { text: `话说岔了。他的眼神冷了下来，你心里一紧。`, kind: "miss" };
   }
+  // 情绪制此前只留 lastResult 一句话，这一手双方各出了什么全成暗账——牌桌中央摆不出来。
+  st.lastPlay = { playerCard: card, oppSuit: shown ?? undefined, damage: 0, to: "none" };
   // 强牌（物品「强牌」）：下一言掷地有声——接住/破防的下一手额外共鸣+1
   // 情绪制无点数，故以「额外共鸣」等价兑现；一次性消费后清零。
   if (st.buffPower > 0 && (card.suit === shown || (card.suit && RESTRAIN[card.suit] === shown))) {

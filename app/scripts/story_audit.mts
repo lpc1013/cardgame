@@ -99,6 +99,48 @@ for (const [sid, sc] of SCEN) {
     }
   });
 
+  const sceneIds = new Set(sc.scenes.map((s) => s.id));
+  // ---- 场景图引用存在性（数据流里静默丢边的反面：把每个收束口点名核一遍） ----
+  const dangling = (from: string, slot: string, to: unknown) => {
+    if (typeof to === "string" && to && !sceneIds.has(to)) p(`「${from}」的 ${slot} → 「${to}」不在场景表`);
+  };
+  for (const s of sc.scenes) {
+    dangling(s.id, "next", s.next);
+    dangling(s.id, "next2", s.next2);
+    for (const [i, c] of (s.choices ?? []).entries()) dangling(s.id, `choices[${i}].next`, c.next);
+    if (s.duel) {
+      const d = sc.duels.find((x) => x.id === s.duel);
+      dangling(s.id, `duel ${s.duel}.winScene`, d?.winScene);
+      dangling(s.id, `duel ${s.duel}.loseScene`, d?.loseScene);
+      dangling(s.id, `duel ${s.duel}.loseScene2.scene`, d?.loseScene2?.scene);
+    }
+    if (s.minigame) { dangling(s.id, "minigame.winNext", s.minigame.winNext); dangling(s.id, "minigame.loseNext", s.minigame.loseNext); }
+    if (s.cardPick) dangling(s.id, "cardPick.next", s.cardPick.next);
+    // ---- variantLines 遮蔽：首中即返，无条件兜底出现在前面 → 后面全部永假 ----
+    const vls = s.variantLines ?? [];
+    for (const [i, v] of vls.entries()) {
+      if (v.cond) continue;
+      if (i < vls.length - 1) p(`「${s.id}」variantLines[${i}] 无条件兜底不在末位——其后的 ${vls.length - 1 - i} 条回响永不可达`);
+      break;
+    }
+    const seenConds = new Map<string, number>();
+    for (const [i, v] of vls.entries()) {
+      if (!v.cond) continue;
+      const key = JSON.stringify(v.cond);
+      if (seenConds.has(key)) p(`「${s.id}」variantLines[${i}] 与 [${seenConds.get(key)}] 条件完全相同——前者遮蔽后者`);
+      else seenConds.set(key, i);
+    }
+  }
+  if (!sceneIds.has(sc.startScene)) p(`startScene「${sc.startScene}」不在场景表`);
+  const endingSceneIds = new Set(sc.scenes.filter((s) => s.ending).map((s) => s.id));
+  for (const v of sc.viewpoints ?? []) {
+    if (!sceneIds.has(v.startScene)) p(`视角 ${v.id} startScene「${v.startScene}」不在场景表`);
+    // viewpoints[].endings 存的是结局「场景 id」（图鉴按视角归类的依据）
+    for (const e of (v as Any).endings ?? []) {
+      if (!endingSceneIds.has(e)) p(`视角 ${v.id} endings「${e}」不是结局场景 id`);
+    }
+  }
+
   // ---- 旗标 ----
   for (const [f, paths] of flagRead) {
     if (!flagSet.has(f)) p(`旗标「${f}」被读（${paths[0]}${paths.length > 1 ? ` 等 ${paths.length} 处` : ""}）但全剧本无 setFlag —— 条件永假，内容不可达`);
@@ -142,7 +184,6 @@ for (const [sid, sc] of SCEN) {
     }
   }
   // ---- 复盘门 ----
-  const sceneIds = new Set(sc.scenes.map((s) => s.id));
   if (sc.verdict) {
     const v = sc.verdict;
     for (const k of ["scene", "winScene", "loseScene"] as const) {

@@ -157,7 +157,6 @@ for (const [sid, sc] of SCEN) {
   // ---- 数值 ----
   const declared = new Set((sc.stats ?? []).map((s) => s.key));
   for (const [k, paths] of statRead) {
-    if (!statWrite.has(k) && !declared.has(k)) p(`stat「${k}」被门槛读（${paths[0]}）但从未被写也未声明 —— 恒为初值`);
   }
   for (const k of statWrite) {
     if (!statRead.has(k) && !declared.has(k)) note(`stat「${k}」被写但无门槛读、也不在 stats 表 —— 隐形账目`);
@@ -191,6 +190,41 @@ for (const [sid, sc] of SCEN) {
     }
     if (clueIds.size > 0 && !clueIds.has(v.coreClue)) p(`verdict.coreClue「${v.coreClue}」不在线索表`);
     else if (clueIds.size > 0 && !clueUnlock.has(v.coreClue)) p(`verdict.coreClue「${v.coreClue}」全剧本无解锁口（S-1 同型断链）`);
+  }
+  // ---- 结局层质量（文风红线 #5 + 奖励闭环）----
+  const statInit = new Map((sc.stats ?? []).map((s) => [s.key, s.init]));
+  const nameCount = new Map<string, number>();
+  for (const s of sc.scenes) {
+    const e = s.ending;
+    if (!e) continue;
+    nameCount.set(e.name, (nameCount.get(e.name) ?? 0) + 1);
+    if (e.desc && e.desc.length > 40) p(`结局「${e.name}」desc ${e.desc.length} 字 > 40（墓志铭红线）：「${e.desc}」`);
+    if (!e.rank) note(`结局「${e.name}」缺 rank`);
+    // 元叙事词红线：结局三层（名/级/语）里不许出现游戏术语
+    for (const w of ["玩家", "系统", "存档", "读档", "攻略", "选项", "周目"]) {
+      if ((e.name ?? "").includes(w) || (e.rank ?? "").includes(w) || (e.desc ?? "").includes(w)) {
+        p(`结局「${e.name}」出现元叙事词「${w}」`);
+      }
+    }
+    if (e.reward && !cardIds.has(e.reward)) p(`结局「${e.name}」奖励卡「${e.reward}」不在卡表 —— 奖励落空`);
+  }
+  for (const [name, cnt] of nameCount) {
+    if (cnt > 1) p(`结局名「${name}」在本剧本出现 ${cnt} 次 —— 番外按名字解锁、图鉴按名字归类，重名会串`);
+  }
+  // 数值门槛的三类死法：未声明未写 / 声明了但初值低于门槛且全剧无可写口
+  for (const [k, paths] of statRead) {
+    const writes = statWrite.has(k);
+    const init = statInit.get(k);
+    // 找出该键全部门槛值里最小的，若初值与写入口都够不到即死
+    const thresholds: number[] = [];
+    walk(sc, (o) => {
+      if (o.statAtLeast && typeof o.statAtLeast === "object" && k in (o.statAtLeast as Any)) {
+        thresholds.push((o.statAtLeast as Any)[k] as number);
+      }
+    });
+    const need = thresholds.length ? Math.min(...thresholds) : 0;
+    if (!writes && init === undefined) p(`stat「${k}」被门槛读（${paths[0]}）但从未被写也未声明 —— 恒为初值`);
+    else if (!writes && init !== undefined && init < need) p(`stat「${k}」初值 ${init} < 最小门槛 ${need} 且全剧无写入口 —— 带此门槛的选项永不可见`);
   }
   // ---- 番外钥匙与结局名 ----
   const endNames = new Set(sc.scenes.filter((s) => s.ending).map((s) => s.ending!.name));

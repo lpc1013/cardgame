@@ -426,6 +426,7 @@ export const xie: Scenario = {
     },
     {
       id: "end_surface",
+      art: true,
       title: "结局 · 表层铁案",
       lines: [
   "你以凸面镜片、灼烧痕迹、墙头脚印、贿银账目、粉末失窃五证定谳：人为布局、聚光杀人、官吏受贿毁证。",

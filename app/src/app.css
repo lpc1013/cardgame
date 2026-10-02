@@ -1569,6 +1569,15 @@ html:not([data-theme]) .bag-panel h3::after {
   display: block; width: 100%; height: 100%; object-fit: cover;
   animation: ending-kb 18s ease-out both;
 }
+/* 普通剧情幕的画心（scene.art）：复用结局画心框，但去 Ken Burns——
+   正文页的图要定住，不跟逐段揭文的阅读节奏抢戏 */
+.scene-art { margin-bottom: 16px; }
+.scene-art .ending-art { animation: none; }
+/* 手机横屏预算按 px 记账（F-9）：一屏多塞 400px 高的画心会把正文顶出视口，
+   横屏下不挂画心，正文优先；竖屏与桌面正常展示 */
+@media (max-height: 520px) and (orientation: landscape) {
+  .story-panel .scene-art { display: none; }
+}
 @keyframes ending-kb {
   from { transform: scale(1.0) translate3d(0, 1.6%, 0); }
   to   { transform: scale(1.085) translate3d(0, -1.2%, 0); }
@@ -3329,7 +3338,16 @@ html:not([data-theme]) .bag-panel h3::after {
 .retinue-tag { font-size: 12px; color: var(--gold); border: 1px solid var(--gold); border-radius: 999px; padding: 2px 10px; opacity: .9; }
 
 /* 天下卡册 */
-.album-cell { position: relative; }
+/* content-visibility：345 张卡一屏只看得见不到 4%，屏外的整卡跳过排版与绘制。
+   下内边距 34px + 负外边距 34px：布局净高不变，但 hover 投影（0 10px 22px ≈ 出盒 32px）
+   落进自己的 padding 盒里，paint containment 不会把它裁掉——上一轮探针量完没敢动的正是这条。 */
+.album-cell {
+  position: relative;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 246px; /* 184 宽 × 3/4 高，首帧估算，渲染过一次后按实高记忆 */
+  padding-bottom: 34px;
+  margin-bottom: -34px;
+}
 .album-carry {
   position: absolute; top: 36px; right: 4px; z-index: 2;
   font-size: 11px; color: #c9a86a;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback, useRef, type ReactNode, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef, memo, type ReactNode, type CSSProperties } from "react";
 import type { Scenario, Scene, CardDef, Suit, DuelConfig } from "./engine/types";
 import { initState, findScene, visibleChoices, applyEffects, registerScenarios, checkCond, resolveSceneLines, type RunState } from "./engine/runtime";
 import { initDuel, revealEmotion, playEmotion, playPressure, endTurn, readEmotion, chargeUp, breakMove, cardCost, duelSpend, respondOpponent, passResponse, forfeitDuel, dmgRoom, ITEM_YANLI_COST, EMOTION_FREE_PLAYS, EMOTION_YANLI_MAX, DEFAULT_AP, DEFAULT_GOAL, type DuelState, type DuelBoosts } from "./engine/duel";
@@ -1717,6 +1717,15 @@ export default function App() {
         </aside>
       )}
       <div className="story-panel" onClick={advance} ref={panelRef} key={scene.id}>
+        {/* 幕画心（scene.art 开关）：普通剧情幕复用结局画心框接住落单图；无图自动不渲染 */}
+        {scene.art && (() => {
+          const a = endArt(sc.id, scene.id);
+          return a ? (
+            <div className="ending-art-frame scene-art">
+              <img className="ending-art" src={a} alt={scene.title ?? ""} />
+            </div>
+          ) : null;
+        })()}
         {dlg && (
           <div className="dlg-head">
             {narrName && <span className="dlg-name">{narrName}</span>}
@@ -3477,10 +3486,64 @@ function CardGallery({ sc, onClose }: { sc: Scenario; onClose: () => void }) {
   );
 }
 
+/** 可携带出战：物品 / 结局奖励 / 随从（斥候·内应）——卡册徽记与行囊准入同一条规则 */
+function carryable(c: CardDef, seen: boolean): boolean {
+  return seen && ((c.layer ?? "成术") === "物品" || !!c.endingReward || ((c.passive?.scout ?? 0) > 0 || (c.passive?.insider ?? 0) > 0));
+}
+/** 卡册某组的列卡（花色 × 只看缺卡两道筛，资源卡不入册）——组渲染与面板计数共用一份逻辑 */
+function albumCols(s: Scenario, seenIds: string[] | undefined, suitF: "全部" | Suit, missingOnly: boolean): CardDef[] {
+  const seen = new Set(seenIds ?? []);
+  return s.cards.filter((c) =>
+    (c.layer ?? "成术") !== "资源"
+    && (suitF === "全部" || c.suit === suitF)
+    && (!missingOnly || !seen.has(c.id)));
+}
+const EMPTY_SEEN: string[] = [];
+/** 卡册分组（性能）：memo 隔离——开缩放、翻其他组时未变的组整组跳过调和，
+ *  345 张卡的面板从「任何一次点击都重排全墙」变成只动shell和被点的那组 */
+const AlbumGroup = memo(function AlbumGroup({ s, seenIds, folded, suitF, missingOnly, onOpen, onToggle }: {
+  s: Scenario; seenIds: string[]; folded: boolean; suitF: "全部" | Suit; missingOnly: boolean;
+  onOpen: (s: Scenario, c: CardDef, seen: boolean) => void; onToggle: (id: string) => void;
+}) {
+  const seen = new Set(seenIds);
+  const cols = albumCols(s, seenIds, suitF, missingOnly);
+  if (!cols.length) return null;
+  const gotN = cols.filter((c) => seen.has(c.id)).length;
+  return (
+    <div className="bag-group">
+      <div className="bag-group-title" onClick={() => { sfx.choice(); onToggle(s.id); }}>
+        {/* M-1：折叠态 chevron——展开朝下（rotate(-90°)），折叠朝右 */}
+        <span className={`fix-group-fold${folded ? " folded" : ""}`} aria-hidden="true">▸</span>
+        {s.title}<span className="muted">（{gotN}/{cols.length}）</span>
+      </div>
+      {!folded && (
+        <div className="bag-grid">
+          {cols.map((c) => {
+            const isSeen = seen.has(c.id);
+            return (
+              <div key={c.id} className="album-cell">
+                <TCard c={c} unknown={!isSeen} onClick={() => { sfx.choice(); onOpen(s, c, isSeen); }} />
+                {carryable(c, isSeen) && <span className="album-carry" title="可携带出战">可携带</span>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+});
+
 /** 天下卡册：全部剧本全部卡的三态总览（未见？？？ / 已见 / 已得·可携带） */
 function AlbumPanel({ onClose }: { onClose: () => void }) {
-  const seenMap = getCardSeen();
+  // 收录名单在面板开着时不会被写入（recordCardsSeen 只在对局/剧情里发生），
+  // 挂载时读一次拿稳身份——每渲染重解 JSON 会让下面的 memo 全部失效
+  const seenMap = useMemo(() => getCardSeen(), []);
   const [zoom, setZoom] = useState<{ sc: Scenario; c: CardDef; seen: boolean } | null>(null);
+  // 稳定回调：memo 组的 props 不随面板重渲染漂移（否则 memo 形同虚设）
+  const openCard = useCallback((s: Scenario, c: CardDef, seen: boolean) => { setZoom({ sc: s, c, seen }); }, []);
+  const toggleGroup = useCallback((id: string) => {
+    setCollapsed((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  }, []);
   const [suitF, setSuitF] = useState<"全部" | Suit>("全部");
   const [scF, setScF] = useState<string>("全部");
   // M-1b：只看缺卡——过滤掉已见卡，聚焦收集缺口
@@ -3495,16 +3558,11 @@ function AlbumPanel({ onClose }: { onClose: () => void }) {
       if ((seenMap[s.id] ?? []).includes(c.id)) got++;
     }
   }
-  const carryable = (c: CardDef, seen: boolean) =>
-    seen && ((c.layer ?? "成术") === "物品" || !!c.endingReward || ((c.passive?.scout ?? 0) > 0 || (c.passive?.insider ?? 0) > 0));
   // M-1b 筛选：花色行（第一行常驻）× 剧本下拉 × 只看缺卡（AND）
   const shownSc = scF === "全部" ? SCENARIOS : SCENARIOS.filter((s) => s.id === scF);
-  const matchSuit = (c: CardDef) => suitF === "全部" || c.suit === suitF;
-  const matchSeen = (s: Scenario, c: CardDef) => !missingOnly || !(seenMap[s.id] ?? []).includes(c.id);
   let shownTotal = 0, shownGot = 0;
   for (const s of shownSc) {
-    for (const c of s.cards) {
-      if ((c.layer ?? "成术") === "资源" || !matchSuit(c) || !matchSeen(s, c)) continue;
+    for (const c of albumCols(s, seenMap[s.id], suitF, missingOnly)) {
       shownTotal++;
       if ((seenMap[s.id] ?? []).includes(c.id)) shownGot++;
     }
@@ -3539,36 +3597,10 @@ function AlbumPanel({ onClose }: { onClose: () => void }) {
             </label>
           </div>
         </div>
-        {shownSc.map((s) => {
-          const seen = new Set(seenMap[s.id] ?? []);
-          const cols = s.cards.filter((c) => (c.layer ?? "成术") !== "资源" && matchSuit(c) && matchSeen(s, c));
-          if (!cols.length) return null;
-          const gotN = cols.filter((c) => seen.has(c.id)).length;
-          const folded = collapsed.has(s.id);
-          return (
-            <div key={s.id} className="bag-group">
-              <div className="bag-group-title" onClick={() => { sfx.choice(); setCollapsed((prev) => { const n = new Set(prev); if (n.has(s.id)) n.delete(s.id); else n.add(s.id); return n; }); }}>
-                {/* M-1：折叠态 chevron——展开朝下（rotate(-90°)），折叠朝右 */}
-                <span className={`fix-group-fold${folded ? " folded" : ""}`} aria-hidden="true">▸</span>
-                {s.title}<span className="muted">（{gotN}/{cols.length}）</span>
-              </div>
-              {!folded && (
-                <div className="bag-grid">
-                  {cols.map((c) => {
-                    const isSeen = seen.has(c.id);
-                    const carry = carryable(c, isSeen);
-                    return (
-                      <div key={c.id} className="album-cell">
-                        <TCard c={c} unknown={!isSeen} onClick={() => { sfx.choice(); setZoom({ sc: s, c, seen: isSeen }); }} />
-                        {carry && <span className="album-carry" title="可携带出战">可携带</span>}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {shownSc.map((s) => (
+          <AlbumGroup key={s.id} s={s} seenIds={seenMap[s.id] ?? EMPTY_SEEN} folded={collapsed.has(s.id)}
+            suitF={suitF} missingOnly={missingOnly} onOpen={openCard} onToggle={toggleGroup} />
+        ))}
         {shownTotal === 0 && <p className="muted" style={{ padding: "16px 0" }}>此筛选下暂无卡牌。</p>}
         <button className="btn-main" onClick={onClose}>合上卡册</button>
       </div>

@@ -508,6 +508,7 @@ export const xingxing: Scenario = {
     },
     {
       id: "xx_teacher_years",
+      art: true,
       title: "灯芯",
       lines: [
   "日子像纺线，一拉，就是几年。",

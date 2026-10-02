@@ -38,6 +38,13 @@ for (const f of fs.readdirSync(dir).filter((f) => /\.ts$/.test(f) && !skip.has(f
     total++; seen.add(key);
     if (!arts.has(key)) missing.push(`${sid}/${s.id} -> ${key}.jpg`);
   }
+  // 普通剧情幕的画心（scene.art: true）也是 endings/ 资产的合法消费者——
+  // 渲染器按同一命名约定取 end_<剧本id>_<幕id>.jpg，图在即不算落单
+  for (const s of scenesOf(t)) {
+    if (/(^|[\s{,])ending:\s*\{/.test(s.frag)) continue;
+    if (!/(^|[\s{,])art:\s*true/.test(s.frag)) continue;
+    seen.add(`end_${sid}_${s.id}`);
+  }
 }
 const orphan = [...arts].filter((a) => !seen.has(a));
 console.log(`结局幕: ${total}   缺图: ${missing.length}   落单资产: ${orphan.length}`);

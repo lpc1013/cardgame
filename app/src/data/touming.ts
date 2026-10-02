@@ -410,6 +410,7 @@ export const touming: Scenario = {
     },
     {
       id: "ch2_tea_lose",
+      art: true,
       title: "茶局 · 溃败",
       lines: [
   "话说岔了一句，老者的笑意便淡了下去。之后的每一句话，都像是在对着一堵墙讲。",
@@ -782,6 +783,7 @@ export const touming: Scenario = {
     },
     {
       id: "ch3_canon_cold",
+      art: true,
       title: "走马灯 · 拒降者",
       lines: [
   "第二十六日，城门从里面打开了。城中多出来的几万具尸骨，有一半，是「再围一月」四个字的代价。",

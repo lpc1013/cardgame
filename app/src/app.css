@@ -618,7 +618,10 @@ button { font-family: inherit; }
   justify-content: center;
 }
 .cover-arrow {
-  background: none; border: 1px solid var(--line); color: var(--gold);
+  background: none; border: 1px solid var(--line);
+  /* 浅档实测 2.71~2.99（28px 属大字号，阈值 3），差在临界线下。
+     往 --ink 混 45% 把金色压暗一档，色相不动、读数过线。 */
+  color: color-mix(in srgb, var(--gold) 55%, var(--ink));
   font-size: 28px; width: 40px; cursor: pointer; flex-shrink: 0;
   transition: border-color .2s, background .2s;
 }
@@ -2812,13 +2815,15 @@ html:not([data-theme]) .bag-panel h3::after {
   .fab-resume {
     max-width: 34vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     font-size: 12px; padding: 6px 12px; letter-spacing: 1px;
-    background: rgba(23,21,18,.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    /* .55 的深漆压在宣纸上合成出来是中灰 (120,113,102)，而字吃的是为纸面调暗的
+       --gold/--ink-dim——实测 1.8~1.97。提到 .88 让地子真成深底，令牌再随岛走。 */
+    background: rgba(23,21,18,.88); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
   }
   .fab-capsule {
     position: relative; display: inline-flex; align-items: center; gap: 6px;
     font-size: 14px; color: var(--gold); letter-spacing: 1px;
     padding: 7px 12px; border-radius: 14px; cursor: pointer;
-    border: 1px solid rgba(201,168,106,.45); background: rgba(23,21,18,.55);
+    border: 1px solid rgba(201,168,106,.45); background: rgba(23,21,18,.88);
     backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
     transition: border-color .2s;
   }
@@ -3873,7 +3878,11 @@ html:not([data-theme]) .bag-panel h3::after {
 }
 .nav-seal { margin-right: 2px; }
 .nav-logo { color: var(--lacquer-ink); letter-spacing: 12px; }
-.ink-chip {
+/* 这条紧挨着 .title-nav / .nav-logo 写，本意是"漆栏上的 chip 换浅字"，
+   但选择器没收窄，把全站三处 .ink-chip 一起改了：结局进度那一行与帝国商市
+   题签上的 chip 坐在宣纸上，被刷成 #f1e6d2 的浅字压米黄底——实测 1.01~1.13，
+   "墨铤 1159" 整块看不见。只有真正落在漆栏上的那份才该吃 lacquer-ink。 */
+.title-nav .ink-chip {
   color: var(--lacquer-ink); border-color: var(--lacquer-line);
   background: rgba(239, 227, 205, .07); border-radius: 3px;
 }
@@ -3986,8 +3995,12 @@ html:not([data-theme]) .bag-panel h3::after {
 /* 深漆岛：某些表面本来就写死了深色渐变（商市顶栏、卡牌底等），
    它们与参考图的深木顶栏一致，是有意保留的。但浅底模式下 --gold/--ink-dim
    已为宣纸压暗，放进去就变成深字压深底（实测 h2/.chip-silver/.shop-tab 1.72~1.98）。
-   故在这些容器上就地恢复"深底配浅字"的令牌，内部所有子元素自动跟着走。 */
-.shop-header, .tcard, .prep-card, .qi-bar, .gsc-progress, .paijiu-tile, .thumb-ends, .end-tile {
+   故在这些容器上就地恢复"深底配浅字"的令牌，内部所有子元素自动跟着走。
+   .fab-panel 是 2026-10-02 补进来的：它写死 rgba(23,21,18,.88)，却吃 --ink/--gold/--line，
+   手机横屏浅档实测按钮字 1.00~1.09:1——而这条下拉是横屏下通往
+   商市/书斋/规则书/设置/转墨/退回上一幕 的唯一入口，等于整菜单看不见。 */
+.shop-header, .tcard, .prep-card, .qi-bar, .gsc-progress, .paijiu-tile, .thumb-ends, .end-tile,
+.fab-panel, .fab-capsule, .fab-resume {
   --ink: #ece0c8;
   --ink-dim: #b5a583;
   --gold: #c9a86a;
@@ -3996,6 +4009,10 @@ html:not([data-theme]) .bag-panel h3::after {
   --line: #4a3a28;
   color: var(--ink);
 }
+/* 胶囊上的墨铤数字是直接挂在容器里的裸文本，探针只遍历叶子元素、看不见它
+   （.fab-capsule 有子节点，整块被跳过）——这里显式给它浅金，不靠继承。 */
+.fab-capsule { color: var(--gold); }
+.fab-resume { color: var(--ink-dim); }
 /* 卡脚里的价格/链接走 --gold，但 .tcard 的金色覆写没穿透到它（实测 #6e5a28
    压在卡底上只 2.75:1），定点给亮金 */
 .tcard .link-btn { color: #c9a86a; }

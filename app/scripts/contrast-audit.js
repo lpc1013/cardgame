@@ -86,8 +86,12 @@ window.__audit = function (opts) {
   const scope = only ? document.querySelectorAll(only) : document.querySelectorAll('*');
   const nodes = only ? [...scope].flatMap((r) => [r, ...r.querySelectorAll('*')]) : [...scope];
   for (const el of nodes) {
-    if (el.children.length) continue;
-    const t = (el.textContent || '').trim();
+    // 只测"直接挂在它身上的文本"，不再因为"有子元素"就整块跳过：
+    // <button>999<span/></button> 里的 999 原先永远量不到——.fab-capsule 的
+    // 墨铤数字（浅金压中灰，实测 2.0）就是这么漏过去的
+    let ownText = '';
+    for (const n of el.childNodes) if (n.nodeType === 3) ownText += n.nodeValue;
+    const t = ownText.trim();
     if (!t) continue;
     const cs = getComputedStyle(el);
     if (cs.visibility === 'hidden' || cs.opacity === '0') continue;

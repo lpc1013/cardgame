@@ -438,7 +438,7 @@ export const shumian: Scenario = {
       choices: [
         { text: "多派斥候，三路齐发——总有一路到。", hint: "命换信 · 仁心蚀", effects: [{ stat: { junji: 5, renji: -8 } }, { setFlag: "many_scouts" }], next: "hx_beishui" },
         { text: "收拢信使，改约期——城若破，回师也无用。", hint: "止损 · 军纪蚀", effects: [{ stat: { junji: -5, renji: 5 } }, { setFlag: "recall_scouts" }], next: "hx_beishui" },
-        // S-3 跨视角旗标：韩信「亲领百骑」接应孤城——主公线 a2_escape 以 cond 读取，此决策被另一视角认出
+        // S-3 跨视角旗标：韩信「亲领百骑」接应孤城——主公线 a2_meet_xinren 以 cond 读取；两线各设同名旗（mercy_shown 式回响）
         { text: "亲领百骑，沿敌后接应——把信，送到城下去。", hint: "以身破局 · 孤注", effects: [{ setFlag: "hanxin_personal_rescue" }, { stat: { junji: 8, renji: -5 } }], next: "hx_beishui" },
       ],
     },
@@ -772,7 +772,7 @@ export const shumian: Scenario = {
 ],
       choices: [
         { text: "遣郦生说齐——与韩信的约定不变；若说成，齐地不战而下。", hint: "外交 · 信人", effects: [{ stat: { diye: 10, renji: 5 } }, { setFlag: "send_lishi" }], next: "hz_lishi_news" },
-        { text: "加急去信韩信——缓攻数日，给郦生留出周旋的余地。", hint: "稳妥 · 误战机", effects: [{ stat: { diye: 3, renji: 8 } }, { setFlag: "letter_hanxin" }], next: "hz_lishi_news_alive" },
+        { text: "加急去信韩信——缓攻数日，给郦生留出周旋的余地。", hint: "稳妥 · 误战机", effects: [{ stat: { diye: 3, renji: 8 } }, { setFlag: "letter_hanxin" }, { setFlag: "hanxin_personal_rescue" }], next: "hz_lishi_news_alive" },
         { text: "双管齐下——郦生说，韩信压阵，逼齐王早降。", hint: "威逼 · 齐王或惧而烹郦生", effects: [{ stat: { diye: 8, renji: -3 } }, { setFlag: "both_ways" }], next: "hz_lishi_news" },
       ],
     },

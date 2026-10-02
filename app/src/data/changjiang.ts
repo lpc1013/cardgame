@@ -495,13 +495,13 @@ export const changjiang: Scenario = {
           text: "「你赢了。」朕说，「这盘棋，终于有人陪朕下完了。」",
           hint: "释然 · 君臣相得，需帝心≥55",
           cond: { statAtLeast: { dixin: 55 } },
-          effects: [{ stat: { dixin: 10 } }, { setFlag: "tp_shiran" }],
+          effects: [{ stat: { dixin: 10 } }],
           next: "end_qiyou",
         },
         {
           text: "「你赢了。」朕说，「朕……不能让你再赢了。」",
           hint: "猜忌 · 血色棋子的开端",
-          effects: [{ stat: { dixin: -10 } }, { setFlag: "tp_caiji" }],
+          effects: [{ stat: { dixin: -10 } }],
           next: "end_beiju_gate",
         },
       ],
@@ -537,13 +537,14 @@ export const changjiang: Scenario = {
           text: "「你赢了。朕想问你——若有一日，天下人觉得朕错了，你会不会像今日赢朕一样，开口说？」",
           hint: "新思 · 水能载舟，需民心≥60",
           cond: { statAtLeast: { minxin: 60 } },
-          effects: [{ setFlag: "tp_xinsi" }],
+          effects: [],
           next: "end_jianghe",
         },
         {
           text: "「今日风大。」朕把白子一枚一枚收回棋盒，「这盘棋——改日再下。」",
           hint: "止于此局 · 该问的话，朕还没想好怎么问",
-          effects: [],
+          // S-3：话到宫墙下又咽了回去——end_changcheng 的回响由此点亮
+          effects: [{ setFlag: "tp_xinsi" }],
           next: "weichi_bian",
         },
       ],
@@ -777,7 +778,8 @@ export const changjiang: Scenario = {
         {
           text: "先回京奔丧——陛下，等等臣。",
           hint: "君臣一场 · 那枚棋，带回去",
-          effects: [],
+          // S-3：白子带回灵前——end_bensang 的回响由此点亮（帝王线在 q_win 立同名旗，两线各自成章）
+          effects: [{ setFlag: "qipan_yield" }],
           next: "end_bensang",
         },
         {
@@ -1128,6 +1130,16 @@ export const changjiang: Scenario = {
   "「是朕欠。」",
   "笔搁下时，窗外的雪正大。御花园那副棋，棋盘上积了一层薄雪——白子黑子，都看不见了。"
 ],
+      variantLines: [
+        {
+          // S-3 跨视角旗标：宫墙下那步「新思」话到嘴边又咽下——问话随雪化，只留在批过的那页传记里
+          cond: { flag: "tp_xinsi" },
+          lines: [
+  "宫墙下没问出口的那句话，你一直没有再问。",
+  "开春雪化，那句问话跟着雪水，渗进了棋盘缝里。",
+],
+        },
+      ],
       ending: { name: "长城", rank: "镇边结局 · 相忘江湖", desc: "他没有回到棋盘上——你把整个北疆，留作了他的棋盘。" },
     },
     {

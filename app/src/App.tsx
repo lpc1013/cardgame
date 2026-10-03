@@ -170,6 +170,17 @@ function endArt(scenarioId: string, sceneId: string): string | undefined {
   return _artUrl(_END_ART_IDX, `end_${scenarioId}_${sceneId}`);
 }
 
+/** 缩略图（小格专用）：tools/slim_thumbs.py 按「渲染槽位 2x」离线产的小图，落在 assets/thumbs/<kind>/。
+ *  原图一个字节不动：详情 / 放大 / 全幅仍走原图；缺文件回退原图（回退失败链路不变）。
+ *  查图走 basename 索引（与卡图/立绘同法）——glob 键在 dev 是 /src/...、build 是别的形态，
+ *  裸键直查两头都对不上，首版就是这么静默全回退的。 */
+const _THUMB_ART = import.meta.glob("./assets/thumbs/{covers,endings,cards}/*.jpg", { eager: true, import: "default" }) as Record<string, string>;
+const _THUMB_IDX = buildArtIndex(_THUMB_ART);
+const thumbUrl = (kind: "covers" | "endings" | "cards", id: string): string | undefined => {
+  const u = _THUMB_IDX.get(id);
+  return u && u.includes(`/thumbs/${kind}/`) ? u : undefined;
+};
+
 /** 主声望类 stat 键（W-4 和议之书「威望有损」扣减目标）：剧本 stats 定义命中其一即扣 3（范围 2~5） */
 const PRESTIGE_STAT_KEYS = ["chaoting", "shengjuan", "shengyuan", "shenwang", "weiwang", "junwei", "junGong", "diye", "junji", "junxin", "quanli", "junchen"];
 /** 情绪制气力上限（B-2 成就按模式分流：emotion 局耗 qi 而非 hpPlayer；与 duel.ts 回气钳制/QiBar 显示一致） */
@@ -220,6 +231,13 @@ function duelHidesOpp(sc: Scenario, cfg: DuelConfig): boolean {
 function coverOf(id: string): string | undefined {
   return _artUrl(_COVER_ART_IDX, "cover_" + id);
 }
+/** 三类小格的缩略图包装：thumb 缺文件时逐级回退原图，调用方无需判空。
+ *  covers 的源文件名带 cover_ 前缀（与 coverOf 同一约定），查找时补齐——
+ *  首版用裸剧本 id 查，全库 miss 静默回退全图。 */
+const coverThumbOf = (id: string): string | undefined => thumbUrl("covers", `cover_${id}`) ?? coverOf(id);
+const endThumbOf = (scId: string, sceneId: string): string | undefined =>
+  thumbUrl("endings", `end_${scId}_${sceneId}`) ?? endArt(scId, sceneId);
+const cardThumbOf = (id: string): string | undefined => thumbUrl("cards", id) ?? cardArt(id);
 
 /** 链式解锁：首案自由；前案任一结局解锁即开下一案；已有进度/破封特批不受限 */
 function scenarioUnlocked(
@@ -434,11 +452,13 @@ function artFailToFallback(e: { currentTarget: HTMLImageElement }, name: string)
 }
 
 /** 竖向实体卡：底层卡图 + 上卡名 + 下介绍，底色随稀有度（图鉴/背包/市集/翻牌/开包共用） */
-function TCard({ c, unknown, onClick, corner, footer, cardCls }: {
+function TCard({ c, unknown, onClick, corner, footer, cardCls, thumb }: {
   c: CardDef; unknown?: boolean; onClick?: () => void;
   corner?: ReactNode; footer?: ReactNode; cardCls?: string;
+  /** 小格模式：卡墙/格子里走 thumbs 缩略图（384px），放大视图保持全尺寸 */
+  thumb?: boolean;
 }) {
-  const src = cardArt(c.id);
+  const src = thumb ? cardThumbOf(c.id) : cardArt(c.id);
   const [artFailed, setArtFailed] = useState(false);
   const cls = `tcard rarity-${c.rarity ?? "凡"} ${c.suit ? `suit-${c.suit}` : ""} ${unknown ? "card-unknown" : ""} ${onClick ? "clickable" : ""} ${cardCls ?? ""}`;
   return (
@@ -519,6 +539,21 @@ export default function App() {
     const el = thumbsRef.current?.children[coverIdx] as HTMLElement | undefined;
     el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
   }, [coverIdx]);
+  // 下一幕背景预加载：读段的几秒足够把 2560 的场景图拉完，翻页不再闪空白。
+  // 放在组件顶部（phase 分支里有早退，hook 不准进条件）——按幕 id 记 deps，逐段揭示不重跑
+  const sceneKey = sc && st ? `${sc.id}:${st.sceneId}` : "";
+  useEffect(() => {
+    if (!sceneKey || !sc || !st) return;
+    const cur = findScene(sc, st.sceneId);
+    if (!cur) return;
+    const nexts = [cur.next, ...(cur.choices ?? []).map((c) => c.next)];
+    for (const nid of nexts) {
+      if (!nid) continue;
+      const a = sceneArt(sc.id, nid);
+      if (a) { const im = new Image(); im.src = a; }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sceneKey]);
   const empire = useMemo(() => settleEmpire(), [empTick, titleTick, phase]);
 
   useEffect(() => {
@@ -1286,7 +1321,7 @@ export default function App() {
           <button className="cover-arrow" aria-label="上一个" onClick={() => { sfx.choice(); setCoverIdx((coverIdx + SCENARIOS.length - 1) % SCENARIOS.length); }}>‹</button>
           <div className={`cover-main ${unlocked ? "" : "sealed"}`}>
             {coverOf(cur.id) ? (
-              <img className="cover-img" src={coverOf(cur.id)} alt={cur.title} onClick={() => setCoverZoom(true)} />
+              <img className="cover-img" src={coverOf(cur.id)} alt={cur.title} decoding="async" onClick={() => setCoverZoom(true)} />
             ) : (
               <div className="cover-img cover-fallback" />
             )}
@@ -1354,7 +1389,7 @@ export default function App() {
             const locked = !scenarioUnlocked(i, gallery, getTree(), save?.scenarioId, empire.brokenSeals);
             return (
               <button key={s.id} className={`cover-thumb ${i === coverIdx ? "on" : ""} ${locked ? "sealed" : ""}`} title={locked ? `${s.title}（悬案未破）` : s.title} onClick={() => { sfx.choice(); setCoverIdx(i); }}>
-                {coverOf(s.id) ? <img src={coverOf(s.id)} alt={s.title} /> : <span className="thumb-fallback" />}
+                {coverOf(s.id) ? <img src={coverThumbOf(s.id)} alt={s.title} loading="lazy" decoding="async" /> : <span className="thumb-fallback" />}
                 {locked && <span className="thumb-seal">悬案未破</span>}
                 {!locked && n > 0 && <span className="thumb-ends">{n}</span>}
                 {!locked && s.cardSystem && <span className="thumb-v2">✦</span>}
@@ -1722,7 +1757,7 @@ export default function App() {
           const a = endArt(sc.id, scene.id);
           return a ? (
             <div className="ending-art-frame scene-art">
-              <img className="ending-art" src={a} alt={scene.title ?? ""} />
+              <img className="ending-art" src={a} alt={scene.title ?? ""} decoding="async" />
             </div>
           ) : null;
         })()}
@@ -2101,6 +2136,7 @@ function BagView({ sc, st, onClose, onMutate, toast, readOnly }: {
                     <TCard
                       key={id}
                       c={c}
+                      thumb
                       cardCls={shakeId === id ? "fix-shake" : undefined}
                       onClick={() => toggleDeck(id)}
                       corner={on ? <span className={`deck-tag${pulseId === id ? " fix-pulse" : ""}`}>在组</span> : undefined}
@@ -2294,6 +2330,7 @@ function ShopView({ sc, st, shop, onLeave, onSync, toast }: {
               <TCard
                 key={id}
                 c={c}
+                thumb
                 corner={owned ? <span className="rarity-tag corner-owned">已有</span> : undefined}
                 footer={
                   <div className="shop-actions">
@@ -2326,6 +2363,7 @@ function ShopView({ sc, st, shop, onLeave, onSync, toast }: {
                     <TCard
                       key={h.id}
                       c={c}
+                      thumb
                       corner={owned ? <span className="rarity-tag corner-owned">已有</span> : undefined}
                       footer={
                         <div className="shop-actions">
@@ -3470,7 +3508,7 @@ function CardGallery({ sc, onClose }: { sc: Scenario; onClose: () => void }) {
               <div className="bag-group-title">{g.label}</div>
               <div className="bag-grid">
                 {ids.map((c) => (
-                  <TCard key={c.id} c={c} unknown={!seen.has(c.id)} onClick={() => { sfx.choice(); setZoom(c); }} />
+                  <TCard key={c.id} c={c} thumb unknown={!seen.has(c.id)} onClick={() => { sfx.choice(); setZoom(c); }} />
                 ))}
               </div>
             </div>
@@ -3522,7 +3560,7 @@ const AlbumGroup = memo(function AlbumGroup({ s, seenIds, folded, suitF, missing
             const isSeen = seen.has(c.id);
             return (
               <div key={c.id} className="album-cell">
-                <TCard c={c} unknown={!isSeen} onClick={() => { sfx.choice(); onOpen(s, c, isSeen); }} />
+                <TCard c={c} thumb unknown={!isSeen} onClick={() => { sfx.choice(); onOpen(s, c, isSeen); }} />
                 {carryable(c, isSeen) && <span className="album-carry" title="可携带出战">可携带</span>}
               </div>
             );
@@ -3889,7 +3927,7 @@ function GalleryPanel({ gallery, onClose, onCardGallery }: {
                         return (
                           <button key={scene.id} className="end-tile" onClick={() => { sfx.choice(); setDetail({ scId: s.id, name: scene.ending!.name, rank: scene.ending!.rank }); }}>
                             {art ? (
-                              <img className="end-tile-art" src={art} alt={scene.ending!.name} loading="lazy" />
+                              <img className="end-tile-art" src={endThumbOf(s.id, scene.id)} alt={scene.ending!.name} loading="lazy" decoding="async" />
                             ) : (
                               <div className="end-tile-art end-tile-noart">墨色尚缺</div>
                             )}

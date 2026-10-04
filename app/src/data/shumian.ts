@@ -669,13 +669,13 @@ export const shumian: Scenario = {
       lines: [
   "围城第七个月，粮尽。",
   "仓里还剩三百石。兵要吃饭，百姓也要吃饭——三百石，撑不过这个冬。",
-  "幕僚献了三策：开仓赈民，收民心；先兵后民，保战力；杀马——马肉喂兵，马骨熬汤，给百姓。",
+  "幕僚献了三策：开仓赈民，收民心；先兵后民，存兵力；杀马——马肉喂兵，马骨熬汤，给百姓。",
   "我站在城头，看着城下排队领水的百姓。他们的碗，比我的还干净。",
   "王袍的带子，被风吹得贴在了城砖上。我低头看了它一眼——它立在这儿，不是给兵看的，是给城里每一个人看的。"
 ],
       choices: [
         { text: "开仓——城可以丢，人心不能丢。", hint: "收民心 · 兵挨饿", effects: [{ stat: { diye: -5, renji: 10 } }, { setFlag: "open_granary" }], next: "hz_food" },
-        { text: "先兵——兵都饿死了，城和人心一起完。", hint: "保战力 · 民心寒", effects: [{ stat: { diye: 8, renji: -5 } }, { setFlag: "soldiers_first" }], next: "hz_food" },
+        { text: "先兵——兵都饿死了，城和人心一起完。", hint: "存兵力 · 民心寒", effects: [{ stat: { diye: 8, renji: -5 } }, { setFlag: "soldiers_first" }], next: "hz_food" },
         { text: "杀马——马是战马，也是这城里最后的口粮。", hint: "折中 · 马骨熬汤", effects: [{ stat: { diye: 5, renji: 5 } }, { setFlag: "kill_horses" }], next: "hz_food" },
       ],
     },

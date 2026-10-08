@@ -2158,9 +2158,13 @@ html:not([data-theme]) .bag-panel h3::after {
 .overlay-mini { background: var(--panel); border: 1px solid var(--line); padding: 14px; width: auto; }
 
 /* ---------- 市集 ---------- */
-/* 场景底是 fixed 的 .scene-bg（见「淡水印档」），这里只要让出滚动容器 */
+/* 场景底是 fixed 的 .scene-bg（见「淡水印档」），这里只要让出滚动容器。
+   让高必须写在 .shop-wrap 的分支里：五艺那几屏也复用 .shop-root，但没有这层
+   flex 父级——把 height:auto 放在公共规则上，等于把它们的"面板内部滚动"改成
+   "整页滚动"，实测四种小游戏的答题按钮因此掉到折叠线以下（对联/证词/牌九/棋局）。 */
 .shop-wrap { overflow: hidden; }
-.shop-root { flex: 1; min-height: 0; height: auto; overflow-y: auto; padding: 20px; max-width: 1100px; margin: 0 auto; }
+.shop-root { height: 100%; overflow-y: auto; padding: 20px; max-width: 1100px; margin: 0 auto; }
+.shop-wrap > .shop-root { flex: 1; min-height: 0; height: auto; }
 .shop-header {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 8px;
   position: sticky; top: -20px; z-index: 20;
@@ -3061,6 +3065,29 @@ html:not([data-theme]) .bag-panel h3::after {
   .tree-overlay { align-items: stretch; padding: 8px; }
   .tree-panel { height: calc(100dvh - 16px); max-height: none; display: flex; flex-direction: column; }
   .tree-scroll { flex: 1 1 auto; height: auto; max-height: none; }
+
+  /* ---- 五艺（对联/证词/牌九/棋局/行令）：答案不能藏在折叠线以下 ----
+     实测 844x390 下四种小游戏的全部答题按钮都在屏外：要答题就得先把页面滚走，
+     滚完题面又看不见了。390 高确实装不下"题面 + 三个选项"，所以两者不同屏牺牲——
+     题面滚着看，选项块钉在滚动口底边，永远可点。压的也是留白而不是字号。
+     sticky 只对"最近的可滚动祖先"生效：面板原先撑到 544 高、由外层 .shop-root 滚动，
+     它自己是个非滚动盒，钉不住——所以先把它收成滚动容器。 */
+  .shop-root .story-panel { max-height: 100%; overflow-y: auto; }
+  /* 只给 max-height 会留下 46px 的外层滚动余量（抬头占的那一段没从面板额度里扣掉）。
+     改成让面板吃掉"抬头之后剩下的全部"，外层就不再滚。:has(.story-panel) 把它限定在
+     五艺上——市集也用 .shop-root，但里面是 .shop-grid，不该被拉成纵向 flex。 */
+  .shop-root:has(.story-panel) { display: flex; flex-direction: column; }
+  .shop-root:has(.story-panel) .story-panel { flex: 1 1 auto; min-height: 0; max-height: none; }
+  .choices {
+    position: sticky; bottom: 0; z-index: 3; margin-top: 12px; gap: 6px;
+    background: var(--panel); border-top: 1px solid var(--line);
+    padding: 8px 0 10px;
+  }
+  .choice { padding: 8px 12px; font-size: 14px; line-height: 1.5; min-height: 40px; }
+  .quiz-box, .paijiu-box { gap: 8px; }
+  .quiz-prompt { padding: 8px 10px; font-size: 14px; line-height: 1.65; }
+  .quiz-rule { margin: 2px 0 6px; }
+  .shop-root .story-panel { padding-bottom: 16px; }
 }
 
 /* ---------- 窄屏（≤640px，不限横竖）补充适配 ----------

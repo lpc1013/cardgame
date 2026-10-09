@@ -95,6 +95,13 @@ window.__audit = function (opts) {
     if (!t) continue;
     const cs = getComputedStyle(el);
     if (cs.visibility === 'hidden' || cs.opacity === '0') continue;
+    // WCAG 1.4.3 明确豁免"非活动组件"：禁用控件本来就不要求 4.5。
+    // 不跳它的话，结案屏那个"还差几条线索"的禁用主按钮（字 alpha .3）会长期占一条假红
+    let dis = false;
+    for (let n = el; n && n.nodeType === 1; n = n.parentElement) {
+      if (n.disabled === true || n.getAttribute('aria-disabled') === 'true') { dis = true; break; }
+    }
+    if (dis) continue;
     const r = el.getBoundingClientRect();
     if (!r.width || !r.height) continue;
     const f = px(cs.color);

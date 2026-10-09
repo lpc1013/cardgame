@@ -43,6 +43,13 @@ const SCREENS = [
   { key: '五艺牌九', sc: 'sichou', scene: 'sc_paijiu', stats: {} },
   { key: '结案', sc: 'fuma', scene: 'verdict' },
   { key: '结局', sc: 'fuma', scene: 'end_a_win' },
+  { key: '舆图', sc: 'fuma', scene: 'search_gate', thenText: '舆图' },
+  { key: '卷宗', sc: 'fuma', scene: 'search', thenText: '卷宗' },
+  { key: '背包编组', sc: 'fuma', scene: 'search', thenText: '背包' },
+  { key: '五艺对联', sc: 'fuma', scene: 'wenchat' },
+  { key: '五艺证词', sc: 'qiuwei', scene: 'qw_logic', stats: {} },
+  { key: '五艺棋局', sc: 'xie', scene: 'xie_weigi', stats: {} },
+  { key: '五艺行令', sc: 'qinhuai', scene: 'jiuling_scene', stats: {} },
 ];
 const KNOWN_FALSE = ['.sub'];   // contrast-audit.js 里写明的封面假阳性
 
@@ -67,7 +74,7 @@ async function inject() {
 
 for (const theme of P.themes) {
   for (const mode of P.modes) {
-    for (const s of SCREENS) {
+    for (const s of (P.only ? SCREENS.filter((x) => P.only.indexOf(x.key) >= 0) : SCREENS)) {
       const save_ = mk(s.sc, s.scene, {
         stats: s.stats, duel: s.duel ? { cfgId: 'd_wang', data: duelData, wager: 0 } : undefined,
       });
@@ -90,6 +97,14 @@ for (const theme of P.themes) {
       await page.waitForTimeout(2200);
       if (s.then) {
         await page.evaluate((sel) => { const b = document.querySelector(sel); if (b) b.click(); }, s.then);
+        await page.waitForTimeout(900);
+      }
+      if (s.thenText) {
+        // 顶栏那几个按钮共用 .clue-btn，只能按文案点
+        await page.evaluate((t) => {
+          const b = [...document.querySelectorAll('.top-bar button')].find((x) => x.innerText.indexOf(t) === 0);
+          if (b) b.click();
+        }, s.thenText);
         await page.waitForTimeout(900);
       }
       const r = await page.evaluate(([key, t, m, inj, knownFalse]) => {

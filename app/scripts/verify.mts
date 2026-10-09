@@ -844,6 +844,64 @@ for (const sc of ALL) {
   console.log(`现场勘查: ${svCount} 幕 ${spotCount} 处热点，线索均有选项同源`);
 }
 
+// ---------- CSS 花括号配平 ----------
+// 少写一个 } 浏览器不报错，它会"错误恢复"把后面的规则整段吞进那个没关的块里。
+// 实测 app.css 的 .sv-ground 漏过一个 }：其后所有规则（含 :root 那一族纸质令牌）
+// 都变成它的嵌套子规则，tsc / vite / build 全绿，只有渲染出来才发现令牌读不到。
+// 所以这条必须是 fail，不能是 warn。
+{
+  const fsMod = await import("node:fs");
+  const pathMod = await import("node:path");
+  const cssFiles: string[] = [];
+  const collect = (dir: string) => {
+    if (!fsMod.existsSync(dir)) return;
+    for (const e of fsMod.readdirSync(dir, { withFileTypes: true })) {
+      const f = pathMod.join(dir, e.name);
+      if (e.isDirectory()) collect(f);
+      else if (/\.css$/.test(e.name)) cssFiles.push(f);
+    }
+  };
+  collect("src");
+  let bad = 0;
+  for (const f of cssFiles) {
+    const lines = fsMod.readFileSync(f, "utf8").split(/\r?\n/);
+    let depth = 0;
+    const atStack: boolean[] = [];
+    let inComment = false;
+    let reported = false;
+    for (let i = 0; i < lines.length; i++) {
+      let line = lines[i];
+      if (inComment) {
+        const end = line.indexOf("*/");
+        if (end < 0) continue;
+        line = line.slice(end + 2);
+        inComment = false;
+      }
+      const openComment = line.indexOf("/*");
+      line = line.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/"[^"]*"/g, '""').replace(/'[^']*'/g, "''").replace(/url\([^)]*\)/gi, "url()");
+      if (openComment >= 0 && line.indexOf("/*") >= 0) inComment = true;
+      const code = line.trim();
+      const atRule = /^@/.test(code);
+      for (const ch of line) {
+        if (ch === "{") { depth++; atStack.push(atRule); }
+        else if (ch === "}") {
+          depth--; atStack.pop();
+          if (depth < 0) { fail(`${f}:${i + 1} 多余的 }，深度配成负数`); reported = true; depth = 0; atStack.length = 0; }
+        }
+      }
+      const atDepth = atStack.filter(Boolean).length;
+      // 普通规则只可能待在"外层 @ 块"里；再深一层就说明上面有个选择器块没关
+      if (!reported && depth > atDepth + 1 && code && !/[{};,]$/.test(code)) {
+        fail(`${f}:${i + 1} 落在未闭合的块里（深度 ${depth}，@层 ${atDepth}）——上面某个 { 漏了 }：${code.slice(0, 48)}`);
+        reported = true;
+      }
+    }
+    if (depth !== 0) { fail(`${f} 文件末尾花括号未配平（depth=${depth}）——有块漏了 }，其后规则会被浏览器整段吞掉`); }
+    if (depth !== 0) bad++;
+  }
+  console.log(`CSS 花括号配平: ${cssFiles.length} 个文件已检查${bad ? `，${bad} 个未配平` : ""}`);
+}
+
 console.log(`\n========== ${failures} 失败 / ${warnings} 警告（警告不拦退出码——绿≠零隐患，明细见上） ==========`);
 // 绿的时候不调 process.exit：Windows 下它会和 stdout/类型剥离留下的 async handle 抢关闭，
 // 报 "Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)" 并把退出码顶成 127（假红）。

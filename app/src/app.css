@@ -559,7 +559,13 @@ button { font-family: inherit; }
 /* 结案屏的退路：证据不足时「呈上御案」之外必须有第二条路，所以这个链接要单独占一行，
    不能跟在按钮后面挤成同一行（实测会和 .btn-main 并排，看着像按钮的一部分） */
 .story-panel > .fix-prev-ghost { display: block; margin: 12px auto 0; }
-.verdict-short { font-size: 13px; letter-spacing: 1px; margin: 4px 0 14px; color: var(--vermilion-text); }
+.verdict-short {
+  font-size: 13px; letter-spacing: 1px; margin: 4px 0 14px;
+  /* --vermilion-text 是按纸底调的深朱 (#7c211b)，而结案屏的读稿面在深档是近黑
+     (18,16,14)——实测 1.89。往 --ink 一侧混：浅档混深、深档混浅，两个模式都够
+     （与 .duel-log.match/.miss 同一手法）。 */
+  color: color-mix(in srgb, var(--accent) 62%, var(--ink));
+}
 .sell-locked { color: var(--gold); text-decoration: none; opacity: .75; cursor: help; letter-spacing: 1px; }
 .sc-ends { margin-top: 10px; font-size: 12px; color: var(--gold); line-height: 1.6; }
 .scenario-wrap { display: flex; flex-direction: column; gap: 8px; }
@@ -1478,6 +1484,13 @@ html:not([data-theme]) .bag-panel h3::after {
   border: 1px solid var(--paper-edge);
   outline: 1px solid var(--paper-line); outline-offset: -5px;
   border-radius: 4px; box-shadow: 0 22px 60px rgba(0, 0, 0, .6);
+  /* 这是一张纸，不是一个跟随明暗的面：--paper 一族在深档并不翻（纸就是纸），
+     但子元素吃的是 --ink/--ink-dim，它们在深档变浅——于是浅字压浅纸，
+     实测标题 1.21、副题/收队/图例 2.09、提示 2.33。
+     按 .paper-panel 的既有做法就地钉住墨色，并覆一遍 --ink*，让所有子孙跟着走。 */
+  color: var(--paper-ink);
+  --ink: var(--paper-ink);
+  --ink-dim: var(--paper-ink-dim);
 }
 .sv-head {
   display: flex; align-items: baseline; gap: 14px;
@@ -1967,6 +1980,10 @@ html:not([data-theme]) .bag-panel h3::after {
 .s-势 { color: var(--suit-shi); } .s-隐 { color: var(--suit-yin); }
 .pc-text { font-size: 12px; color: var(--ink-dim); line-height: 1.7; }
 .pc-power { margin-top: 8px; font-size: 12px; color: #c9a86a; }
+/* 陷阱标原先跟着 --suit-yin 走，而浅档的 --suit-yin 是为宣纸压暗过的 (#533378)，
+   落在深案卡面上实测 1.18~1.50——等于没有这行字。案面早就备了一套提亮花色
+   （--dt-yin，见"黛紫在深案上只有 3.49"那条），这里改吃它，兜底同值。 */
+.pc-power.trap-tag { color: var(--dt-yin, #b795d8); }
 .duel-rule { margin-top: 14px; font-size: 12px; text-align: center; }
 .snd-btn { margin-left: 0; padding: 4px 10px; }
 .chip-silver { color: var(--gold); border-color: var(--gold); }
@@ -4430,7 +4447,12 @@ html:not([data-theme]) .shop-tab.on {
 [data-theme="jiangnan"] .shop-tab.on { box-shadow: inset 0 0 0 1px var(--accent-soft); }
 /* 江南浅档的 --lacquer 是青灰 (59,74,69)，比默认大漆亮一截：岛内为最暗那块木调解的
    令牌在这块板上招牌只剩 4.13、印只剩 2.76。只提这一档，深档零变化。 */
-[data-theme="jiangnan"]:not([data-mode="dark"]) .shop-header { --gold: #dcbf80; --accent: #e2846c; }
+/* 边军/江南的浅档把 --lacquer 提成了沙色 (84,71,51) 与青灰 (59,74,69)，比默认大漆亮一截：
+   岛内为最暗那块木调解的令牌在这两块板上掉档——招牌只剩 4.13、印只剩 2.76，
+   而未选中的页签 (--ink-dim) 只有 3.85~3.98（12~13px 要 4.5）。
+   浅档各提一次，深档零变化。 */
+[data-theme="bianjun"]:not([data-mode="dark"]) .shop-header { --gold: #d8bd82; --ink-dim: #c8b896; --accent: #e07f68; }
+[data-theme="jiangnan"]:not([data-mode="dark"]) .shop-header { --gold: #dcbf80; --ink-dim: #c9bb9f; --accent: #e2846c; }
 
 /* 暗柜：好货不上明面——三套皮共用一句"门闩"，但闩的形跟着皮走 */
 .shop-hidden-title { display: inline-flex; align-items: center; gap: 8px; }

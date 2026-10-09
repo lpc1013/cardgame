@@ -3101,10 +3101,15 @@ html:not([data-theme]) .bag-panel h3::after {
   .shop-root:has(.story-panel) .story-panel { flex: 1 1 auto; min-height: 0; max-height: none; }
   .choices {
     position: sticky; bottom: 0; z-index: 3; margin-top: 12px; gap: 6px;
+    flex-direction: row; flex-wrap: wrap;
     background: var(--panel); border-top: 1px solid var(--line);
     padding: 8px 0 10px;
   }
-  .choice { padding: 8px 12px; font-size: 14px; line-height: 1.5; min-height: 40px; }
+  /* 竖排四个按钮要吃掉 190px——300px 高的面板里，钉住的答题栏把"你的牌"整个盖住了
+     （几何探针只报"按钮都在屏内"，看不见被它压住的那一行，是像素抓出来的）。
+     改成横排自适应：短签（甲/乙/丙、押10两）并排一行，长句自己占一行，
+     栏高从 190px 降到约 56px，牌就露出来了。 */
+  .choice { flex: 1 1 auto; width: auto; text-align: center; padding: 8px 12px; font-size: 14px; line-height: 1.5; min-height: 40px; }
   .quiz-box, .paijiu-box { gap: 8px; }
   .quiz-prompt { padding: 8px 10px; font-size: 14px; line-height: 1.65; }
   .quiz-rule { margin: 2px 0 6px; }

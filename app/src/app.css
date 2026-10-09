@@ -1351,6 +1351,17 @@ html:not([data-theme]) .bag-panel h3::after {
   display: flex; align-items: center; justify-content: center;
   padding: 24px; background: rgba(8, 7, 5, .72); cursor: default;
 }
+/* 以 --paper 为地的纸面（勘查层 .sv-ground、舆图 .loc-ground）：--paper 一族在默认皮
+   深档并不翻（纸就是纸），可子元素吃的 --ink/--ink-dim 会翻成浅色——于是浅字压浅纸。
+   实测两张纸的标题都是 1.21、副题/收队/图例都是 2.09。
+   按 .paper-panel 的既有做法就地钉住墨色并覆一遍 --ink*，让所有子孙跟着走。
+   两张纸各错过一次：以后再加纸面，把类并进这条选择器，别在各自块里再写一遍。 */
+.sv-ground, .loc-ground {
+  color: var(--paper-ink);
+  --ink: var(--paper-ink);
+  --ink-dim: var(--paper-ink-dim);
+}
+
 .loc-ground {
   width: min(920px, 100%); max-height: calc(100vh - 48px); overflow-y: auto;
   padding: 14px 20px 12px;
@@ -1484,13 +1495,6 @@ html:not([data-theme]) .bag-panel h3::after {
   border: 1px solid var(--paper-edge);
   outline: 1px solid var(--paper-line); outline-offset: -5px;
   border-radius: 4px; box-shadow: 0 22px 60px rgba(0, 0, 0, .6);
-  /* 这是一张纸，不是一个跟随明暗的面：--paper 一族在深档并不翻（纸就是纸），
-     但子元素吃的是 --ink/--ink-dim，它们在深档变浅——于是浅字压浅纸，
-     实测标题 1.21、副题/收队/图例 2.09、提示 2.33。
-     按 .paper-panel 的既有做法就地钉住墨色，并覆一遍 --ink*，让所有子孙跟着走。 */
-  color: var(--paper-ink);
-  --ink: var(--paper-ink);
-  --ink-dim: var(--paper-ink-dim);
 }
 .sv-head {
   display: flex; align-items: baseline; gap: 14px;

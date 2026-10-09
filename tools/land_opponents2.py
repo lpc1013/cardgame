@@ -7,13 +7,14 @@ opponentArt() 先查 opp_<对局id>，再回落 r_<去掉 d_ 前缀>，所以文
 挑选口径不是"哪张最好看"，而是缩到席位真实尺寸（手机横屏 .dt-seat-img 44x58）
 之后主体还认不认得出——打分器见 pick_seat_legible.py。
 两个来源目录：opponents2 是首轮 16 个 tag，opponents2b 是其中三张的回炉；
-回炉的 tag 优先取 2b，2b 没有才退回 2。
+opponents2c 是 tuchu 的第二次回炉（首轮旗手袍是白描浅线，缩到 44x58 人几乎消失）。
+回炉的 tag 优先取靠后的目录，没有才退回上一轮。
 """
 import os
 import sys
 from PIL import Image
 
-DIRS = ['tools/jm/incoming/opponents2b', 'tools/jm/incoming/opponents2']
+DIRS = ['tools/jm/incoming/opponents2c', 'tools/jm/incoming/opponents2b', 'tools/jm/incoming/opponents2']
 DST = 'app/src/assets/portraits'
 PICKS = {
     'opp_d_junxi': 3,

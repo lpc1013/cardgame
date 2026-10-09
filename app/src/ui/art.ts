@@ -4,6 +4,7 @@
 // 2026-10-02 从 App.tsx 抽出：纯查图层，无 React 依赖；glob 相对路径以本文件为基准。
 // ============================================================
 import { SCENE_SETTING } from "../data/sceneSettings";
+import { CASE_SCENARIOS } from "../data/narrators";
 
 const _CARD_ART = import.meta.glob("../assets/cards/*/*.{png,jpg,jpeg}", { eager: true, import: "default" }) as Record<string, string>;
 const _PORTRAIT_ART = import.meta.glob("../assets/portraits/*.{png,jpg,jpeg}", { eager: true, import: "default" }) as Record<string, string>;
@@ -27,10 +28,6 @@ export const sceneMotion = (scenarioId: string, id: string): string | undefined 
  *  故不做逐句 speaker 解析。缺图即不出栏，布局自动回落全宽。 */
 const _NARRATOR_ART = import.meta.glob("../assets/narrators/*.{png,jpg,jpeg}", { eager: true, import: "default" }) as Record<string, string>;
 const _NARRATOR_IDX = buildArtIndex(_NARRATOR_ART);
-/** 五桩案件同属一名大理寺卿的断案卷宗（用户 2026-09-28 确认），共用一张立绘与一个名牌 */
-export const CASE_SCENARIOS: Record<string, string> = {
-  fuma: "大理寺卿", qiuwei: "大理寺卿", sichou: "大理寺卿", xie: "大理寺卿", qinhuai: "大理寺卿",
-};
 export const narratorArt = (scenarioId: string, vpId?: string): string | undefined =>
   _artUrl(_NARRATOR_IDX, vpId ?? "") ?? _artUrl(_NARRATOR_IDX, CASE_SCENARIOS[scenarioId] ? "dalisi" : scenarioId);
 

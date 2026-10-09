@@ -11,13 +11,14 @@ import { ACHIEVEMENTS, checkDuelAchievements, checkMinigameAchievements, checkEn
 import { getAchievements, unlockAchievement } from "./engine/save";
 import { bonusListOfScenario, isBonusUnlocked, bonusUnlockDesc } from "./data/bonus";
 import { TreeView } from "./components/TreeView";
-import { CASE_SCENARIOS, achArt, coverOf, coverThumbOf, endArt, narratorArt, sceneArt, sceneMotion } from "./ui/art";
+import { achArt, coverOf, coverThumbOf, endArt, narratorArt, sceneArt, sceneMotion } from "./ui/art";
 import { AchSeal, IngotIcon } from "./ui/icons";
 import { TCard } from "./ui/cards";
 import { duelBoostsOf, allCardsFor, noteCards, luggageDefs, type PrepChoice } from "./ui/shared";
 import { sfx } from "./engine/sfx";
 
 import { SCENARIOS } from "./data/scenarios";
+import { CASE_SCENARIOS } from "./data/narrators";
 import { LocationMap } from "./ui/panels/LocationMap";
 import { SurveyLayer } from "./ui/panels/SurveyLayer";
 import { TopBar } from "./ui/panels/TopBar";

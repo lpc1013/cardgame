@@ -26,6 +26,8 @@ import { xingxing } from "../src/data/xingxing.ts";
 import { touming } from "../src/data/touming.ts";
 import { BONUS_SCENES } from "../src/data/bonus.ts";
 import { SURVEYS, spotCost } from "../src/data/survey.ts";
+import { SCENE_SETTING } from "../src/data/sceneSettings.ts";
+import { CASE_SCENARIOS } from "../src/data/narrators.ts";
 import type { Scenario, CardDef, Suit } from "../src/engine/types.ts";
 import { initDuel, revealEmotion, playEmotion, playPressure, setDuelShuffle, endTurn, readEmotion, chargeUp, breakMove, respondOpponent, playItem, RESTRAIN, TURN_DAMAGE_CAP, ITEM_YANLI_COST, EMOTION_YANLI_MAX, DEFAULT_GOAL, type DuelState } from "../src/engine/duel.ts";
 
@@ -869,7 +871,96 @@ for (const sc of ALL) {
   }
 }
 
-// ---------- CSS 花括号配平 ----------
+// ---------- 其余四类"美术拿不到就走兜底"的静默降级 ----------
+// 上面那条只堵了对手立绘。同一个项目里还有三条同族分支，全都：不报错、不掉对比度、
+// 不影响通关，因此没有任何东西看得见它。app/scripts/audit-art.mts 名义上审过这些，
+// 但它既不在 npm script 里、也从不 process.exit(1)（末行还自带"若为刻意留白可忽略"的自我豁免），
+// 所以它是报告不是闸。这里补的三条都按 ui/art.ts 的真实解析链走，不靠文件名猜。
+{
+  const fsMod = await import("node:fs");
+  const asDir = (rel: string) => new URL(rel, import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
+  // 后缀优先级与 buildArtIndex 一致：同一 id 多后缀时先命中的算有图
+  const idsIn = (rel: string): Set<string> => {
+    const d = asDir(rel);
+    if (!fsMod.existsSync(d)) return new Set();
+    const out = new Set<string>();
+    for (const f of fsMod.readdirSync(d)) {
+      const base = f.replace(/\.(jpg|jpeg|png|webp)$/i, "");
+      if (base !== f) out.add(base);
+    }
+    return out;
+  };
+
+  // ① 场景底：与 sceneArt() 同款四级回退（剧本前缀 → scn_旧命名 → 裸 id → 地点复用 <剧本>__<地点键>）
+  //    缺底时 App.tsx:1366 那个 `sceneBg &&` 会让背景 div 整个不渲染，面板直接坐在宣纸底上。
+  //    结局幕不吃场景底（结局页只查 endArt），所以排除 s.ending——这不是豁免，是它本来就不该有。
+  //    剩下这 6 幕是「刻意留白」的既有设计决定（见《待产图片清单》P1 节），此处**按名单逐个点名**：
+  //    名单里少一个＝有人补了图（好），多一个＝新幕静默丢了背景（坏）。两种都要红一次让人看见。
+  const BLANK_BY_DESIGN = new Set([
+    "diaolan/planning", "diaolan/coup_win", "diaolan/dl_fengsui",
+    "diaolan/dl_huanbian", "changhen/ch_chencang", "changhen/ch_xingbian",
+  ]);
+  const sceneIds = idsIn("../src/assets/scenes");
+  const noBg: string[] = [];
+  let bgCovered = 0;
+  for (const sc of ALL) {
+    for (const s of sc.scenes) {
+      if (s.ending) continue;
+      const key = SCENE_SETTING[sc.id]?.[s.id];
+      const covered = sceneIds.has(`${sc.id}_${s.id}`) || sceneIds.has(`scn_${s.id}`)
+        || sceneIds.has(s.id) || (!!key && sceneIds.has(`${sc.id}__${key}`));
+      if (covered) { bgCovered++; continue; }
+      noBg.push(`${sc.id}/${s.id}`);
+    }
+  }
+  const stray = noBg.filter((k) => !BLANK_BY_DESIGN.has(k));
+  const stale = [...BLANK_BY_DESIGN].filter((k) => !noBg.includes(k));
+  for (const k of stray) fail(`幕 ${k} 没有任何场景底，且不在「刻意留白」名单里——背景那一层会整个不渲染`);
+  for (const k of stale) fail(`「刻意留白」名单里的 ${k} 现在有场景底了——把这条从名单里删掉，否则名单会说谎`);
+  // 这句必须由实测变量拼：写死成"均为名单项"的话，真有漏网幕时它会一边红一边报喜
+  console.log(`场景底: ${bgCovered} 幕有底，无底 ${noBg.length} 幕`
+    + `（刻意留白 ${noBg.length - stray.length}、漏网 ${stray.length}${stray.length ? `: ${stray.join(" ")}` : ""}`
+    + `；名单已失效 ${stale.length}${stale.length ? `: ${stale.join(" ")}` : ""}）`);
+
+  // ② 动效层与同名原画底必须成对：App.tsx:1359 的条件是 `sceneBg && sceneFx`，
+  //    只烘出 motion/x_y.webp 而没落 x_y.jpg 时，动效会被整个丢掉、退回 14% 淡水印，
+  //    而且没有任何输出——花力气烘的粒子层白产。anim-forge 还在按部位续铺，这条会先咬到新增的那一批。
+  const motionDir = asDir("../src/assets/scenes/motion");
+  const motions = fsMod.existsSync(motionDir)
+    ? fsMod.readdirSync(motionDir).filter((f) => f.endsWith(".webp")).map((f) => f.slice(0, -".webp".length))
+    : [];
+  let orphanFx = 0;
+  for (const m of motions.sort()) {
+    const sep = m.indexOf("_");
+    const sid = m.slice(0, sep), sceneId = m.slice(sep + 1);
+    const sc = ALL.find((x) => x.id === sid);
+    if (!sc) { fail(`动效段 motion/${m}.webp 的剧本前缀 ${sid} 不在剧本注册表里——sceneMotion() 永远查不到它`); orphanFx++; continue; }
+    if (!sc.scenes.some((s) => s.id === sceneId)) { fail(`动效段 motion/${m}.webp 指向不存在的幕 ${sid}/${sceneId}`); orphanFx++; continue; }
+    const key = SCENE_SETTING[sid]?.[sceneId];
+    const hasStill = sceneIds.has(m) || sceneIds.has(`scn_${sceneId}`) || sceneIds.has(sceneId)
+      || (!!key && sceneIds.has(`${sid}__${key}`));
+    if (!hasStill) { fail(`动效段 motion/${m}.webp 没有可解析的同名原画底——真背景档会被整个丢掉，退回 14% 淡水印`); orphanFx++; }
+  }
+  console.log(`动效背景: ${motions.length}/${ALL.reduce((n, s) => n + s.scenes.filter((x) => !x.ending).length, 0)} 幕走真背景档，孤儿 ${orphanFx} 段`);
+
+  // ③ 叙述者立绘：拿不到时 App.tsx:1368 整个 <aside class="narrator"> 不渲染，
+  //    文本栏随之从窄栏回退全宽（app.css:1262 的 has-narrator）。它在手机横屏本来就 display:none，
+  //    所以截图验收永远看不见——只能靠断言。解析链同 narratorArt()：先视角 id，再 五案→dalisi／否则裸剧本 id。
+  const narr = idsIn("../src/assets/narrators");
+  let narrOk = 0;
+  const narrBad: string[] = [];
+  for (const sc of ALL) {
+    const combos: (string | undefined)[] = sc.viewpoints?.length ? sc.viewpoints.map((v) => v.id) : [undefined];
+    for (const vp of combos) {
+      if ((vp && narr.has(vp)) || narr.has(CASE_SCENARIOS[sc.id] ? "dalisi" : sc.id)) { narrOk++; continue; }
+      narrBad.push(`${sc.id}/${vp ?? "(无视角)"}`);
+    }
+  }
+  for (const k of narrBad) fail(`叙述者立绘取不到（${k}）——剧情页侧栏会静默消失并整屏重排`);
+  console.log(`叙述者立绘: ${narrOk} 个 (剧本,视角) 组合可解析${narrBad.length ? `，${narrBad.length} 个取不到` : "，无缺"}`);
+}
+
+
 // 少写一个 } 浏览器不报错，它会"错误恢复"把后面的规则整段吞进那个没关的块里。
 // 实测 app.css 的 .sv-ground 漏过一个 }：其后所有规则（含 :root 那一族纸质令牌）
 // 都变成它的嵌套子规则，tsc / vite / build 全绿，只有渲染出来才发现令牌读不到。

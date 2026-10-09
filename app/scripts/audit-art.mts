@@ -113,12 +113,27 @@ const used = new Set<string>([
     // 地点复用图一张服务多幕，不列进来会被误判成孤儿
     ...Object.values(SCENE_SETTING[sc.id] ?? {}).map((k) => `${sc.id}__${k}`),
     ...sc.scenes.filter((s) => s.ending).map((s) => `end_${sc.id}_${s.id}`),
+    // 普通幕的画心入口（Scene.art，2026-10-02 上线）也查 endArt()，键同样是 end_<剧本>_<幕>。
+    // 只按 s.ending 收会把这 4 幕的画心误判成孤儿——和上面 portraits 那 54 张是同一个错。
+    ...sc.scenes.filter((s) => s.art).map((s) => `end_${sc.id}_${s.id}`),
+    // portraits/ 有两种合法命名，缺任何一条都会把整目录判成孤儿（实测 54 张全中）：
+    //  ① opp_<对局id> —— opponentArt() 的第一级，专绘
+    //  ② r_<对局id 去掉 d_ 前缀> —— opponentArt() 的第二级，与人物卡同源（d_wang 的「王满财」）
+    // 另外 cardArt() 的第二级索引就是 portraits，所以任何卡 id 命名的立绘也是在用状态。
+    ...sc.duels.map((d) => `opp_${d.id}`),
+    ...sc.duels.map((d) => `r_${d.id.replace(/^d_/, "")}`),
     `cover_${sc.id}`,
   ]),
+  // 卡 id 同时是 portraits/ 的合法文件名（cardArt 拿不到卡面时回落 portraits 索引）
+  ...SCENARIOS.flatMap((sc) => sc.cards.map((c) => c.id)),
   ...ACHIEVEMENTS.map((a) => `ach_${a.id}`),
 ]);
 for (const [name, m] of [["cards", cards], ["portraits", portraits], ["scenes", scenes], ["covers", covers], ["endings", endings], ["achievements", achs]] as const) {
   for (const k of m.keys()) if (!used.has(k)) console.log(`  · 孤儿 ${name}/${k}`);
 }
 
-console.log(`\n硬性问题 ${issues} 项；无场景图 ${noScene} 幕、无结局图 ${noEnd} 个（若为刻意留白可忽略）`);
+console.log(`\n硬性问题 ${issues} 项；无场景图 ${noScene} 幕、无结局图 ${noEnd} 个（无场景图里含刻意留白幕，明细见上）`);
+// 此前这个文件从头到尾一次 process.exit 都没有：硬性问题计数再高也照样退出码 0，
+// 于是"跑过美术审计"和"美术审计放行"是两件事，而没人分得清。
+// 无场景图/无结局图不进退出码——那两类里混着刻意留白的设计决定，只有 say() 记的硬性缺失才配拦。
+if (issues) process.exit(1);

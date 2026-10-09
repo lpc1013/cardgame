@@ -1927,6 +1927,17 @@ html:not([data-theme]) .bag-panel h3::after {
    浅底 #533378 → 7.83，深底 #9d77c3 → 5.09，两档都过且仍辨得出是「隐」紫。 */
 .gambit-hint { color: var(--suit-yin); font-size: 13px; }
 .gambit-bar { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+/* 动作条（读牌/蓄势/破招/刺探/收买）原先跟着日志一起滚。牌桌在 1440x900 下
+   .duel-stage 被 flex 压到 min-height 170px，而这一屏的内容要 ~190px，
+   于是这排按钮被 overflow 裁得只剩 12px 上沿——像素上就是一个空框，
+   没人会知道那里其实能点（对比度审计也报不出：它量的是颜色，不是"被裁掉了"）。
+   钉在滚动区底边，动作就一直看得见。 */
+.gambit-bar {
+  position: sticky; bottom: 0; z-index: 2;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  padding-top: 6px; margin-top: 8px;
+}
 .gambit-btn {
   background: color-mix(in srgb, var(--suit-yin) 10%, transparent); color: var(--ink);
   border: 1px solid color-mix(in srgb, var(--suit-yin) 55%, transparent);

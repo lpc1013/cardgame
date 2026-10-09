@@ -10,7 +10,8 @@ import sys
 import numpy as np
 from PIL import Image
 
-SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'incoming', 'opponents2')
+SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'incoming',
+                   sys.argv[1] if len(sys.argv) > 1 else 'opponents2')
 SEAT = (44, 58)          # 最严苛的一档：手机横屏
 PAPER = 205.0            # 宣纸底大致亮度，用来估"主体相对纸底暗多少"
 

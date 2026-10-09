@@ -844,6 +844,31 @@ for (const sc of ALL) {
   console.log(`现场勘查: ${svCount} 幕 ${spotCount} 处热点，线索均有选项同源`);
 }
 
+// ---------- 对手立绘覆盖率 ----------
+// 牌桌拿不到立绘时会落一枚朱印（.dt-seat-seal），它不报错、不影响通关、也不掉对比度——
+// 所以"缺图"这件事过去没有任何门禁看得见：交接文档写着"跑 verify 会自动复核立绘完整性"，
+// 实际 verify.mts 里连 portraits 这个词都没出现过，16 张全不落它也一样绿。
+// 解析链必须与 ui/art.ts 的 opponentArt() 逐字一致：先 opp_<对局id>，再 r_<去掉 d_ 前缀>，
+// 两条都够不到才算缺。只按"有没有 opp_ 文件"去数会把 r_ 同源的那些误报成缺失。
+{
+  const fsMod = await import("node:fs");
+  const dir = new URL("../src/assets/portraits", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
+  if (!fsMod.existsSync(dir)) {
+    warn(`找不到 portraits 目录（${dir}），立绘覆盖门禁跳过`);
+  } else {
+    const have = new Set(fsMod.readdirSync(dir).map((f) => f.replace(/\.(jpg|jpeg|png|webp)$/i, "")));
+    const wanted = new Set<string>();
+    for (const sc of ALL) for (const s of sc.scenes) if (s.duel) wanted.add(s.duel);
+    const missing: string[] = [];
+    for (const id of [...wanted].sort()) {
+      if (have.has(`opp_${id}`) || have.has(`r_${id.replace(/^d_/, "")}`)) continue;
+      missing.push(id);
+    }
+    for (const id of missing) fail(`对局 ${id} 没有对手立绘（opp_${id} 与 r_${id.replace(/^d_/, "")} 都不存在）——牌桌会落朱印`);
+    console.log(`对手立绘: ${wanted.size - missing.length}/${wanted.size} 场对局有像${missing.length ? `，缺 ${missing.join(" ")}` : "，无缺"}`);
+  }
+}
+
 // ---------- CSS 花括号配平 ----------
 // 少写一个 } 浏览器不报错，它会"错误恢复"把后面的规则整段吞进那个没关的块里。
 // 实测 app.css 的 .sv-ground 漏过一个 }：其后所有规则（含 :root 那一族纸质令牌）

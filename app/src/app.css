@@ -2964,6 +2964,9 @@ html:not([data-theme]) .bag-panel h3::after {
   }
   /* 手机横屏是 contain 全图，缩放会裁掉画面，缓推只在 PC 开 */
   .ending-art { object-fit: contain; animation: none; }
+  /* contain 会在画心上下各留一条空白。框本身带描边和投影，底下透出的是页面纸色，
+     于是那两条看起来像"图没加载完"——给框铺一层漆底，空白就变成片头黑边。 */
+  .ending-art-frame { background: var(--lacquer); }
   .ending-body {
     grid-area: 1 / 2; display: flex; flex-direction: column;
     overflow-y: auto; -webkit-overflow-scrolling: touch; text-align: left;

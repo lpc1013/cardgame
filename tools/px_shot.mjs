@@ -14,6 +14,7 @@
  *        --w 1440 --h 900 --cfg '{"mode":"light","theme":"jiangnan","clicks":["text:规则书"]}'
  * cfg 字段：mode / theme / empire / save / cards / ach:false / clicks[] / settle / wait
  * clicks 里的 "text:xxx" 按 innerText 前缀找 button/a/.loc-node/.sv-spot，其余当 CSS 选择器。
+ * 多段点击用 --click-gap 隔开（默认 1400ms）：同步连点会打在还没挂载的下一屏上，假报 MISS。
  */
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
@@ -31,6 +32,7 @@ const H = Number(arg('h', 900));
 const cfgRaw = arg('cfg', '{}');
 const chromePath = arg('chrome', 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe');
 const settle = Number(arg('settle', 900));
+const gap = Number(arg('click-gap', 1400));
 
 let cfg;
 try { cfg = JSON.parse(cfgRaw); } catch (e) { console.error('cfg 不是合法 JSON:', e.message); process.exit(2); }
@@ -112,7 +114,7 @@ await send('Page.navigate', { url });
 await waitEvent('Page.loadEventFired', 25000);
 await sleep(1800);
 
-const clickExpr = `(() => {
+const clickExpr = `(async () => {
   const find = (spec) => {
     if (spec.indexOf('text:') === 0) {
       const t = spec.slice(5);
@@ -121,15 +123,20 @@ const clickExpr = `(() => {
     }
     return document.querySelector(spec);
   };
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const gap = ${gap};
   const out = [];
   for (const spec of ${JSON.stringify(cfg.clicks || [])}) {
     const el = find(spec);
     out.push(spec + '=' + (el ? 'clicked' : 'MISS'));
     if (el) el.click();
+    // 连点之间必须等一幕换完：一次 evaluate 里同步连点，第二下会打在还没挂载的旧屏上，
+    // 报出来是 MISS——看着像"这个入口不存在"，其实是"还没长出来"。
+    await sleep(gap);
   }
   return out.join(' | ');
 })()`;
-const clicked = await send('Runtime.evaluate', { expression: clickExpr, returnByValue: true });
+const clicked = await send('Runtime.evaluate', { expression: clickExpr, returnByValue: true, awaitPromise: true });
 if (clicked.result && /MISS/.test(clicked.result.value || '')) console.log('  点击未命中: ' + clicked.result.value);
 await sleep(settle);
 

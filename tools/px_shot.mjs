@@ -136,11 +136,20 @@ await sleep(settle);
 const shot = await send('Page.captureScreenshot', { format: 'png', clip: { x: 0, y: 0, width: W, height: H, scale: 1 } });
 fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });
 fs.writeFileSync(out, Buffer.from(shot.data, 'base64'));
+// --eval 让同一个驱动兼作"看图 → 立刻问 DOM 那是什么"：
+// 截图能指出有一个空框，但说不出它是谁；elementFromPoint 反过来看不见视觉。
+const evalExpr = arg('eval', '');
+let evalOut = '';
+if (evalExpr) {
+  const r = await send('Runtime.evaluate', { expression: evalExpr, returnByValue: true, awaitPromise: true });
+  evalOut = typeof r.result?.value === 'string' ? r.result.value : JSON.stringify(r.result?.value ?? r.exceptionDetails ?? null);
+}
 const probe = await send('Runtime.evaluate', {
   expression: `JSON.stringify({w:innerWidth,h:innerHeight,root:(document.querySelector('#root > div > *')||{}).className||'',title:document.title})`,
   returnByValue: true,
 });
 console.log(`${out}  ${fs.statSync(out).size} bytes  ${probe.result.value}`);
+if (evalExpr) console.log(`  eval: ${evalOut}`);
 ws.close();
 kill();
 process.exit(0);

@@ -95,6 +95,8 @@ export interface DuelState {
   round: number;
   /** 本局选中的 script 变体（scriptVariants 随机选中后写回；断点续局时供 App 还原 cfg.script） */
   variantScript?: string[];
+  /** M5.3 虚张盐：本局随机种子（initDuel 生成、随档持久化）。缺省=旧档，按 0 处理 */
+  runSeed?: number;
   // emotion
   rapport: number;       // 共鸣
   guard: number;         // 对手防备
@@ -248,6 +250,7 @@ export function initDuel(cfg: DuelConfig, deck: string[], allCards: CardDef[], b
     rules,
     round: 0,
     variantScript,
+    runSeed: newRunSeed(),
     rapport: 0,
     guard: 3,
     qi: cfg.mode === "emotion" ? 3 + bonusQi + boostQi : 3,
@@ -360,7 +363,15 @@ function opponentSuitAt(cfg: DuelConfig, round: number): Suit {
 const ALL_SUITS: Suit[] = ["策", "器", "势", "隐"];
 
 /** M5 虚张去周期化（审计 2.1/P1-2）：以 (对局id, 回合) 为种子的伪随机虚张——
- *  玩家无法再由回合数推算真色（原 round%3 周期被免费模运算破解，读牌被支配），虚张概率约 1/3。 */
+ *  玩家无法再由回合数推算真色（原 round%3 周期被免费模运算破解，读牌被支配），虚张概率约 1/3。
+ *  M5.3（审计 2026-10-13·玩法风险一）：种子再加一维「本局随机盐」st.runSeed——
+ *  旧写法 (cfgId, round) 全局可重复：同一局第几手虚张对所有周目都一样，熟玩家背下来就行，
+ *  读牌那 1 言力等于白花。盐随 DuelState 落档（与 B-1 的 variantScript 同一通道），
+ *  续档/回档复现、跨周目不再同构；旧档没这个字段按 0 处理，残局不会被摇成另一副牌。
+ *  verify/hublock 调 setDuelSeedSource(() => 0) 把盐钉成 0——闸必须用同一把尺量。 */
+let seedSource: (() => number) | null = null;
+export function setDuelSeedSource(fn: (() => number) | null): void { seedSource = fn; }
+function newRunSeed(): number { return seedSource ? seedSource() : Math.floor(Math.random() * 2147483647); }
 function seedHash(s: string): number {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) {
@@ -369,13 +380,15 @@ function seedHash(s: string): number {
   }
   return h >>> 0;
 }
-function isBluffRound(cfgId: string, round: number): boolean {
-  return seedHash(cfgId + "|" + round) % 100 < 33;
+/** 旧档没有 runSeed 字段：按 0 处理＝与加盐之前逐手一致 */
+function salt(st: DuelState): string { return `${st.cfg.id}|${st.runSeed ?? 0}`; }
+function isBluffRound(st: DuelState): boolean {
+  return seedHash(salt(st) + "|" + st.round) % 100 < 33;
 }
 /** M5.2：该虚张轮是否作老式虚张（二八开——偶有「亮真色所克之色」的经典虚张保留
  *  「跟假撞枪口-2」的教学时刻；多数亮无关假色，环序反推失效，反着出对半赌撞枪口）。 */
-function isClassicFeint(cfgId: string, round: number): boolean {
-  return seedHash(cfgId + "#" + round) % 100 < 20;
+function isClassicFeint(st: DuelState): boolean {
+  return seedHash(salt(st) + "#" + st.round) % 100 < 20;
 }
 
 /** 情绪匹配制：开局/每招后亮出对手情绪（博弈局：按种子伪随机虚张——亮其真色所克之色，跟假色即撞枪口）。
@@ -383,15 +396,15 @@ function isClassicFeint(cfgId: string, round: number): boolean {
 export function revealEmotion(st: DuelState): void {
   if (st.mode !== "emotion" || st.finished || st.opponentShown) return;
   const truth = opponentSuitAt(st.cfg, st.round);
-  const bluff = !!st.cfg.gambit && isBluffRound(st.cfg.id, st.round);
+  const bluff = !!st.cfg.gambit && isBluffRound(st);
   st.opponentTrue = truth;
   st.bluffed = bluff;
   if (!bluff) { st.opponentShown = truth; return; }
   const feint = RESTRAIN[truth];
-  if (isClassicFeint(st.cfg.id, st.round)) { st.opponentShown = feint; return; }
+  if (isClassicFeint(st)) { st.opponentShown = feint; return; }
   // 无关假色：既非真色、也非真色所克之色——反推与反打都成了赌
   const wild = ALL_SUITS.filter((s) => s !== truth && s !== feint);
-  st.opponentShown = wild[seedHash(st.cfg.id + "%" + st.round) % 2]!;
+  st.opponentShown = wild[seedHash(salt(st) + "%" + st.round) % 2]!;
 }
 
 /** 博弈·读牌（情绪制）：耗 1 言力验色——是虚张则拆穿亮真色，无虚张则确认无误；不推进回合。

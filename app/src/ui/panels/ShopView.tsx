@@ -43,6 +43,11 @@ export function ShopView({ sc, st, shop, onLeave, onSync, toast }: {
     if (local.bag.includes(id)) { toast("已有此卡"); return; }
     // F-6：资源卡即银两面额——买入直接折银，不入袋不入组
     if ((c.layer ?? "成术") === "资源") {
+      // 审计 A07 附表「资源卡与商店循环不许无成本无限产生银两」：资源卡买入即折银、永不进 bag，
+      // 上面那句「已有此卡」对它永远不成立——面额高于售价的卡挂在这里就是台能点无限次的印钞机。
+      // verify.mts 已有同口径的数据闸（货架/暗柜不得挂净赚资源卡）；这条是运行时第二道闸，
+      // 防的是数据绕过门禁直接落进来。
+      if ((c.resource ?? 0) > price) { toast("摊主把话说明在前：此物按面额兑换，不贴钱。"); return; }
       const net = (c.resource ?? 0) - price;
       setLocal({ ...local, silver: local.silver + net });
       sfx.coin();

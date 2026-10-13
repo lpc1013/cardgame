@@ -13,29 +13,38 @@
    MOBILE FIRST: 移动端适配与体感优化（2026-09-18）
    ============================================================ */
 
-/* M-0: 移动端点击优化 - 禁止选中高亮 */
+/* 安全区令牌（审计 A09 的落点）：四个 inset 收成一组变量，谁贴边谁按需加——
+   旧写法在 html/body/#root 三层各铺一遍，嵌套累加出 2~3 倍死白；
+   散在各屏的 calc(基准 + env(...)) 又每人一套写法，改一处记不住还有几处。
+   桌面与非刘海屏 env() 恒为 0 ⇒ 这些 calc 退化成原基准值，像素不变。 */
+:root {
+  --sa-t: env(safe-area-inset-top, 0px);
+  --sa-r: env(safe-area-inset-right, 0px);
+  --sa-b: env(safe-area-inset-bottom, 0px);
+  --sa-l: env(safe-area-inset-left, 0px);
+}
+
+/* M-0（2026-10-13 审计修订）：tap 高亮照旧全站去掉——那圈蓝才是"点一下整块变色"的元凶，与可否选中无关。
+   选中性反过来：这是叙事作品，正文要被复制、被引用、被读屏逐句读。
+   旧写法把 `*` 一律 user-select:none，只放行 .log-text / .choice-text / .dialogue-text 三个类名——
+   这三个类在本仓的 .ts/.tsx 里一次都没出现过（grep 全库为 0），等于阅读文字从来没被放开过。
+   现在默认放开，只在"确有拖拽/双击副作用"的控件上关闭：按钮、卡面、牌桌、缩略图条。 */
 *, *::before, *::after {
   -webkit-tap-highlight-color: transparent;
+}
+button, .tcard, .duel-root, .cover-thumb, .clue-slip, .nav-btns, .fab-capsule {
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
 }
 
-/* 允许文本输入框选中 */
+/* 输入框与可编辑区始终可选（旧规则保留原义） */
 input, textarea, [contenteditable="true"] {
   -webkit-user-select: auto;
   -moz-user-select: auto;
   -ms-user-select: auto;
   user-select: auto;
-}
-
-/* 特殊元素允许选择（如日志文本）*/
-.log-text, .choice-text, .dialogue-text {
-  -webkit-user-select: text;
-  -moz-user-select: text;
-  -ms-user-select: text;
-  user-select: text;
 }
 
 /* M-1: 基础触控尺寸增强 */
@@ -46,12 +55,13 @@ input, textarea, [contenteditable="true"] {
     --btn-fs: 15px;       /* 字号适度放大 */
   }
   
-  /* M-2: 安全区域适配（刘海屏/底部手势条） */
-  html, body, #root {
-    padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) 
-             env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
-  }
-  
+  /* M-2（2026-10-13 审计 A09 修订）：安全区只由各屏自己按"贴着哪条边"来补——
+     .top-bar 补上、.duel-root 补下、.title-nav/.story-root/.fab 补左右，
+     这些规则本就用的是 calc(基准 + env(...)) 的写法。
+     旧实现在这里再给 html、body、#root 三层各铺一遍四个 env() padding，
+     嵌套容器逐层累加 ⇒ 刘海屏顶部实打实多出 2~3 倍 inset 的死空白（审计 A09）。
+     根级不再参与；新增屏幕请照既有写法只补自己贴边的那一侧。 */
+
   /* M-3: 标题页移动端优化（顶栏顶格，安全区由 html/body 承担） */
   .title-screen {
     padding: 0 16px 20px;
@@ -617,6 +627,13 @@ button { font-family: inherit; }
 }
 .cover-zoom-overlay img { max-width: 96vw; max-height: 86dvh; object-fit: contain; border: 1px solid var(--line); box-shadow: 0 20px 60px rgba(0,0,0,.8); }
 .cover-zoom-title { color: var(--gold); font-size: 16px; letter-spacing: 3px; }
+/* 大图入口改成按钮后（无障碍），出口也必须有一条键盘走得通的路——不能只留"点按任意处" */
+.cover-zoom-close {
+  margin-top: 6px; padding: 6px 18px; min-height: 34px;
+  font-size: 13px; letter-spacing: 2px; color: var(--ink);
+  background: none; border: 1px solid var(--line); border-radius: 10px; cursor: pointer;
+}
+.cover-zoom-close:hover { border-color: var(--gold); color: var(--gold); }
 .cover-zoom-hint { font-size: 12px; }
 
 .cover-stage {
@@ -641,6 +658,11 @@ button { font-family: inherit; }
   border: 1px solid var(--line); overflow: hidden; background: var(--panel);
 }
 .cover-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* 封面是大图入口，键盘用户也得点得开（审计·无障碍）⇒ 承载体换成真 <button>。
+   display:contents 让按钮自己不产生盒子，图片照旧在 .cover-main 里绝对定位铺满，
+   焦点环因此画在图片本身上（按钮没有盒子，outline 落在它身上等于没画）。 */
+.cover-img-hit { display: contents; cursor: zoom-in; }
+.cover-img-hit:focus-visible .cover-img { outline: 2px solid var(--gold); outline-offset: -4px; }
 .cover-fallback { background: linear-gradient(135deg, #211e1a 0%, #2e2820 60%, #211e1a 100%); }
 .cover-veil {
   position: absolute; inset: 0;
@@ -2161,7 +2183,9 @@ html:not([data-theme]) .bag-panel h3::after {
 /* ---------- 三选一翻牌 ---------- */
 .pick-root {
   height: 100%; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 16px; padding: 20px;
+  align-items: center; justify-content: center; gap: 16px;
+  /* A09：这一屏没有 .top-bar 替它吃顶边，安全区由容器自己补 */
+  padding: calc(20px + var(--sa-t)) calc(20px + var(--sa-r)) calc(20px + var(--sa-b)) calc(20px + var(--sa-l));
 }
 .pick-title { color: var(--gold); letter-spacing: 6px; font-size: 24px; margin: 0; display: inline-flex; align-items: center; gap: 12px; }
 /* 题签右端那枚印：三套皮各钤自己的形，这里只留公共占位（同 .shop-header h2） */
@@ -2195,8 +2219,13 @@ html:not([data-theme]) .bag-panel h3::after {
    flex 父级——把 height:auto 放在公共规则上，等于把它们的"面板内部滚动"改成
    "整页滚动"，实测四种小游戏的答题按钮因此掉到折叠线以下（对联/证词/牌九/棋局）。 */
 .shop-wrap { overflow: hidden; }
-.shop-root { height: 100%; overflow-y: auto; padding: 20px; max-width: 1100px; margin: 0 auto; }
+.shop-root { height: 100%; overflow-y: auto; max-width: 1100px; margin: 0 auto;
+  /* A09：市集与五艺两屏都用它，都没有 .top-bar，安全区在这里补 */
+  padding: calc(20px + var(--sa-t)) calc(20px + var(--sa-r)) calc(20px + var(--sa-b)) calc(20px + var(--sa-l)); }
 .shop-wrap > .shop-root { flex: 1; min-height: 0; height: auto; }
+/* 结局屏（.story-root.ending-root）同样没有顶栏替它吃顶边；
+   底边交给 .story-panel 自己的 80px 收束留白，这里只补上下两条 inset。 */
+.ending-root { padding-top: var(--sa-t); padding-bottom: var(--sa-b); }
 .shop-header {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 8px;
   position: sticky; top: -20px; z-index: 20;
@@ -2779,7 +2808,7 @@ html:not([data-theme]) .bag-panel h3::after {
   .cover-thumb { flex: 0 0 72px; height: 42px; }
   .cover-thumbs { padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
   /* 三选一翻牌：三卡并排小卡，省字保图 */
-  .pick-root { padding: 12px; gap: 10px; }
+  .pick-root { padding: calc(12px + var(--sa-t)) calc(12px + var(--sa-r)) calc(12px + var(--sa-b)) calc(12px + var(--sa-l)); gap: 10px; }
   .pick-title { font-size: 18px; letter-spacing: 3px; }
   .pick-row { gap: 8px; flex-wrap: nowrap; justify-content: center; width: 100%; }
   .pick-row .tcard { width: 30%; min-width: 0; }
@@ -4553,3 +4582,115 @@ html:not([data-theme]) .clue-btn {
 /* 地表纹理走"叠加层"而不是替换 #root 的 background-image：
    直接覆写会把默认皮肤的宣纸渐变整条换成 none（第一版就犯了这个错）。
    基础两层留在 #root 原规则里，主题只往前插自己的纹理层。 */
+/* ============================================================
+   2026-10-13 审计 A10：ui-audit.css 整体并入本文件末尾（同名文件与"靠后加载覆盖"的
+   跨文件顺序依赖一并取消）。本段选择器与并入前逐字相同，位置=文件最后 ⇒ 层叠结果不变；
+   App.tsx 中原先 `import "./ui-audit.css"` 紧随 app.css，注入顺序与现在等价。
+   下面这一段的历史说明保留原文。
+   ============================================================ */
+
+/* ---------------- L-2 · 全局焦点可见 & 按下反馈 ---------------- */
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.choice:active,
+.btn-main:active,
+.btn-cta:active,
+.gambit-btn:active,
+.emporia-buy:active,
+.shop-tab:active,
+.nav-btns button:active {
+  transform: translateY(1px);
+}
+
+/* ---------------- C-2 · 文字区双向治理（已并入 app.css 基处唯一来源） ---------------- */
+
+/* ---------------- C-3/C-5 · 卡面右上「层语言」角标位 ---------------- */
+/* 成术点数在图鉴侧走 app.css .fix-corner-power，在手牌侧走下方悬出徽；旧 .tcard-power 死类已删 */
+.pc-power-badge {
+  position: absolute; top: -9px; right: 8px; z-index: 1;
+  min-width: 22px; text-align: center; padding: 1px 6px;
+  font-size: 12px; font-weight: 700; color: #17130c;
+  background: linear-gradient(160deg, #ecd08a, #b3853a);
+  border-radius: 7px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+/* ---------------- L-1 · 高频小目标治理 ---------------- */
+.emporia-buy { min-height: 32px; }
+.end-progress-mile::after {
+  /* 视觉仍是原尺寸圆点，点击热区外扩至 ~36px */
+  content: "";
+  position: absolute; inset: -7px; border-radius: 50%;
+}
+@media (max-width: 720px) {
+  .gambit-bar { gap: 14px; }
+  .gambit-btn { min-height: 36px; padding: 9px 16px; font-size: 13px; }
+}
+
+/* ---------------- L-4 · 顶栏分组分隔线 + 移动端书斋 ---------------- */
+.nav-sep {
+  width: 1px; align-self: stretch; margin: 5px 2px;
+  background: linear-gradient(180deg, transparent, rgba(214, 204, 182, 0.35), transparent);
+}
+.nav-book { display: none; }
+@media (max-width: 640px) {
+  .nav-assets { display: none; }   /* 行囊/图鉴/卡册/成就 折入书斋 */
+  .nav-book { display: inline-block; }
+}
+.study-overlay {
+  position: fixed; inset: 0; z-index: 90;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(8, 6, 4, 0.68);
+  backdrop-filter: blur(2px);
+}
+.study-sheet {
+  display: flex; flex-direction: column; gap: 12px;
+  width: min(320px, 86vw);
+  padding: 20px 22px 18px;
+  background: linear-gradient(170deg, #221e18, #191512);
+  border: 1px solid #3a342c; border-radius: 14px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
+}
+.study-sheet h3 {
+  margin: 0 0 4px; text-align: center;
+  font-size: 17px; letter-spacing: 7px; text-indent: 7px;
+  color: #c9a86a;
+}
+.study-item {
+  min-height: 46px;
+  font-size: 15px; letter-spacing: 5px; text-indent: 5px;
+  color: #e8e2d5;
+  background: linear-gradient(160deg, rgba(201, 168, 106, 0.07), rgba(201, 168, 106, 0.02));
+  border: 1px solid #3a342c; border-radius: 10px; cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.study-item:hover { border-color: #c9a86a; color: #c9a86a; }
+
+/* ---------------- L-5 · 危险操作防御升级 ---------------- */
+.danger-ghost {
+  padding: 7px 16px; min-height: 32px;
+  font-size: 12px; letter-spacing: 1px;
+  color: #d96b5b; background: none;
+  border: 1px solid #8a463a; border-radius: 10px; cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.danger-ghost:hover { border-color: #d96b5b; background: rgba(217, 107, 91, 0.08); }
+.danger-final {
+  padding: 6px 12px; min-height: 32px;
+  font-size: 12px; color: #f4ebd8; letter-spacing: 1px;
+  background: linear-gradient(160deg, #7a3328, #57241c);
+  border: 1px solid #c65b49; border-radius: 10px; cursor: pointer;
+}
+.danger-final:disabled { opacity: 0.45; cursor: not-allowed; }
+.settings-confirm { flex-wrap: wrap; row-gap: 8px; max-width: 100%; }
+
+/* 文字链升级触控变体（PrepModal「再想想」等） */
+.link-btn.touch {
+  padding: 8px 16px; min-height: 36px;
+  font-size: 13px;
+  border: 1px dashed #3a342c; border-radius: 10px;
+}
+.link-btn.touch:hover { border-color: #c9a86a; color: #c9a86a; }

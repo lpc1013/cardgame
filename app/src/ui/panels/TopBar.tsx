@@ -8,7 +8,8 @@ import { SyceeIcon } from "../icons";
 export function TopBar({ sc, st, mode, onMode, dlg, onDlg, map, onMap, surveyLabel, onSurvey, onClues, onBag }: { sc: Scenario; st: RunState; mode: "light" | "dark"; onMode: () => void; dlg: boolean; onDlg: () => void; map: boolean; onMap: () => void; surveyLabel: string | null; onSurvey: () => void; onClues: () => void; onBag: () => void }) {
   const [snd, setSnd] = useState(sfxEnabled());
   // R-1：资源变化浮动提示——数值一变在字牌上浮出「+n / −n」+ 微光脉冲（朝望-2 之类不再悄无声息）。
-  // 同帧多项变动（如 朝望-2 且 银+10）各浮各的；applyEffects 就地改 stats（浅拷贝共享引用），依赖用整个 st。
+  // 同帧多项变动（如 朝望-2 且 银+10）各浮各的；依赖挂整个 st——
+  // applyEffects 现为纯函数（审计 A02 后返回新对象），st 一变就意味着真改过账，不会再漏。
   const prevRef = useRef<{ stats: Record<string, number>; silver: number } | null>(null);
   const [deltas, setDeltas] = useState<{ id: number; key: string; d: number }[]>([]);
   const deltaTimer = useRef<number | null>(null);

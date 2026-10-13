@@ -5,11 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node --experimental-strip-types scripts/verify.mts && tsc -b && vite build",
+    "build": "node --experimental-strip-types scripts/state_tests.mts && node --experimental-strip-types scripts/verify.mts && tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
     "verify": "node --experimental-strip-types scripts/verify.mts",
-    "hublock": "node --experimental-strip-types scripts/hublock.mts"
+    "state": "node --experimental-strip-types scripts/state_tests.mts",
+    "hublock": "node --experimental-strip-types scripts/hublock.mts",
+    "check": "npm run lint && npm run state && npm run verify && npm run hublock && npm run build"
   },
   "dependencies": {
     "react": "^19.2.8",

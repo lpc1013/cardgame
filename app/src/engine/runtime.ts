@@ -78,37 +78,62 @@ export function checkCond(cond: Cond | undefined, st: RunState): boolean {
   return true;
 }
 
-export function applyEffects(effects: Effect[] | undefined, st: RunState): void {
-  if (!effects) return;
+/** 深拷一份 RunState：Set / 数组 / Record 全部重建。
+ *  换幕与结算一律先拷再改——旧实现靠调用方 `{...st}` 浅拷，内层集合仍与旧状态、
+ *  回退快照共享引用，一次 applyEffects 会同时改写三处（审计 A02）。 */
+export function cloneRunState(st: RunState): RunState {
+  return {
+    ...st,
+    flags: new Set(st.flags),
+    stats: { ...st.stats },
+    clues: [...st.clues],
+    bag: [...st.bag],
+    deck: [...st.deck],
+    boosts: [...st.boosts],
+    retinue: [...st.retinue],
+    usedCards: [...st.usedCards],
+    visited: [...st.visited],
+    survey: st.survey
+      ? Object.fromEntries(Object.entries(st.survey).map(([k, v]) => [k, [...v]]))
+      : undefined,
+  };
+}
+
+/** 效果结算（唯一入口，纯函数）：返回新状态，绝不修改传入的 st。
+ *  审计 A02/A03——调用方因此可以安全地「先按旧状态判分支，再落效果」。 */
+export function applyEffects(effects: Effect[] | undefined, st: RunState): RunState {
+  if (!effects) return cloneRunState(st);
+  const out = cloneRunState(st);
   for (const e of effects) {
-    if (e.setFlag) st.flags.add(e.setFlag);
+    if (e.setFlag) out.flags.add(e.setFlag);
     if (e.stat) {
       for (const [k, v] of Object.entries(e.stat)) {
-        st.stats[k] = (st.stats[k] ?? 0) + v;
+        out.stats[k] = (out.stats[k] ?? 0) + v;
       }
     }
-    if (e.unlockClue && !st.clues.includes(e.unlockClue)) st.clues.push(e.unlockClue);
+    if (e.unlockClue && !out.clues.includes(e.unlockClue)) out.clues.push(e.unlockClue);
     if (e.unlockCard) {
       // F-6（2026-08-29 审计）：资源卡=银两面额，不入袋不入组，获得即折银——
       // 旧实现进 bag 并自动入组，占 12 卡组额度、对局中被抽到当 1 点白板牌
-      const card = cardScenario(st.scenarioId)?.cards.find((c) => c.id === e.unlockCard);
+      const card = cardScenario(out.scenarioId)?.cards.find((c) => c.id === e.unlockCard);
       if ((card?.layer ?? "成术") === "资源") {
-        st.silver += card?.resource ?? 0;
+        out.silver += card?.resource ?? 0;
       } else {
-        if (!st.bag.includes(e.unlockCard)) st.bag.push(e.unlockCard);
+        if (!out.bag.includes(e.unlockCard)) out.bag.push(e.unlockCard);
         // 新卡自动进编组（若未满）
-        const sc = cardScenario(st.scenarioId);
+        const sc = cardScenario(out.scenarioId);
         const limit = sc?.deckLimit ?? 12;
-        if (!st.deck.includes(e.unlockCard) && st.deck.length < limit) st.deck.push(e.unlockCard);
+        if (!out.deck.includes(e.unlockCard) && out.deck.length < limit) out.deck.push(e.unlockCard);
       }
     }
     if (e.removeCard) {
-      st.bag = st.bag.filter((c) => c !== e.removeCard);
-      st.deck = st.deck.filter((c) => c !== e.removeCard);
+      out.bag = out.bag.filter((c) => c !== e.removeCard);
+      out.deck = out.deck.filter((c) => c !== e.removeCard);
     }
-    if (e.gainSilver) st.silver += e.gainSilver;
-    if (e.spendSilver) st.silver = Math.max(0, st.silver - e.spendSilver);
+    if (e.gainSilver) out.silver += e.gainSilver;
+    if (e.spendSilver) out.silver = Math.max(0, out.silver - e.spendSilver);
   }
+  return out;
 }
 
 /** 运行时剧本注册表（App 挂载；供 applyEffects 查 deckLimit） */

@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState, useCallback, useRef, type ReactNode } from "react";
 import type { Scenario, CardDef, DuelConfig } from "./engine/types";
-import { initState, findScene, visibleChoices, applyEffects, registerScenarios, checkCond, resolveSceneLines, type RunState } from "./engine/runtime";
+import { initState, findScene, visibleChoices, applyEffects, registerScenarios, checkCond, resolveSceneLines, cloneRunState, type RunState } from "./engine/runtime";
+import {
+  type Phase, resolveScenePhase, availableActions, takeChoice, enterScene, lastRealLine,
+  peaceApplies, peaceConsumedButDoomed, peaceSkipState, peaceConsumeOnly,
+} from "./engine/transition";
 import { initDuel, revealEmotion, EMOTION_YANLI_MAX, DEFAULT_AP, type DuelState } from "./engine/duel";
-import { saveGame, loadGame, clearSave, unlockEnding, getGallery, recordTreeVisit, getTree, getCardSeen, settleEmpire, consumeBoosts, recordWarLoss, bumpCounter, getCounter, END_MILES, setTotalEnds, getTotalEnds, grantTitle, consumeSpareSilver, claimMile, getGlobalCard, INK_PER_ENDING, unsealScenario, UNSEAL_COST, getBonuses, unlockBonus } from "./engine/save";
+import { saveGame, loadGame, clearSave, consumeSaveRejectReason, unlockEnding, getGallery, recordTreeVisit, getTree, getCardSeen, settleEmpire, consumeBoosts, recordWarLoss, bumpCounter, getCounter, END_MILES, setTotalEnds, getTotalEnds, grantTitle, consumeSpareSilver, claimMile, getGlobalCard, INK_PER_ENDING, unsealScenario, UNSEAL_COST, getBonuses, unlockBonus } from "./engine/save";
 import {  } from "./data/sceneSettings";
 import { hasMap } from "./data/locations";
 import { foundSpots, surveyLeft, surveyOf, type SurveySpot } from "./data/survey";
@@ -35,7 +39,8 @@ import { SettingsPanel } from "./ui/panels/SettingsPanel";
 import { PrepModal } from "./ui/panels/Prep";
 import { ViewpointModal } from "./ui/panels/Viewpoint";
 import "./app.css";
-import "./ui-audit.css";
+// 审计 A10：ui-audit.css（2026-08-27 那批补丁）已整体并入 app.css 末尾，
+// "靠第二个文件后加载来覆盖前一个文件"这条跨文件顺序依赖取消；层叠结果与并入前逐字等价。
 
 registerScenarios(SCENARIOS);
 // 番外 dual 解锁判定：剧本各视角 → 归属结局名列表（ending.name）
@@ -56,8 +61,6 @@ setTotalEnds(SCENARIOS.reduce((n, s) => n + s.scenes.filter(x => x.ending).lengt
 const MODE_KEY = "dicun_mode_v1";
 /** 对白档（视觉小说式）持久化键：开=一屏只留当前一段，关=长卷累积 */
 const DLG_KEY = "dicun_dlg_v1";
-/** 主声望类 stat 键（W-4 和议之书「威望有损」扣减目标）：剧本 stats 定义命中其一即扣 3（范围 2~5） */
-const PRESTIGE_STAT_KEYS = ["chaoting", "shengjuan", "shengyuan", "shenwang", "weiwang", "junwei", "junGong", "diye", "junji", "junxin", "quanli", "junchen"];
 /** 情绪制气力上限（B-2 成就按模式分流：emotion 局耗 qi 而非 hpPlayer；与 duel.ts 回气钳制/QiBar 显示一致） */
 const EMOTION_QI_MAX = 10;
 /** 对话演出：把「」/“”里的直接引语拆出来着暖色，与叙述文分开——
@@ -107,15 +110,7 @@ type PrevScene = {
 /** 帝国开局加成 id 列表 → 对局引擎参数 */
 
 
-/** 新卡入袋：记图鉴 + 注册全局卡定义（供跨剧本携带） */
-
-/** 行囊：各剧本中获得过的物品卡自动入囊（无需手动存入），兼容旧存档手动存入的条目 */
-
-/** 帝国随从池：跨剧本持有的随从人物卡（斥候/内应被动，全局 ≤3） */
-
-/** 结局奖励卡池：达成结局解锁的专属卡（endingReward 标记），跨周目可带进卡组 */
-
-type Phase = "title" | "story" | "duel" | "ending" | "verdict" | "shop" | "pick" | "minigame";
+/** Phase 已收进 engine/transition.ts——界面相位只由 resolveScenePhase 一处决定 */
 
 export default function App() {
   const [phase, setPhase] = useState<Phase>("title");
@@ -201,89 +196,79 @@ export default function App() {
 
   const cardDef = useCallback((id: string): CardDef | undefined => sc?.cards.find((c) => c.id === id), [sc]);
 
-  // 场景相位分派：根据目标场景类型切视图（不动 RunState）
-  const enterSceneOf = useCallback(
-    (cur: RunState, id: string) => {
-      if (!sc) return;
-      const target = findScene(sc, id);
-      if (target.duel) {
-        const cfg = sc.duels.find((d) => d.id === target.duel);
-        if (cfg) {
-          // 和议之书：仅对本剧下一场「战争对局」免战（F-3：cfg.war 显式标记；审讯/对峙/宫变/截杀不算战争），
-          // 直接进胜线；奖励归零由结算侧处理
-          let eff = cur;
-          if (cur.boosts.includes("b_peace") && cfg.mode === "pressure" && cfg.war && sc.id !== "jieyu") {
-            // M7（审计 P1-11）：消耗/扣减一律走副本快照，不再原地改 React 状态
-            eff = { ...cur, boosts: cur.boosts.filter((b) => b !== "b_peace") };
-            if (cfg.unwinnable) {
-              // B-3：设计性死局（剧情杀）是叙事必需——和议之书在此无效，但照样消耗
-              setToast("项羽收了银子也不肯退兵——这仗躲不过。");
-              setSt(eff);
-            } else {
-              // W-4：和议生效——主声望类 stat 扣 3（无匹配键则跳过），该局奖励归零（对局结算路径天然跳过 + 胜线结局奖励标记归零）。
-              // F-3：归零旗标改为随 RunState 传递的通用标记——旧实现拼接 winScene 场景 id，winScene 非结局场景时
-              // 旗标永不命中，7 处跳战点仅 1 处真正生效（sichou/shumian/changjiang/jianfeng 全部落空）。
-              const pStat = sc.stats?.find((s) => PRESTIGE_STAT_KEYS.includes(s.key));
-              if (pStat) eff.stats = { ...eff.stats, [pStat.key]: (eff.stats[pStat.key] ?? 0) - 3 };
-              eff.flags = new Set(eff.flags);
-              eff.flags.add("b_peace_skip");
-              setToast("敌酋见银退兵——和议成了，仗没打。（威望有损 · 该局奖励归零）");
-              gotoFrom(eff, cfg.winScene);
-              return;
-            }
-          }
-          const loadout = sc.cardSystem ? eff.deck : cfg.deck;
-          const d = initDuel(cfg, loadout, allCardsFor(sc, eff.deck), duelBoostsOf(eff.boosts));
-          d.redactLog = duelHidesOpp(sc, cfg);
-          revealEmotion(d);
-          setDuel(d);
-          setWager(0);
-          setPhase("duel");
-          return;
-        }
-      }
-      if (target.cardPick) { setPickScene(id); setPhase("pick"); return; }
-      if (target.shop) { setPhase("shop"); return; }
-      if (target.minigame) { setPhase("minigame"); return; }
-      if (sc.verdict && id === sc.verdict.scene) { setPhase("verdict"); return; }
-      setPhase(target.ending ? "ending" : "story");
-    },
-    // B-3/W-4 和议分支新增 gotoFrom 调用：gotoFrom 与 enterSceneOf 互相引用（gotoFrom deps 含 enterSceneOf），
-    // deps 数组不可互引（TS7022/TS2448）。二者均只依赖 sc，sc 变化即同步重建，闭包不陈旧；oxlint 的
-    // exhaustive-deps 提示此处可安全忽略。
-    [sc]
-  );
+  // 对局状态写入唯一入口：任何一次 setDuel 同时递增修订号。
+  // 审计 A05——自动存档原先手工枚举 duel?.round / ap / yanli / … 十几个字段做 deps，
+  // 以后新增手牌、陷阱、战斗日志一类状态，忘补 deps 就是「状态变了、存档没更新」，
+  // 而这条漏存只能靠刷新退款实测才看得见。修订号由写入方保证，与字段清单无关。
+  const [duelRev, setDuelRev] = useState(0);
+  const commitDuel = useCallback((d: DuelState | null) => {
+    setDuel(d);
+    setDuelRev((r) => r + 1);
+  }, []);
 
-  // 核心状态转移：纯计算 next state → 一次性 setSt；holdView 时相位延后由 enterSceneOf 分派（用于对局战果定格）
+  // 相位分派（唯一出口）：RunState 既定，这一屏落到哪个界面由 resolveScenePhase 一处决定。
+  // 首次进入、读档、回退三条路径共用它——审计 A01 的根因正是三处各写了一份相似而不一致的分支
+  // （回退那条最后无条件 setPhase("story")，把商市幕恢复成了没有选项、没有 next 的剧情屏）。
+  const dispatchView = useCallback((scenario: Scenario, cur: RunState) => {
+    const scene = findScene(scenario, cur.sceneId);
+    const p = resolveScenePhase(scenario, scene);
+    if (p !== "duel") {
+      if (p === "pick") setPickScene(scene.id);
+      setPhase(p);
+      return;
+    }
+    const cfg = scenario.duels.find((d) => d.id === scene.duel)!;
+    const loadout = scenario.cardSystem ? cur.deck : cfg.deck;
+    const d = initDuel(cfg, loadout, allCardsFor(scenario, cur.deck), duelBoostsOf(cur.boosts));
+    d.redactLog = duelHidesOpp(scenario, cfg);
+    revealEmotion(d);
+    commitDuel(d);
+    setWager(0);
+    setPhase("duel");
+  }, [commitDuel]);
+
+  // 核心状态转移：纯计算 next → 一次性 setSt；holdView 时相位延后由 dispatchView 分派（用于对局战果定格）
   const gotoFrom = useCallback(
-    (base: RunState, id: string, opts?: { autoRead?: boolean; holdView?: boolean }) => {
+    (baseIn: RunState, id: string, opts?: { autoRead?: boolean; holdView?: boolean }): void => {
       if (!sc) return;
       const target = findScene(sc, id);
+      const cfg = target.duel ? sc.duels.find((d) => d.id === target.duel) : undefined;
+      let base = baseIn;
+      // W-4/F-3 和议之书：仅对本剧下一场「战争对局」免战（cfg.war 显式标记；审讯/对峙/宫变/截杀不算战争）
+      if (peaceConsumedButDoomed(sc, base, cfg)) {
+        // B-3：设计性死局（剧情杀）是叙事必需——和议之书在此无效，但照样消耗
+        base = peaceConsumeOnly(base);
+        setToast("项羽收了银子也不肯退兵——这仗躲不过。");
+      } else if (peaceApplies(sc, base, cfg)) {
+        // 和议生效：主声望类 stat 扣 3（无匹配键则跳过），该局奖励归零（结算侧天然跳过 + 结局奖励标记归零）。
+        // F-3：归零旗标是随 RunState 走的通用标记——旧实现拼接 winScene 场景 id，winScene 非结局场景时
+        // 旗标永不命中，7 处跳战点仅 1 处真正生效（sichou/shumian/changjiang/jianfeng 全部落空）。
+        setToast("敌酋见银退兵——和议成了，仗没打。（威望有损 · 该局奖励归零）");
+        // 走递归而不是就地分派：b_peace 已从状态里摘除，不会自环；上一幕快照由内层记录在「已花掉和议」的那一刻，
+        // 玩家退回也不会把已经消耗的道具白退还回来。
+        gotoFrom(peaceSkipState(sc, base), cfg!.winScene, opts);
+        return;
+      }
       // W-3：推进前存下当前相位快照（上一幕），供标题页「退回上一幕」恢复（每周目限 1 次）。
       // F-8：存全量 RunState（flags 序列化）——旧实现只存 sceneId+lineIndex，恢复时用 initState 全新状态重放，
       // 旗标/线索/银两/背包全清零，安全垫反而报废周目。
+      // 审计 A02：快照必须与 base 断开引用，否则下一幕的效果会顺着共享的 Set/数组把这份快照一起改掉。
       prevSceneRef.current = {
         scenarioId: sc.id, sceneId: base.sceneId, lineIndex: base.lineIndex,
-        snapshot: { ...base, flags: Array.from(base.flags) },
+        snapshot: { ...cloneRunState(base), flags: Array.from(base.flags) },
       };
       try { sessionStorage.setItem("dicun_prev_v1", JSON.stringify(prevSceneRef.current)); } catch { /* 隐私模式等场景忽略 */ }
       recordTreeVisit(sc.id, id);
-      const next: RunState = {
-        ...base, sceneId: id,
-        lineIndex: 0,
-        visited: [...base.visited, base.sceneId],
-      };
-      applyEffects(target.effects, next);
-      next.lineIndex = opts?.autoRead ? Math.max(0, resolveSceneLines(target, next).length - 1) : 0;
+      const next = enterScene(base, target, { autoRead: opts?.autoRead });
       noteCards(sc, next.bag);
       setRevealFrom(-1);
       setShowLog(false);
       setShowMap(false);
       setShowSurvey(false);
       setSt(next);
-      if (!opts?.holdView) enterSceneOf(next, id);
+      if (!opts?.holdView) dispatchView(sc, next);
     },
-    [sc, enterSceneOf]
+    [sc, dispatchView]
   );
 
   const goto = useCallback((id: string) => { if (st) gotoFrom(st, id); }, [st, gotoFrom]);
@@ -478,8 +463,8 @@ export default function App() {
       base = { ...base, usedCards: [...new Set([...(base.usedCards ?? []), ...base.deck])] };
       gotoFrom(base, target2, { holdView: true });
       const t = setTimeout(() => {
-        setDuel(null);
-        if (stRef.current) enterSceneOf(stRef.current, target2);
+        commitDuel(null);
+        if (stRef.current) dispatchView(sc, stRef.current);
       }, 1600);
       return () => clearTimeout(t);
     }
@@ -491,14 +476,12 @@ export default function App() {
     if (!sc || !st || !pickScene) return;
     const scene = findScene(sc, pickScene);
     const def = cardDef(chosenId);
-    const next = { ...st };
-    if (def?.resource) {
-      next.silver += def.resource;
-      setToast(`资源卡「${def.name}」入袋 +${def.resource} 两`);
-    } else {
-      applyEffects([{ unlockCard: chosenId }], next);
-      setToast(`获得卡牌「${def?.name ?? chosenId}」`);
-    }
+    // 资源卡直接折银（与 applyEffects 的 F-6 口径一致），非资源走同一条 unlockCard 效果。
+    // 审计 A02：状态一律由纯函数产出新对象，不在 st 的浅拷贝上就地加银。
+    const next = def?.resource
+      ? { ...cloneRunState(st), silver: st.silver + def.resource }
+      : applyEffects([{ unlockCard: chosenId }], st);
+    setToast(def?.resource ? `资源卡「${def.name}」入袋 +${def.resource} 两` : `获得卡牌「${def?.name ?? chosenId}」`);
     sfx.clue();
     noteCards(sc, next.bag);
     setSt(next);
@@ -548,48 +531,40 @@ export default function App() {
       }
     }
     const scene = findScene(scenario, s.sceneId);
-    applyEffects(scene.effects, s);
+    const s0 = applyEffects(scene.effects, s);
     recordTreeVisit(scenario.id, s.sceneId);
-    noteCards(scenario, s.bag);
-    setSt(s);
-    setPhase("story");
+    noteCards(scenario, s0.bag);
+    setSt(s0);
+    // 审计 A01：开局幕同样要过相位分派——起手幕若是对局/市集/翻牌，无条件进 story 会落成一屏死字
+    dispatchView(scenario, s0);
   };
 
   // 单击全推：空行「""」只是段间排版分隔，不单独占一次推进——
   // 一次空格/点击直接亮出整段（推到下个空行为止），杜绝「按一下没反应、再按才出下段」
+  // 审计 A06：「屏上提示能继续」与「点下去到底走不走」必须同源。原先渲染按可见选项数、
+  // advance 按 scene.choices 原始长度判定——选项全被 cond 挡掉的幕就成了「提示亮着、点了没反应」。
   const advance = () => {
     if (!sc || !st) return;
     const scene = findScene(sc, st.sceneId);
-    const lines = resolveSceneLines(scene, st);
-    if (st.lineIndex < lines.length - 1) {
-      let j = st.lineIndex + 1;
-      if (dlg) {
-        // 对白档一次一句：空行只是排版分隔，跳过它，不留"按一下没反应"的空拍
-        while (j < lines.length - 1 && lines[j] === "") j++;
-      } else {
-        while (j < lines.length - 1 && lines[j] !== "") j++;
-      }
+    const act = availableActions(sc, scene, st, dlg);
+    if (act.kind === "lines") {
       sfx.page();
       setRevealFrom(st.lineIndex);
-      setSt({ ...st, lineIndex: j });
-    } else if (scene.next && !scene.choices?.length && !scene.cardPick && !scene.shop) {
+      setSt({ ...st, lineIndex: act.to });
+    } else if (act.kind === "next") {
       sfx.page();
-      goto(scene.next);
+      goto(act.sceneId);
     }
   };
 
   const choose = (i: number) => {
     if (!sc || !st) return;
-    const scene = findScene(sc, st.sceneId);
-    const chs = visibleChoices(scene, st);
-    const c = chs[i];
-    if (!c) return;
+    // 审计 A03：分支判定与效果结算的先后由 takeChoice 一处定死——cond 按「做选择之前」的状态算，
+    // 门槛不够的选项不能靠自己的扣费/加属性把自己变成满足（真结局硬门槛尤其吃这一条）。
+    const got = takeChoice(st, findScene(sc, st.sceneId), i);
+    if (!got) return;
     sfx.choice();
-    const next: RunState = { ...st };
-    applyEffects(c.effects, next);
-    // 真结局硬门槛降级：cond 不满足且定义了 altNext → 落入近似非真结局
-    const target = checkCond(c.cond, st) ? c.next : (c.altNext ?? c.next);
-    gotoFrom(next, target);
+    gotoFrom(got.next, got.targetSceneId);
   };
 
   const doVerdict = () => {
@@ -617,11 +592,14 @@ export default function App() {
   // 自动存档
   useEffect(() => {
     if (st) saveRun(st, duel);
-    // M7（审计 P1-7）：读牌/刺探/收买/蓄势/破招只扣 yanli/随从次数/ap，不推进 round——
-    // 旧 deps 只看 round，这些动作永不落盘，「刷新退款」成为免费情报机
-    // deps 只挂「真正改变存档内容的值」：saveRun/duel 的对象标识不入表——入表等于每帧重写一次
-    // localStorage，oxlint 的 exhaustive-deps 提示在此为有意为之（同 gotoFrom 处的处理）
-  }, [st, phase, duel?.round, duel?.finished, duel?.usedCards.length, duel?.ap, duel?.yanli, duel?.charge, duel?.foresuit, duel?.scoutLeft, duel?.insiderLeft, duel?.sharedUsed, duel?.phase, duel?.oppIntent?.kind, duel?.hpPlayer, duel?.hpOpponent, duel?.rapport, duel?.qi, wager]);
+    // 审计 A05：deps 原先手工枚举 duel?.round / ap / yanli / charge / … 十几个字段
+    // （M7 那轮补过一批漏存的），字段清单本身才是根因——以后新增手牌、陷阱、战斗日志一类状态，
+    // 忘补 deps 就是「状态变了、存档没落盘」，而它只会以「刷新把这一手白送」的形式被测出来。
+    // 现在改由写入方递增的 duelRev 驱动：commitDuel 每调一次必存一次，与字段多少无关。
+    // deps 不入 saveRun/duel 对象标识——入表等于每帧重写一次 localStorage，
+    // oxlint 的 exhaustive-deps 提示在此为有意为之（同 gotoFrom 处的处理）。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [st, phase, duelRev, duel?.finished, wager]);
 
   // 结局入图鉴 + 清档
   useEffect(() => {
@@ -680,15 +658,14 @@ export default function App() {
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (phase !== "story" || showClues || showBag) return;
     if (!sc || !st) return;
-    const scene = findScene(sc, st.sceneId);
-    const atEnd = st.lineIndex >= resolveSceneLines(scene, st).length - 1;
+    // 键盘与点击走同一个动作出口（审计 A06）：幕末有没有可见选项由 availableActions 判定，
+    // 不再各自用「lines.length - 1」估——幕尾挂空行时那个估计会差一格。
+    const act = availableActions(sc, findScene(sc, st.sceneId), st, dlg);
     if (e.code === "Space" || e.code === "Enter") {
       e.preventDefault();
       advance();
-    } else if (/^Digit[1-9]$/.test(e.code) && atEnd) {
-      const idx = Number(e.code.slice(5)) - 1;
-      const chs = visibleChoices(scene, st);
-      if (chs[idx]) choose(idx);
+    } else if (/^Digit[1-9]$/.test(e.code) && act.kind === "choices") {
+      choose(Number(e.code.slice(5)) - 1);
     }
   };
 
@@ -704,6 +681,14 @@ export default function App() {
     const t = setTimeout(() => setToast(null), 2200);
     return () => clearTimeout(t);
   }, [toast]);
+
+  // 审计 A04：坏档不能只是「静默变成没存档」。loadGame 在校验失败时已把原文挪进
+  // dicun_save_bad_v4 并从存档位摘掉（进度没被销毁，也没被带着脏数据放进游戏），
+  // 这里补上玩家看得见的那半句——否则他只会以为游戏弄丢了进度。
+  useEffect(() => {
+    const reason = consumeSaveRejectReason();
+    if (reason) setToast(`存档数据异常，已拒绝载入并备份（${reason}）`);
+  }, [titleTick, phase]);
 
   const resume = () => {
     const save = loadGame();
@@ -756,31 +741,15 @@ export default function App() {
         }
         d.redactLog = duelHidesOpp(scenario, cfg);
         if (d.mode === "emotion" && !d.opponentShown && !d.finished) revealEmotion(d);
-        setDuel(d);
+        commitDuel(d);
         setWager(save.duel.wager ?? 0);
         setPhase("duel");
         return;
       }
     }
-    const scene = findScene(scenario, save.state.sceneId);
-    if (scene.duel) {
-      const cfg = scenario.duels.find((d) => d.id === scene.duel);
-      if (cfg) {
-        const loadout = scenario.cardSystem ? save.state.deck : cfg.deck;
-        const d = initDuel(cfg, loadout, allCardsFor(scenario, save.state.deck), duelBoostsOf(state.boosts));
-        d.redactLog = duelHidesOpp(scenario, cfg);
-        revealEmotion(d);
-        setDuel(d);
-        setPhase("duel");
-        return;
-      }
-    }
-    if (scene.cardPick) { setPickScene(scene.id); setPhase("pick"); return; }
-    if (scene.shop) { setPhase("shop"); return; }
-    // F-1（2026-08-29 审计）：小游戏场景此前在 resume 中无分派，读档落入 story 相位成死屏
-    // （无选项、无 next、无出路）。补齐后回到小游戏界面；局面不入存档，残局/行令从头再打。
-    if (scene.minigame) { setPhase("minigame"); return; }
-    setPhase(scene.ending ? "ending" : scenario.verdict && scene.id === scenario.verdict.scene ? "verdict" : "story");
+    // 审计 A01：读档尾部的相位分派与「首次进入 / 回退」同源——对局幕但存档里没带对局状态时，
+    // dispatchView 会重新开局（局面不入档，残局从头再打，与 F-1 小游戏同一口径）。
+    dispatchView(scenario, state);
   };
 
   // W-3：退回上一幕——读 sessionStorage（内存 ref 兜底）恢复上一场景相位，每周目限 1 次，恢复后清存储。
@@ -796,15 +765,20 @@ export default function App() {
       sessionStorage.setItem("dicun_prev_used_v1", "1");
       sessionStorage.removeItem("dicun_prev_v1");
       setSc(scenario);
-      let s = initState(scenario);
+      let s: RunState = initState(scenario);
       if (prev.snapshot && Array.isArray(prev.snapshot.flags)) {
-        s = { ...(prev.snapshot as unknown as RunState), flags: new Set(prev.snapshot.flags) };
+        // 反序列化出来的内层集合本就是新对象，仍统一过 cloneRunState：与 initState 兜底那条分支同形，
+        // 回退后拿到的状态不会和 prevSceneRef 里那份快照共用引用（审计 A02）
+        s = cloneRunState({ ...(prev.snapshot as unknown as RunState), flags: new Set(prev.snapshot.flags) });
       }
       const target = findScene(scenario, prev.sceneId);
       s.sceneId = prev.sceneId;
-      s.lineIndex = Math.max(0, Math.min(prev.lineIndex, resolveSceneLines(target, s).length - 1));
+      s.lineIndex = Math.max(0, Math.min(prev.lineIndex, lastRealLine(resolveSceneLines(target, s))));
+      noteCards(scenario, s.bag);
       setSt(s);
-      setPhase("story");
+      // 审计 A01：这一行是本轮最高优先级缺陷的正身——旧代码此处无条件 setPhase("story")，
+      // 于是「夜市」这类商店幕被恢复成没有选项、没有 next 的剧情死屏。相位一律交 resolveScenePhase。
+      dispatchView(scenario, s);
       setToast("已退回上一幕。");
     } catch {
       setToast("退回上一幕失败。");
@@ -944,7 +918,12 @@ export default function App() {
           <button className="cover-arrow" aria-label="上一个" onClick={() => { sfx.choice(); setCoverIdx((coverIdx + SCENARIOS.length - 1) % SCENARIOS.length); }}>‹</button>
           <div className={`cover-main ${unlocked ? "" : "sealed"}`}>
             {coverOf(cur.id) ? (
-              <img className="cover-img" src={coverOf(cur.id)} alt={cur.title} decoding="async" onClick={() => setCoverZoom(true)} />
+              /* 审计·视觉布局篇「部分可交互图片缺少完整键盘语义」：onClick 原先挂在 <img> 上，
+                 键盘/读屏用户到不了"点开大图"这个入口。换成真按钮 + 可访问名称；
+                 按钮本身 display:contents，图片继续用它的绝对定位铺满 .cover-main，焦点环画在图上。 */
+              <button type="button" className="cover-img-hit" aria-label={`展阅封面大图：${cur.title}`} onClick={() => { sfx.choice(); setCoverZoom(true); }}>
+                <img className="cover-img" src={coverOf(cur.id)} alt={cur.title} decoding="async" />
+              </button>
             ) : (
               <div className="cover-img cover-fallback" />
             )}
@@ -1028,7 +1007,10 @@ export default function App() {
           <div className="cover-zoom-overlay" onClick={() => setCoverZoom(false)}>
             <img src={coverOf(cur.id)} alt={cur.title} />
             <div className="cover-zoom-title">{cur.title} · {cur.subtitle}</div>
-            <p className="muted cover-zoom-hint">点按任意处合卷</p>
+            {/* 入口既然是键盘点得开的（上面那个按钮），出口就不能只靠"点按任意处"——补一个真按钮，
+                点它同样冒泡到遮罩关闭，不另写一套逻辑 */}
+            <button type="button" className="cover-zoom-close" onClick={() => setCoverZoom(false)}>合卷</button>
+            <p className="muted cover-zoom-hint">点按任意处或按住「合卷」退出</p>
           </div>
         )}
         <p className="foot-tip">点击画面推进文本 · 空格推进/数字选支 · 进度自动保存 · ✦ = 含卡牌系统 v2 · 解锁结局可获墨铤 · 案件按序解封，可花 {UNSEAL_COST} 墨铤提前破封</p>
@@ -1124,7 +1106,7 @@ export default function App() {
   if (phase === "duel" && duel) {
     return (<>
       {feedback}
-      <DuelView sc={sc} duel={duel} setDuel={setDuel} toast={setToast} silver={st?.silver ?? 0} wager={wager} onWager={setWager} wagersLeft={3 - (st?.wagers ?? 0)} />
+      <DuelView sc={sc} duel={duel} setDuel={commitDuel} toast={setToast} silver={st?.silver ?? 0} wager={wager} onWager={setWager} wagersLeft={3 - (st?.wagers ?? 0)} />
     </>);
   }
 
@@ -1273,7 +1255,7 @@ export default function App() {
   if (phase === "ending" && scene.ending) {
     const endImg = endArt(sc.id, scene.id);
     return (
-      <div className="story-root">
+      <div className="story-root ending-root">
         {feedback}
         <div className="story-panel ending" ref={panelRef}>
           {endImg && (
@@ -1322,10 +1304,12 @@ export default function App() {
   // 其余单视角剧本通篇只有「朕/柴大人」，文本没给姓名就不编一个上去
   const narrName = sc.viewpoints?.find((v) => v.id === st.viewpoint)?.name ?? CASE_SCENARIOS[sc.id];
   const lines = resolveSceneLines(scene, st);
-  // 幕尾的空行不算"还有内容没读"：末尾若挂着 ""，推进记号会一直亮着、点一下却没字
-  let lastReal = lines.length - 1;
-  while (lastReal > 0 && lines[lastReal] === "") lastReal--;
-  const atEnd = st.lineIndex >= lastReal;
+  // 幕尾的空行不算"还有内容没读"（判定收进 transition.lastRealLine）。
+  // 审计 A06：屏上的推进记号、选项排布、点击/空格实际走不走，全部取同一个 availableActions——
+  // 旧代码这里按「可见选项数」决定要不要显示「▼ 继续」，advance() 却按 scene.choices 原始长度决定能不能跳，
+  // 选项全被 cond 挡掉的幕因此变成「提示亮着、点了没反应」。
+  const act = availableActions(sc, scene, st, dlg);
+  const atEnd = act.kind !== "lines";
   // 对白档一屏只留当前这一句（advance 已改成一次一句）；
   // 落在空行上时退回上一句，栏框不会空成一格。长卷档从幕首整段铺开。
   let dlgFrom = dlg ? st.lineIndex : 0;
@@ -1339,8 +1323,8 @@ export default function App() {
   const surveyLabel = sv ? (svLeft > 0 ? `勘查 ${svLeft}` : "已勘") : null;
   const takeSpot = (spot: SurveySpot) => {
     if (!sv) return;
-    const next: RunState = { ...st, survey: { ...(st.survey ?? {}), [scene.id]: [...svFound, spot.id] } };
-    applyEffects(spot.effects, next);
+    const shell: RunState = { ...cloneRunState(st), survey: { ...(st.survey ?? {}), [scene.id]: [...svFound, spot.id] } };
+    const next = applyEffects(spot.effects, shell);
     noteCards(sc, next.bag);
     setSt(next);
     // 入卷的提示交给反馈层的差额判定（它会带上具体是哪条证物），这里不再自己弹一条，
@@ -1410,7 +1394,7 @@ export default function App() {
             </p>
           );
         })}
-        {atEnd && choices.length > 0 && (
+        {act.kind === "choices" && (
           <div className="choices" onClick={(e) => e.stopPropagation()}>
             {choices.map((c, i) => (
               <button key={c.next + i} className="choice" onClick={() => choose(i)}>
@@ -1420,10 +1404,10 @@ export default function App() {
             ))}
           </div>
         )}
-        {atEnd && choices.length === 0 && scene.next && (
+        {act.kind === "next" && (
           <div className="continue-tip">▼ 继续（点击画面 / 空格）</div>
         )}
-        {!atEnd && <div className="next-tip">▼</div>}
+        {act.kind === "lines" && <div className="next-tip">▼</div>}
       </div>
       {dlg && showLog && (
         <div className="dlg-log" onClick={() => setShowLog(false)}>

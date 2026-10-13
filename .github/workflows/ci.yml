@@ -1,0 +1,35 @@
+name: 门禁全链
+
+# 审计（2026-10-13）工程篇：build 里原本只有 verify + tsc + vite，
+# lint 与零选项死锁验证（hublock）都不在闸上——本地跑出问题靠人记得跑。
+# 这里把四条门禁串成一条：lint（卫生）→ 状态一致性（A01~A06 的回归）→
+# verify（可达性/可胜性/合同穷举）→ hublock（全库零动作死锁证明）→ build（类型 + 打包）。
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: npm ci
+      # oxlint 目前 0 error / 45 warning，退出码 0：先把它在闸上跑起来，
+      # 将来任何新增 error 都会红，warning 另立收敛任务，不在这里堵门。
+      - name: lint
+        run: npm run lint
+      - name: 状态一致性（审计 A01~A06 + 存档契约）
+        run: npm run state
+      - name: 回归验证（可达性 / 可胜性三档 / 数据合同）
+        run: npm run verify
+      - name: 零动作死锁可达性证明（全 13 部，约 2~3 分钟）
+        run: npm run hublock
+      - name: 类型检查与构建
+        run: npm run build

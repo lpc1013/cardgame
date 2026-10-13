@@ -104,3 +104,16 @@ export const coverThumbOf = (id: string): string | undefined => thumbUrl("covers
 export const endThumbOf = (scId: string, sceneId: string): string | undefined =>
   thumbUrl("endings", `end_${scId}_${sceneId}`) ?? endArt(scId, sceneId);
 export const cardThumbOf = (id: string): string | undefined => thumbUrl("cards", id) ?? cardArt(id);
+
+/** 全量图片 URL：离线预取的唯一清单来源。
+ *  故意不另写一份"该缓存哪些图"的表——手写名单必然漂移，
+ *  审计 PWA 篇点名的正是"缓存条目上限够大 ≠ 首次离线就有全套素材"这类口径错位。
+ *  这里直接取上面各 glob 的实际命中值，图落位了就自动进预取，撤掉了也自动出去。 */
+export function allArtUrls(): string[] {
+  return [...new Set([
+    ...Object.values(_CARD_ART), ...Object.values(_PORTRAIT_ART), ...Object.values(_SCENE_ART),
+    ...Object.values(_MAP_ART), ...Object.values(_THEME_SWATCH), ...Object.values(_COVER_ART),
+    ...Object.values(_END_ART), ...Object.values(_ACH_ART), ...Object.values(_SCENE_MOTION),
+    ...Object.values(_NARRATOR_ART), ...Object.values(_THUMB_ART),
+  ])].filter((u): u is string => typeof u === "string" && !!u);
+}

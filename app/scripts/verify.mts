@@ -29,9 +29,14 @@ import { SURVEYS, spotCost } from "../src/data/survey.ts";
 import { SCENE_SETTING } from "../src/data/sceneSettings.ts";
 import { CASE_SCENARIOS } from "../src/data/narrators.ts";
 import type { Scenario, CardDef, Suit } from "../src/engine/types.ts";
-import { initDuel, revealEmotion, playEmotion, playPressure, setDuelShuffle, endTurn, readEmotion, chargeUp, breakMove, respondOpponent, playItem, RESTRAIN, TURN_DAMAGE_CAP, ITEM_YANLI_COST, EMOTION_YANLI_MAX, DEFAULT_GOAL, type DuelState } from "../src/engine/duel.ts";
+import { initDuel, revealEmotion, playEmotion, playPressure, setDuelShuffle, setDuelSeedSource, endTurn, readEmotion, chargeUp, breakMove, respondOpponent, passResponse, playItem, RESTRAIN, TURN_DAMAGE_CAP, ITEM_YANLI_COST, EMOTION_YANLI_MAX, DEFAULT_GOAL, type DuelState } from "../src/engine/duel.ts";
 
 setDuelShuffle((a) => a);
+// M5.3：虚张盐钉死成 0——游戏里每局摇一次（玩家背不动），闸里必须每次量同一副牌，
+// 否则"这局穷举可胜"这件事本身会变成摇骰子，红绿都不作数。
+setDuelSeedSource(() => 0);
+// M5.3：虚张盐钉成 0——穷举门禁必须每次量同一副牌，否则"这一局可胜"会变成一句掷骰子的话
+setDuelSeedSource(() => 0);
 const ALL: Scenario[] = [fuma, qiuwei, sichou, xie, qinhuai, jieyu, shumian, changjiang, diaolan, changhen, jianfeng, xingxing, touming];
 const SUITS: Suit[] = ["策", "器", "势", "隐"];
 let failures = 0, warnings = 0;
@@ -256,6 +261,75 @@ function pressureBest(sc: Scenario, cfg: (typeof sc.duels)[number], loadout: str
   }
   return best;
 }
+
+/** A07（2026-10-13 审计）三级可胜性之「新手线」。
+ *  口径：策略函数只用界面此刻给得到的信息——
+ *    · 情绪制：信对手"亮出来的那张色"（虚张时信了就是撞枪口，这正是要量的新手失败面），不读牌、不掷物品；
+ *    · 压制制：只出成术、不蓄势不破招不刺探；phased 局在对手主攻已宣言上屏时才用那张牌选克色，
+ *      自己的主阶段里不许提前读 cfg.script（那是穷举线的特权，不是玩家的）。
+ *  模拟本身仍走真引擎（伤害按真牌算），所以这条线量的是"打法"而不是"规则"。
+ *  它回答审计问的那个问题：普通玩家有没有合理的获胜机会——穷举绿只证明数学上不是死局。 */
+function noviceEmotion(sc: Scenario, cfg: (typeof sc.duels)[number], loadout: string[]): { win: boolean; steps: number } {
+  const co = cardOf(sc, cfg.oppCards);
+  const isV2 = cfg.rules === "v2";
+  const d = initDuel(cfg, loadout, sc.cards);
+  revealEmotion(d);
+  let played = 0;
+  for (let i = 0; i < 400 && !d.finished; i++) {
+    const shown = d.opponentShown;
+    if (!shown) break;
+    const pool = (isV2 ? [...d.hand] : loadout).map(co).filter((c) => (c.layer ?? "成术") === "成术");
+    // 同色=共鸣，克色=破防，其余只要不被对手那色克就还能谈；四手全无则这一局打不下去
+    const pick =
+      pool.find((c) => c.suit === shown) ??
+      pool.find((c) => c.suit && RESTRAIN[c.suit] === shown) ??
+      pool.find((c) => c.suit && RESTRAIN[shown] !== c.suit) ??
+      pool[0];
+    if (!pick || !playEmotion(d, pick)) break;
+    played++;
+    if (!d.finished) revealEmotion(d);
+  }
+  return { win: d.finished === "win", steps: played };
+}
+
+function novicePressure(sc: Scenario, cfg: (typeof sc.duels)[number], loadout: string[]): { win: boolean; steps: number } {
+  const co = cardOf(sc, cfg.oppCards);
+  const isV2 = cfg.rules === "v2";
+  const phased = (cfg.turnSchema ?? "legacy") === "phased";
+  const best = (pool: CardDef[], opp: CardDef | null): CardDef | undefined =>
+    (opp ? pool.find((c) => c.suit && RESTRAIN[c.suit] === opp.suit) : undefined) ??
+    [...pool].sort((a, b) => (b.power ?? 0) - (a.power ?? 0))[0];
+  const d = initDuel(cfg, loadout, sc.cards);
+  let acted = 0;
+  for (let i = 0; i < 400 && !d.finished; i++) {
+    const trueId = cfg.script[d.round % cfg.script.length]!;
+    const hand = (isV2 ? [...d.hand] : loadout).map(co).filter((c) => (c.layer ?? "成术") === "成术" && !c.trap);
+    if (phased && d.phase === "oppTurn") {
+      // 他这一手已经拍在案上（DuelView 的「他主攻」招示牌），此时按 visible 选克色才是玩家做得到的事
+      const intentId = d.oppIntent?.kind === "attack" ? d.oppIntent.cardId : null;
+      const pick = best(hand, intentId ? co(intentId) : null);
+      if (!pick) { if (!passResponse(d, co)) break; acted++; continue; }
+      if (!respondOpponent(d, pick, co) && !passResponse(d, co)) break;
+      acted++;
+      continue;
+    }
+    if (!hand.length) {
+      if (isV2) { endTurn(d); continue; }
+      break;
+    }
+    const pick = best(hand, null);
+    if (!pick) break;
+    if (!playPressure(d, pick, trueId, co)) {
+      if (isV2) { endTurn(d); continue; }
+      break;
+    }
+    acted++;
+  }
+  return { win: d.finished === "win", steps: acted };
+}
+
+let noviceWin = 0, noviceTotal = 0;
+const noviceLose: string[] = [];
 
 for (const sc of ALL) {
   console.log(`\n【${sc.title}】(${sc.mode === "case" ? "案件" : "叙事"} · ${sc.scenes.length}幕 ${sc.duels.length}局)`);
@@ -569,21 +643,29 @@ for (const sc of ALL) {
           else if (!s0.win) console.log(`    ${vLabel(vi)}[裸卡组] ○ 设计性死局(必败走向败线)`);
           else console.log(`    ${vLabel(vi)}[裸卡组] ✓ 真实UI可胜(${s0.steps}步)`);
         }
-        // M8（审计 P1-3）：先证「合法满编」（≤deckLimit/可得性约束）可胜；只有超法满编能胜时降级为警告（尺子校准期不炸数据）
+        // M8（审计 P1-3）→ A07（2026-10-13 审计）：三级指标一次跑齐——
+        //   理论线 = 全知穷举 + 超法牌池（只用来排除数学死局）
+        //   合法线 = 全知穷举 + legalLoadout（玩家组得出的卡组）
+        //   新手线 = 固定打法 + legalLoadout + 只用界面给得到的信息（衡量入门体验）
+        // 「仅非法卡组可胜」原先只 warn，等于对非剧情杀主线关卡永久放行经济/卡组裂缝；现按审计升级为失败。
         let r = emotionCanWin(sc, vc, legal);
         let legalShort = false;
         if (!r.win && legal.join() !== full.join()) {
           const r2 = emotionCanWin(sc, vc, full);
           if (r2.win) { r = r2; legalShort = true; }
         }
+        const nov = vc.unwinnable ? null : noviceEmotion(sc, vc, legal);
+        if (nov) { noviceTotal++; if (nov.win) noviceWin++; else noviceLose.push(`${sc.id}/${vc.id}${scripts.length > 1 ? `[变体${vi + 1}]` : ""}`); }
+        const novTag = nov ? ` · 新手线${nov.win ? `可胜(${nov.steps}手)` : "不可胜"}` : "";
         if (!r.win && !vc.unwinnable) fail(`对局 ${vc.id}「${vc.title}」${vLabel(vi)}满编卡组在真实 UI 合同下不可胜`);
         else if (!r.win) console.log(`  ${vLabel(vi)}○ ${vc.title}: 设计性死局(必败走向败线)`);
         else if (vc.unwinnable && vc.winScene !== vc.loseScene) fail(`对局 ${vc.id}「${vc.title}」${vLabel(vi)}标记 unwinnable 却穷举可胜 —— 死局标记腐烂，剧情杀可能被打赢`);
         else if (vc.unwinnable && r.win) warn(`对局 ${vc.id}「${vc.title}」${vLabel(vi)}标记 unwinnable 却穷举可胜（winScene===loseScene 旧豁免）——App 结算端 finAs 已强制判负，但死局数值应回炉`);
         else {
-          if (legalShort) warn(`对局 ${vc.id}「${vc.title}」${vLabel(vi)}仅超法满编可胜（合法 ≤${sc.deckLimit ?? 12} 张不可胜）——卡组可得性/上限回潮（P1-3）`);
+          if (legalShort) fail(`对局 ${vc.id}「${vc.title}」${vLabel(vi)}仅超法满编可胜（合法 ≤${sc.deckLimit ?? 12} 张不可胜）——非剧情杀主线关卡不许警告放行（A07）`);
           const omni = vc.gambit ? "〔全知上限：胜线假设看穿敌招〕" : "";
-          console.log(`  ${vLabel(vi)}✓ ${vc.title}: 真实UI合同可胜(${r.steps}步)${legalShort ? "·超法满编" : ""}${omni}`);
+          console.log(`  ${vLabel(vi)}✓ ${vc.title}: 真实UI合同可胜(${r.steps}步)${legalShort ? "·超法满编" : ""}${omni}${novTag}`);
+          if (nov && !nov.win) warn(`对局 ${vc.id}「${vc.title}」${vLabel(vi)}新手线不可胜：只会跟着亮色接话、不读牌不用物品的打法打不通——入门体验门槛（A07 第三档）`);
         }
       }
     } else {
@@ -604,14 +686,19 @@ for (const sc of ALL) {
           if (b2) { best = b2; legalShort = true; }
         }
         const total = vc.hp!.player;
+        // A07 新手线（压制制）：与情绪制同口径——固定打法、合法满编、不读隐藏信息
+        const nov = vc.unwinnable ? null : novicePressure(sc, vc, legal);
+        if (nov) { noviceTotal++; if (nov.win) noviceWin++; else noviceLose.push(`${sc.id}/${vc.id}${scripts.length > 1 ? `[变体${vi + 1}]` : ""}`); }
+        const novTag = nov ? ` · 新手线${nov.win ? `可胜(${nov.steps}手)` : "不可胜"}` : "";
         if (best && vc.unwinnable && vc.winScene !== vc.loseScene) fail(`对局 ${vc.id}「${vc.title}」${vLabel(vi)}标记 unwinnable 却穷举可胜 —— 死局标记腐烂（A-2 反向断言）`);
         else if (best && vc.unwinnable) warn(`对局 ${vc.id}「${vc.title}」${vLabel(vi)}标记 unwinnable 却穷举可胜（winScene===loseScene 旧豁免）——App 结算端 finAs 已强制判负，但死局数值应回炉`);
         if (best) {
-          if (legalShort && !vc.unwinnable) warn(`对局 ${vc.id}「${vc.title}」${vLabel(vi)}仅超法满编可胜（合法 ≤${sc.deckLimit ?? 12} 张不可胜）——卡组可得性/上限回潮（P1-3）`);
+          if (legalShort && !vc.unwinnable) fail(`对局 ${vc.id}「${vc.title}」${vLabel(vi)}仅超法满编可胜（合法 ≤${sc.deckLimit ?? 12} 张不可胜）——非剧情杀主线关卡不许警告放行（A07）`);
           const omni = vc.gambit || vc.seeOpp === "hidden" ? " 〔全知上限：穷举默认看得见敌招〕" : "";
           const margin = best.d.hpPlayer;
           const tenseness = margin <= 2 ? "极高张力" : margin <= Math.ceil(total / 2) ? "中等" : "宽松";
-          console.log(`  ${vLabel(vi)}✓ ${vc.title}: ${best.d.round}步最优胜,剩${margin}/${total}气力(${tenseness})${legalShort ? "·超法满编" : ""}${omni} 线:${best.line.map(x => x.startsWith("(") ? x.slice(1, -1) : cardOf(sc, vc.oppCards)(x).name).join("→")}`);
+          console.log(`  ${vLabel(vi)}✓ ${vc.title}: ${best.d.round}步最优胜,剩${margin}/${total}气力(${tenseness})${legalShort ? "·超法满编" : ""}${omni}${novTag} 线:${best.line.map(x => x.startsWith("(") ? x.slice(1, -1) : cardOf(sc, vc.oppCards)(x).name).join("→")}`);
+          if (nov && !nov.win) warn(`对局 ${vc.id}「${vc.title}」${vLabel(vi)}新手线不可胜：只出成术、按已宣言的招选克色这种打法打不通——需要蓄势/破招/物品/随从才过得去的关卡（A07 第三档）`);
         } else if (!vc.unwinnable) {
           fail(`对局 ${vc.id}「${vc.title}」${vLabel(vi)}普通压制局穷举不可胜且未标 unwinnable —— 数值失准或漏标死局（A-2）`);
         } else {
@@ -769,12 +856,28 @@ for (const sc of ALL) {
   console.log(`番外可达性: ${BONUS_SCENES.length} 个番外校验完成`);
 }
 
-// ---------- 卡包期望门禁（M9.5，审计 P1-6 扫尾）----------
+// ---------- 卡包期望门禁（M9.5，审计 P1-6 扫尾）+ 货架资源卡套利（审计 A07 附表）----------
 // 印钞机判据：单包期望回银 = Σ池[(resource ?? 半价回卖)]/池大小×draws，超过售价即「无限买包稳赚」。
 // 资源卡直接折银、非资源按半价卖回计最大回收——与 ShopView 的 openPack/sell 口径一致。
+// 同一条闸顺带管货架：ShopView.buy() 对资源卡「买入即折银、永不进 bag」，那句「已有此卡」
+// 拦不住第二次点击——面额高于售价的资源卡只要挂上货架/暗柜就是台可重复的印钞机
+// （审计测试表第 8 条「资源卡与商店循环不许无成本无限产生银两」）。
 {
-  let packCount = 0;
+  let packCount = 0, shelfCount = 0;
   for (const sc of ALL) {
+    // 兑换不许净赚：本剧本内所有会折银的地方，单价都必须 ≥ 面额
+    for (const scene of sc.scenes) {
+      for (const it of [...(scene.shop?.stock ?? []).map((id) => ({ id, price: undefined as number | undefined })),
+        ...(scene.shop?.hiddenStock ?? []).map((h) => ({ id: h.id, price: h.price }))]) {
+        const c = sc.cards.find((x) => x.id === it.id);
+        if (!c || (c.layer ?? "成术") !== "资源") continue;
+        shelfCount++;
+        const price = it.price ?? c.price ?? 10;
+        if ((c.resource ?? 0) > price) {
+          fail(`货架/暗柜 ${sc.id}/${scene.id} 挂着资源卡「${c.name}」面额 ${c.resource} > 售价 ${price}——买入即折银且不入 bag，可重复购买 = 无限印银（A07 附表）`);
+        }
+      }
+    }
     for (const scene of sc.scenes) {
       for (const p of scene.shop?.packs ?? []) {
         packCount++;
@@ -791,7 +894,7 @@ for (const sc of ALL) {
       }
     }
   }
-  console.log(`卡包期望值: ${packCount} 个全检，期望均 ≤ 售价`);
+  console.log(`卡包期望值: ${packCount} 个全检，期望均 ≤ 售价；货架资源卡 ${shelfCount} 个，兑换均不净赚`);
 }
 
 // ---------- 现场勘查层数据门禁 ----------
@@ -1015,7 +1118,44 @@ for (const sc of ALL) {
     if (depth !== 0) { fail(`${f} 文件末尾花括号未配平（depth=${depth}）——有块漏了 }，其后规则会被浏览器整段吞掉`); }
     if (depth !== 0) bad++;
   }
-  console.log(`CSS 花括号配平: ${cssFiles.length} 个文件已检查${bad ? `，${bad} 个未配平` : ""}`);
+  // A09 反回归闸：根级三层（html / body / #root）不许再铺安全区 padding。
+  // 它们是嵌套容器，各铺一遍 env() ⇒ 刘海屏顶部实打实多出 2~3 倍 inset 的死白；
+  // 安全区只允许由各屏按"自己贴着哪条边"补一次（既有的一批 calc(基准 + env(...)) 规则）。
+  for (const f of cssFiles) {
+    const css = fsMod.readFileSync(f, "utf8");
+    const hit = css.match(/html[^{}]*#root\s*\{[^}]*(?:padding[^}]*env\(safe-area|env\(safe-area[^}]*padding)/g) ?? [];
+    for (const x of hit) fail(`${f} 在根级三层铺了安全区 padding（审计 A09 的成因，改由贴边的那一屏自己补）：${x.replace(/\s+/g, " ").slice(0, 80)}…`);
+  }
+  console.log(`CSS 花括号配平: ${cssFiles.length} 个文件已检查；根级安全区重复填充闸已跑（0 处命中＝各屏只补一次）`);
+}
+
+console.log(`\n可胜性三档（A07）：理论线=全知穷举+超法牌池（明细见上，只用来排除数学死局）；`
+  + `合法线=legalLoadout（≤deckLimit 且届时可得）；新手线=${noviceWin}/${noviceTotal} 场用"只跟着看得见的信息打"的固定打法可胜`
+  + (noviceLose.length ? ` —— 剩下 ${noviceLose.length} 场需要读牌/蓄势/破招/物品/随从才打得过：${noviceLose.join(", ")}` : " —— 无一例外"));
+
+// ---------- hublock「全购物上界」边的前提闸 ----------
+// hublock.mts 从每个市集幕多铺一条"货架/暗柜/卡包池全拿到"的边，用来点亮 cond.card 那类
+// 必须持卡才露形的选项（qiuwei 的恩科/白绫两幕此前在它图上根本不存在）。这条边成立的唯一前提
+// 是「cond.notCard 引用的卡不会在市集卖」——因为 notCard 的极性相反：买了才会把一条路藏掉，
+// 届时"全拿到"这条边就不是可视性的上界而是下界，hublock 报出来的锁也就不可信了。
+// 前提一旦破，这里先红，而不是让 hublock 静默给出错误结论。
+{
+  for (const sc of ALL) {
+    const banned = new Set<string>();
+    for (const s of sc.scenes) for (const c of s.choices ?? []) if (c.cond?.notCard) banned.add(c.cond.notCard);
+    if (!banned.size) continue;
+    const sold = new Set<string>();
+    for (const s of sc.scenes) {
+      if (!s.shop) continue;
+      for (const id of s.shop.stock) sold.add(id);
+      for (const h of s.shop.hiddenStock ?? []) sold.add(h.id);
+      for (const p of s.shop.packs ?? []) for (const id of p.pool) sold.add(id);
+    }
+    for (const id of [...banned]) if (sold.has(id)) {
+      fail(`cond.notCard 引用的卡「${id}」同时在 ${sc.id} 的市集出售——hublock 的"全购物上界"边对它不成立（买了会藏掉一条路），请把该选项改用 notFlag 表达，或把这张卡撤出货架`);
+    }
+  }
+  console.log("hublock 购物上界前提: notCard 卡均未在市集出售");
 }
 
 console.log(`\n========== ${failures} 失败 / ${warnings} 警告（警告不拦退出码——绿≠零隐患，明细见上） ==========`);

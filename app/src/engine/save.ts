@@ -10,6 +10,11 @@ import type { CardDef } from "./types";
 
 const SAVE_VERSION = 4;
 const SAVE_KEY = "dicun_save_v4";
+/** 历史存档键：迁移与清档都必须连带处理。审计 A08——旧实现只在读不到当前键时回退读 v3，
+ *  clearSave 却只删当前键，于是「放弃存档」之后 loadGame 又从 v3 把进度捞回来。 */
+const LEGACY_SAVE_KEYS = ["dicun_save_v3"];
+/** 校验失败时把原文备份到这里（不静默销毁玩家进度，也便于事后对账） */
+const BAD_SAVE_KEY = "dicun_save_bad_v4";
 const GALLERY_KEY = "dicun_gallery_v1";
 
 /** 线格式：flags 序列化为数组（RunState 运行时是 Set） */
@@ -35,35 +40,117 @@ export interface SaveData {
 
 export function saveGame(scenarioId: string, state: RunState, duel?: DuelWire): void {
   try {
-    const wire: SaveStateWire = { ...state, flags: Array.from(state.flags) };
+    const wire: SaveStateWire = { ...clonePlainRunState(state), flags: Array.from(state.flags) };
     const data = { version: SAVE_VERSION, scenarioId, state: wire, duel, savedAt: Date.now() };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
   } catch { /* 隐私模式等场景静默失败 */ }
 }
 
-function isValidRunState(s: unknown): s is SaveStateWire {
-  if (typeof s !== "object" || s === null) return false;
-  const o = s as Record<string, unknown>;
-  return (
-    typeof o.scenarioId === "string" &&
-    typeof o.sceneId === "string" &&
-    typeof o.lineIndex === "number" && o.lineIndex >= 0 &&
-    Array.isArray(o.flags) && o.flags.every((f) => typeof f === "string") &&
-    (o.stats === undefined || typeof o.stats === "object") &&
-    Array.isArray(o.clues) && Array.isArray(o.bag) && Array.isArray(o.deck) && Array.isArray(o.boosts) && Array.isArray(o.visited)
-  );
+/** 写入前脱 Set：JSON 序列化时 flags 必须是数组，其余内层集合原样（都是 plain 结构） */
+function clonePlainRunState(state: RunState): Omit<RunState, "flags"> {
+  const { flags, ...rest } = state;
+  void flags;
+  return rest;
+}
+
+// ---------- 运行时 schema 校验（审计 A04）----------
+// 形状检查≠数据契约。旧实现只判 `typeof stats === "object"`，而 null 与 [] 同样 typeof==="object"：
+// stats:null 一路混进 checkCond 的 `st.stats[k]` 取值、bag 里的非字符串卡 id 混进 TCard 的 def 查询，
+// 报错点离污染点隔了三四个界面。这类问题不该记在「玩家改档作弊」头上——版本升级、
+// 浏览器写入被中断、迁移脚本出错都会造出同样形状错的数据，即使是纯单机也要挡住。
+const isStr = (x: unknown): x is string => typeof x === "string";
+const isStrArray = (x: unknown): x is string[] => Array.isArray(x) && x.every(isStr);
+const isNum = (x: unknown): x is number => typeof x === "number" && Number.isFinite(x);
+/** 数值表：允许空对象，但不许 null / 数组 / 值不是有限数 */
+function isStatTable(x: unknown): x is Record<string, number> {
+  if (typeof x !== "object" || x === null || Array.isArray(x)) return false;
+  return Object.values(x as Record<string, unknown>).every(isNum);
+}
+/** 勘查账：sceneId → 已入卷热点 id 数组 */
+function isSurveyLedger(x: unknown): x is Record<string, string[]> {
+  if (typeof x !== "object" || x === null || Array.isArray(x)) return false;
+  return Object.values(x as Record<string, unknown>).every(isStrArray);
+}
+
+/** 对局存档校验：只验「恢复时会被直接读走」的那些字段——
+ *  mode/finished 决定分派与结算，round/ap/血量决定界面，数组决定牌库操作。
+ *  其余字段（charge/foresuit/passives…）由 App 的旧档兜底补全，缺了不致命。 */
+function isValidDuelWire(x: unknown): x is DuelWire {
+  if (typeof x !== "object" || x === null) return false;
+  const o = x as Record<string, unknown>;
+  if (typeof o.cfgId !== "string" || !o.cfgId) return false;
+  const d = o.data;
+  if (typeof d !== "object" || d === null || Array.isArray(d)) return false;
+  const s = d as Record<string, unknown>;
+  if (s.mode !== "emotion" && s.mode !== "pressure") return false;
+  if (s.finished !== null && s.finished !== "win" && s.finished !== "lose") return false;
+  if (!isNum(s.round) || s.round < 0) return false;
+  if (!isNum(s.hpPlayer) || !isNum(s.hpOpponent)) return false;
+  if (!isStr(s.cfgId ?? o.cfgId) && s.cfgId !== undefined) return false;
+  for (const k of ["hand", "library", "discard", "usedCards", "playerLeadSuits", "retinueNames"]) {
+    if (s[k] !== undefined && !isStrArray(s[k])) return false;
+  }
+  for (const k of ["ap", "baseAp", "yanli", "yanliMax", "qi", "rapport", "charge", "buffPower"]) {
+    if (s[k] !== undefined && s[k] !== null && !isNum(s[k])) return false;
+  }
+  if (o.wager !== undefined && (!isNum(o.wager) || o.wager < 0)) return false;
+  return true;
+}
+
+/** 存档 wire 校验：返回 null=通过，否则返回第一条拒绝理由（用于给玩家的提示与备份记录） */
+function rejectReasonOf(o: Record<string, unknown>): string | null {
+  const s = o.state;
+  if (typeof s !== "object" || s === null || Array.isArray(s)) return "state 不是对象";
+  const r = s as Record<string, unknown>;
+  if (!isStr(r.scenarioId) || !r.scenarioId) return "scenarioId 缺失";
+  if (!isStr(r.sceneId) || !r.sceneId) return "sceneId 缺失";
+  if (!isNum(r.lineIndex) || r.lineIndex < 0 || !Number.isInteger(r.lineIndex)) return "lineIndex 非法";
+  if (!isStrArray(r.flags)) return "flags 不是字符串数组";
+  if (!isStatTable(r.stats)) return "stats 不是数值表";
+  for (const k of ["clues", "bag", "deck", "boosts", "visited"] as const) {
+    if (!isStrArray(r[k])) return `${k} 不是字符串数组`;
+  }
+  for (const k of ["retinue", "usedCards"] as const) {
+    if (r[k] !== undefined && !isStrArray(r[k])) return `${k} 不是字符串数组`;
+  }
+  if (!isNum(r.silver)) return "silver 不是有限数值";
+  if (r.wagers !== undefined && (!isNum(r.wagers) || r.wagers < 0 || !Number.isInteger(r.wagers))) return "wagers 非法";
+  if (r.survey !== undefined && !isSurveyLedger(r.survey)) return "survey 账本格式异常";
+  if (o.duel !== undefined && o.duel !== null && !isValidDuelWire(o.duel)) return "duel 存档结构非法";
+  return null;
+}
+
+/** 校验失败时的待播报原因（一次性）：loadGame 只在真正拒绝了坏档时写，UI 取走即清 */
+let pendingReject: string | null = null;
+export function consumeSaveRejectReason(): string | null {
+  const r = pendingReject;
+  pendingReject = null;
+  return r;
+}
+
+/** 把坏档原文挪到 dicun_save_bad_v4 再从存档位摘掉——既不带着脏数据进游戏，也不销毁它 */
+function quarantine(raw: string, reason: string): void {
+  try {
+    localStorage.setItem(BAD_SAVE_KEY, JSON.stringify({ at: Date.now(), reason, raw }));
+    localStorage.removeItem(SAVE_KEY);
+    for (const k of LEGACY_SAVE_KEYS) localStorage.removeItem(k);
+  } catch { /* 隐私模式：至少内存里这次不再用它 */ }
+  pendingReject = reason;
 }
 
 export function loadGame(): SaveData | null {
   try {
-    // 兼容旧 key（v3 之前）：读不到新档时回退旧档，低版本经迁移后由 saveGame 写回新 key
-    const raw = localStorage.getItem(SAVE_KEY) ?? localStorage.getItem("dicun_save_v3");
+    // 兼容旧 key：读不到新档时回退旧档；旧档一旦读通就立刻改写回当前键并删除旧键（审计 A08）——
+    // 否则「当前键」永远不是唯一来源，清档也就永远清不干净。
+    const rawCur = localStorage.getItem(SAVE_KEY);
+    const legacyKey = rawCur ? null : LEGACY_SAVE_KEYS.find((k) => localStorage.getItem(k));
+    const raw = rawCur ?? (legacyKey ? localStorage.getItem(legacyKey) : null);
     if (!raw) return null;
     const d = JSON.parse(raw) as Record<string, unknown>;
     const ver = typeof d.version === "number" ? d.version : 0;
     if (ver > SAVE_VERSION) {
       // C-6 高版本存档不销毁：原样返回并标记 future，交 UI 提示「存档来自更新版本」；
-      // 仅形状校验失败（损坏/旧格式）才 removeItem。
+      // 仅形状校验失败（损坏/旧格式）才隔离。
       return {
         version: ver,
         scenarioId: d.scenarioId as string,
@@ -73,24 +160,33 @@ export function loadGame(): SaveData | null {
         future: true,
       };
     }
-    if (!isValidRunState(d.state)) {
-      localStorage.removeItem(SAVE_KEY);
+    const reason = rejectReasonOf(d);
+    if (reason) {
+      quarantine(raw, reason);
       return null;
     }
     const wire = d.state as SaveStateWire;
     const state: RunState = { ...wire, flags: new Set(wire.flags), stats: wire.stats ?? {}, boosts: Array.isArray(wire.boosts) ? wire.boosts : [], retinue: Array.isArray(wire.retinue) ? wire.retinue : [], usedCards: Array.isArray(wire.usedCards) ? wire.usedCards : [] };
-    let duel: DuelWire | undefined;
-    if (d.duel && typeof d.duel === "object" && typeof (d.duel as DuelWire).cfgId === "string") {
-      duel = d.duel as DuelWire;
+    const duel = d.duel !== undefined && d.duel !== null ? d.duel as DuelWire : undefined;
+    const scenarioId = d.scenarioId as string;
+    if (legacyKey) {
+      // 迁移落新键：读到的瞬间就把进度搬到当前版本，旧键随即作废（A08 的另一半——
+      // 只在 clearSave 里删旧键的话，玩家从没点过「放弃存档」就永远带着两本账）
+      saveGame(scenarioId, state, duel);
+      try { localStorage.removeItem(legacyKey); } catch { /* ignore */ }
     }
-    return { version: SAVE_VERSION, scenarioId: d.scenarioId as string, state, duel, savedAt: d.savedAt as number };
+    return { version: SAVE_VERSION, scenarioId, state, duel, savedAt: d.savedAt as number };
   } catch {
     return null;
   }
 }
 
 export function clearSave(): void {
-  try { localStorage.removeItem(SAVE_KEY); } catch { /* ignore */ }
+  try {
+    localStorage.removeItem(SAVE_KEY);
+    // 审计 A08：连带删历史键，否则「放弃存档」后 loadGame 又从 v3 把同一份进度捞回来
+    for (const k of LEGACY_SAVE_KEYS) localStorage.removeItem(k);
+  } catch { /* ignore */ }
 }
 
 // ---------- 成就 ----------
@@ -177,7 +273,12 @@ export function unlockEnding(e: Omit<GalleryEntry, "at">): void {
 
 export function getGallery(): GalleryEntry[] {
   try {
-    return JSON.parse(localStorage.getItem(GALLERY_KEY) ?? "[]") as GalleryEntry[];
+    const raw = JSON.parse(localStorage.getItem(GALLERY_KEY) ?? "[]");
+    // 只留结构正确的条目：手改/半写入的 gallery 里混进 null 或非对象时，
+    // 下游全是 g.scenarioId / g.endingName 的直接取值（结局计数、番外解锁、13 部全通成就）
+    if (!Array.isArray(raw)) return [];
+    return raw.filter((x): x is GalleryEntry =>
+      !!x && typeof x === "object" && isStr((x as GalleryEntry).scenarioId) && isStr((x as GalleryEntry).endingName));
   } catch {
     return [];
   }
@@ -230,13 +331,18 @@ export interface EmpireData {
   titles: string[];            // 已获称号（成就奖励授予）
 }
 
-const EMPIRE_DEFAULT: EmpireData = { ink: 0, grantedEnds: 0, warehouse: [], themes: [], theme: "", boosts: {}, brokenSeals: [], retinue: [], warLoses: [], peaceDeal: false, achCounters: {}, endMile: 0, luggageSlots: 0, spareSilver: 0, titles: [] };
+// DEV-ONLY-999 ⚠ 本地预览临时值：ink 原本是 0，上线前必须改回 0（全局搜 "DEV-ONLY-999"）
+const EMPIRE_DEFAULT: EmpireData = { ink: 999, grantedEnds: 0, warehouse: [], themes: [], theme: "", boosts: {}, brokenSeals: [], retinue: [], warLoses: [], peaceDeal: false, achCounters: {}, endMile: 0, luggageSlots: 0, spareSilver: 0, titles: [] };
 
 function readEmpire(): EmpireData {
   try {
     const raw = localStorage.getItem(EMPIRE_KEY);
-    if (!raw) return { ...EMPIRE_DEFAULT };
-    return { ...EMPIRE_DEFAULT, ...(JSON.parse(raw) as Partial<EmpireData>) };
+    // DEV-ONLY-999 ⚠ 本地预览临时值，上线前连同上面那行一起删：
+    // 浏览器里已存过 dicun_empire_v1 的话，存过的 ink 会盖掉 EMPIRE_DEFAULT，
+    // 光改默认值看不到 999，所以这里再兜一次。
+    const e = raw ? { ...EMPIRE_DEFAULT, ...(JSON.parse(raw) as Partial<EmpireData>) } : { ...EMPIRE_DEFAULT };
+    e.ink = Math.max(e.ink, 999);
+    return e;
   } catch {
     return { ...EMPIRE_DEFAULT };
   }
